@@ -1,7 +1,7 @@
 name: flutter_uxcam
-description: A new flutter plugin project.
-version: 1.0.0
-author: UXCam <admin-mobile@uxcam.com>
+description: Flutter plugin for UXCam.
+version: 1.1.0-beta.1
+author: UXCam <team@uxcam.com>
 homepage: https://uxcam.com/
 
 environment:

@@ -1,7 +1,6 @@
 package io.flutter.plugins;
 
 import io.flutter.plugin.common.PluginRegistry;
-import io.flutter.plugins.pathprovider.PathProviderPlugin;
 import com.uxcam.flutteruxcam.FlutterUxcamPlugin;
 
 /**
@@ -12,7 +11,6 @@ public final class GeneratedPluginRegistrant {
     if (alreadyRegisteredWith(registry)) {
       return;
     }
-    PathProviderPlugin.registerWith(registry.registrarFor("io.flutter.plugins.pathprovider.PathProviderPlugin"));
     FlutterUxcamPlugin.registerWith(registry.registrarFor("com.uxcam.flutteruxcam.FlutterUxcamPlugin"));
   }
 

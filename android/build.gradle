@@ -19,7 +19,9 @@ rootProject.allprojects {
          maven{
              url 'https://sdk.uxcam.com/android/'
          }
-        
+        flatDir {
+            dirs 'libs'
+        }
     }
 }
 
@@ -30,14 +32,13 @@ android {
 
     defaultConfig {
         minSdkVersion 16
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     lintOptions {
         disable 'InvalidPackage'
     }
     
 }
-dependencies { 
-      implementation 'com.uxcam:uxcam:3.0.6@aar'
+dependencies {
+    implementation 'com.uxcam:uxcam:3.1.13-beta.1@aar'
 //    implementation fileTree(dir: '/Users/uxcam/AndroidStudioProjects/flutter_uxcam/lib/', include: ['*.jar'])
 }
