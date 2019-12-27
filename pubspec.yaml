@@ -10,7 +10,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  path_provider : ^0.4.1
   flutter_driver:
     sdk: flutter
 
