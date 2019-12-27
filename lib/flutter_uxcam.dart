@@ -72,11 +72,6 @@ class FlutterUxcam {
     return starter;
   }
 
-  static Future<bool> getMultiSessionRecord() async {
-    bool starter = await _channel.invokeMethod('getMultiSessionRecord');
-    return starter;
-  }
-
   static Future<void> pauseScreenRecording() async {
     await _channel.invokeMethod('pauseScreenRecording');
   }
@@ -85,16 +80,29 @@ class FlutterUxcam {
     await _channel.invokeMethod('resumeScreenRecording');
   }
 
-  static Future<void> optIn() async {
-    await _channel.invokeMethod('optIn');
+  static Future<void> optInOverall() async {
+    await _channel.invokeMethod('optInOverall');
   }
 
-  static Future<void> optOut() async {
-    await _channel.invokeMethod('optOut');
+  static Future<void> optOutOverall() async {
+    await _channel.invokeMethod('optOutOverall');
   }
 
-  static Future<bool> optStatus() async {
-    final bool optStatus = await _channel.invokeMethod('optStatus');
+  static Future<bool> optInOverallStatus() async {
+    final bool optStatus = await _channel.invokeMethod('optInOverallStatus');
+    return optStatus;
+  }
+
+  static Future<void> optIntoVideoRecording() async {
+    await _channel.invokeMethod('optIntoVideoRecording');
+  }
+
+  static Future<void> optOutOfVideoRecording() async {
+    await _channel.invokeMethod('optOutOfVideoRecording');
+  }
+
+  static Future<bool> optInVideoRecordingStatus() async {
+    final bool optStatus = await _channel.invokeMethod('optInVideoRecordingStatus');
     return optStatus;
   }
 
@@ -112,6 +120,11 @@ class FlutterUxcam {
         .invokeMethod('setMultiSessionRecord', {"key": multiSessionRecord});
   }
 
+  static Future<bool> getMultiSessionRecord() async {
+    bool starter = await _channel.invokeMethod('getMultiSessionRecord');
+    return starter;
+  }
+
   static Future<void> setAutomaticScreenNameTagging(bool enable) async {
     await _channel
         .invokeMethod('setAutomaticScreenNameTagging', {"key": enable});
@@ -125,8 +138,8 @@ class FlutterUxcam {
     await _channel.invokeMethod('deletePendingUploads');
   }
 
-  static Future<int> pendingSessionCount() async {
-    int count = await _channel.invokeMethod('pendingSessionCount');
+  static Future<int> pendingUploads() async {
+    int count = await _channel.invokeMethod('pendingUploads');
     return count;
   }
 
@@ -149,5 +162,17 @@ class FlutterUxcam {
   static Future<String> addVerificationListener() async {
     String url = await _channel.invokeMethod('addVerificationListener');
     return url;
+  }
+
+  static Future<void> addScreenNameToIgnore(String screenName) async {
+    await _channel.invokeMethod('addScreenNameToIgnore', {"key": screenName});
+  }
+
+  static Future<void> removeScreenNameToIgnore(String screenName) async {
+    await _channel.invokeMethod('removeScreenNameToIgnore', {"key": screenName});
+  }
+
+  static Future<void> removeAllScreenNamesToIgnore(String screenName) async {
+    await _channel.invokeMethod('removeAllScreenNamesToIgnore');
   }
 }
