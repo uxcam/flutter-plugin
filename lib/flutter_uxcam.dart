@@ -106,6 +106,19 @@ class FlutterUxcam {
     return optStatus;
   }
 
+  static Future<void> optIntoSchematicRecordings() async {
+    await _channel.invokeMethod('optIntoSchematicRecordings');
+  }
+
+  static Future<void> optOutOfSchematicRecordings() async {
+    await _channel.invokeMethod('optOutOfSchematicRecordings');
+  }
+
+  static Future<bool> optInSchematicRecordingStatus() async {
+    final bool optStatus = await _channel.invokeMethod('optInSchematicRecordingStatus');
+    return optStatus;
+  }
+
   static Future<void> cancelCurrentSession() async {
     await _channel.invokeMethod('cancelCurrentSession');
   }

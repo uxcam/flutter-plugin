@@ -78,12 +78,18 @@
     } else if ([@"optInOverallStatus"isEqualToString:call.method]) {
         result(@( [UXCam optInOverallStatus]));
     } else if ([@"optIntoVideoRecording" isEqualToString:call.method]) {
-        [UXCam optIntoVideoRecording];
+        [UXCam optIntoSchematicRecordings];
     } else if ([@"optOutOfVideoRecording" isEqualToString:call.method]) {
-        [UXCam optOutOfVideoRecording];
+        [UXCam optOutOfSchematicRecordings];
     } else if ([@"optInVideoRecordingStatus"isEqualToString:call.method]) {
-        result(@( [UXCam optInVideoRecordingStatus]));
-    }else if ([@"cancelCurrentSession"isEqualToString:call.method]) {
+        result(@( [UXCam optInSchematicRecordingStatus]));
+    } else if ([@"optIntoSchematicRecordings" isEqualToString:call.method]) {
+        [UXCam optIntoSchematicRecordings];
+    } else if ([@"optOutOfSchematicRecordings" isEqualToString:call.method]) {
+        [UXCam optOutOfSchematicRecordings];
+    } else if ([@"optInSchematicRecordingStatus"isEqualToString:call.method]) {
+        result(@( [UXCam optInSchematicRecordingStatus]));
+    } else if ([@"cancelCurrentSession"isEqualToString:call.method]) {
         [UXCam cancelCurrentSession];
     } else if ([@"deletePendingUploads"isEqualToString:call.method]) {
         [UXCam deletePendingUploads];
@@ -93,9 +99,6 @@
         [UXCam stopSessionAndUploadData];
     } else if ([@"tagScreenName"isEqualToString:call.method]) {
         NSString* screenName = call.arguments;
-        //if (screenName == null || screenName.length() == 0) {
-        //    throw new IllegalArgumentException("missing screen Name");
-        //}
         [UXCam tagScreenName:screenName];
     } else if ([@"urlForCurrentUser"isEqualToString:call.method]) {
         NSString* url = [UXCam urlForCurrentUser];
