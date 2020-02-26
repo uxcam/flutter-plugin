@@ -24,6 +24,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    FlutterUxcam.optIntoSchematicRecordings();
     FlutterUxcam.startWithKey("UXCAM_APP_KEY");
     return MaterialApp(
       title: 'Flutter Demo',
