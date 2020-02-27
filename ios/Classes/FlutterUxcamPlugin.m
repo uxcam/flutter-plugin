@@ -13,6 +13,7 @@
     if ([@"getPlatformVersion" isEqualToString:call.method]) {
         result([@"iOS " stringByAppendingString:[[UIDevice currentDevice] systemVersion]]);
     } else if ([@"startWithKey" isEqualToString:call.method]) {
+		[UXCam pluginType:@"flutter" version:@"1.1.0"]
         NSString* apiKey = call.arguments[@"key"];
         [UXCam startWithKey:apiKey];
     } else if ([@"startNewSession" isEqualToString:call.method]) {
