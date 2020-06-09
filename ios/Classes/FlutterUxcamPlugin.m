@@ -23,26 +23,26 @@
         BOOL continueSession = call.arguments[@"key"];
         [UXCam allowShortBreakForAnotherApp:continueSession];
     } else if ([@"occludeSensitiveScreen" isEqualToString:call.method]) {
-        BOOL value = call.arguments[@"key"];
-        [UXCam occludeSensitiveScreen:value];
+        NSNumber *value = call.arguments[@"key"];
+        [UXCam occludeSensitiveScreen:[value boolValue]];
     } else if ([@"occludeSensitiveScreenWithoutGesture" isEqualToString:call.method]) {
-        BOOL value = call.arguments[@"key"];
-        BOOL withoutGesture = call.arguments[@"withoutGesture"];
-        [UXCam occludeSensitiveScreen:value hideGestures:withoutGesture];
+        NSNumber *value = call.arguments[@"key"];
+        NSNumber *withoutGesture = call.arguments[@"withoutGesture"];
+        [UXCam occludeSensitiveScreen:[value boolValue] hideGestures:[withoutGesture boolValue]];
     } else if ([@"occludeAllTextFields" isEqualToString:call.method]) {
-        BOOL occludeAllTextField = call.arguments[@"key"];
-        [UXCam occludeAllTextFields:occludeAllTextField];
+        NSNumber *occludeAllTextField = call.arguments[@"key"];
+        [UXCam occludeAllTextFields:[occludeAllTextField boolValue]];
     } else if ([@"occludeAllTextView" isEqualToString:call.method]) {
         NSLog(@"UXCam: Use occludeAllTextFields instead.");
     } else if ([@"tagScreenName" isEqualToString:call.method]) {
         NSString* eventName = call.arguments[@"key"];
         [UXCam tagScreenName:eventName];
     } else if ([@"setAutomaticScreenNameTagging" isEqualToString:call.method]) {
-        BOOL enable = call.arguments[@"key"];
-        [UXCam setAutomaticScreenNameTagging:enable];
+        NSNumber *enable = call.arguments[@"key"];
+        [UXCam setAutomaticScreenNameTagging:[enable boolValue]];
     } else if ([@"setMultiSessionRecord" isEqualToString:call.method]) {
-        BOOL enable = call.arguments[@"key"];
-        [UXCam setMultiSessionRecord:enable];
+        NSNumber *enable = call.arguments[@"key"];
+        [UXCam setMultiSessionRecord:[enable boolValue]];
     } else if ([@"getMultiSessionRecord" isEqualToString:call.method]) {
         BOOL status =  [UXCam getMultiSessionRecord];
         result(@(status));
