@@ -37,7 +37,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
         } else if (call.method.equals("startWithKey")) {
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
-            UXCam.pluginType("flutter", "1.1.1");
+            UXCam.pluginType("flutter", "1.1.2");
         } else if ("startNewSession".equals(call.method)) {
             UXCam.startNewSession();
         } else if ("stopSessionAndUploadData".equals(call.method)) {

@@ -19,7 +19,7 @@
     }
 	else if ([@"startWithKey" isEqualToString:call.method])
 	{
-		[UXCam pluginType:@"flutter" version:@"1.1.1"];
+		[UXCam pluginType:@"flutter" version:@"1.1.2"];
         NSString* apiKey = call.arguments[@"key"];
         [UXCam startWithKey:apiKey];
     }
