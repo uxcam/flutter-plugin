@@ -39,6 +39,6 @@ android {
 }
 
 dependencies {
-    implementation 'com.uxcam:uxcam:3.1.13-beta.7@aar'
+    implementation 'com.uxcam:uxcam:3.2.0@aar'
 //    implementation fileTree(dir: '/Users/uxcam/AndroidStudioProjects/flutter_uxcam/lib/', include: ['*.jar'])
 }

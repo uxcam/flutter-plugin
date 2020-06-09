@@ -3,19 +3,20 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'flutter_uxcam'
-  s.version          = '1.0.0'
-  s.summary          = 'A new flutter plugin project.'
+  s.version          = '1.1.1'
+  s.summary          = 'UXCam flutter plugin.'
   s.description      = <<-DESC
-A new flutter plugin project.
+UXCam flutter plugin
                        DESC
-  s.homepage         = 'http://example.com'
+  s.homepage         = 'https://www.uxcam.com'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
+  s.author           = { 'UXCam Inc' => 'admin@uxcam.com' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
-  s.dependency 'UXCam','~> 3.1.10'
+  s.static_framework = true
+  s.dependency 'UXCam','~> 3.1.15'
   s.ios.deployment_target = '9.0'
 end
 

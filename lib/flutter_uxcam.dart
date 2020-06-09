@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/services.dart';
 
 class FlutterUxcam {
@@ -107,16 +108,23 @@ class FlutterUxcam {
   }
 
   static Future<void> optIntoSchematicRecordings() async {
-    await _channel.invokeMethod('optIntoSchematicRecordings');
+    if (Platform.isIOS) {
+      await _channel.invokeMethod('optIntoSchematicRecordings');
+    }
   }
 
   static Future<void> optOutOfSchematicRecordings() async {
-    await _channel.invokeMethod('optOutOfSchematicRecordings');
+    if (Platform.isIOS) {
+      await _channel.invokeMethod('optOutOfSchematicRecordings');
+    }
   }
 
   static Future<bool> optInSchematicRecordingStatus() async {
-    final bool optStatus = await _channel.invokeMethod('optInSchematicRecordingStatus');
-    return optStatus;
+    if (Platform.isIOS) {
+      final bool optStatus = await _channel.invokeMethod('optInSchematicRecordingStatus');
+      return optStatus;
+    }
+    return false;
   }
 
   static Future<void> cancelCurrentSession() async {
