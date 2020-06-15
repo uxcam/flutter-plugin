@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'dart:convert';
 
 class FlutterUxcam {
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
@@ -65,7 +66,7 @@ class FlutterUxcam {
   static Future<void> logEventWithProperties(
       String eventName, Object properties) async {
     await _channel.invokeMethod('logEventWithProperties',
-        {"eventName": eventName, "properties": properties});
+        {"eventName": eventName, "properties": json.encode(properties)});
   }
 
   static Future<bool> isRecording() async {

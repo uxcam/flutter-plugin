@@ -11,6 +11,7 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import com.uxcam.UXCam;
+import org.json.JSONException;
 /**
  * FlutterUxcamPlugin
  */
@@ -85,15 +86,20 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             UXCam.logEvent(eventName);
         } else if ("logEventWithProperties".equals(call.method)) {
             String eventName = call.argument("eventName");
-            JSONObject params = call.argument("properties");
-
             if (eventName == null || eventName.length() == 0) {
                 throw new IllegalArgumentException("missing event Name");
             }
-            if (params == null || params.length() == 0) {
-                UXCam.logEvent(eventName);
-            } else {
-                UXCam.logEvent(eventName, params);
+            String props = call.argument("properties");
+            try{
+                JSONObject params = new JSONObject(props);
+                if (params == null || params.length() == 0) {
+                    UXCam.logEvent(eventName);
+                } else {
+                    UXCam.logEvent(eventName, params);
+                }
+            }
+            catch (JSONException err){
+                Log.d("Error", err.toString());
             }
         } else if ("isRecording".equals(call.method)) {
             result.success( UXCam.isRecording());
