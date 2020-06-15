@@ -65,8 +65,13 @@ class FlutterUxcam {
 
   static Future<void> logEventWithProperties(
       String eventName, Object properties) async {
-    await _channel.invokeMethod('logEventWithProperties',
-        {"eventName": eventName, "properties": json.encode(properties)});
+    if (Platform.isIOS) {
+      await _channel.invokeMethod('logEventWithProperties',
+          {"eventName": eventName, "properties": properties});
+    } else {
+      await _channel.invokeMethod('logEventWithProperties',
+          {"eventName": eventName, "properties": json.encode(properties)});
+    }
   }
 
   static Future<bool> isRecording() async {
@@ -104,7 +109,8 @@ class FlutterUxcam {
   }
 
   static Future<bool> optInVideoRecordingStatus() async {
-    final bool optStatus = await _channel.invokeMethod('optInVideoRecordingStatus');
+    final bool optStatus =
+        await _channel.invokeMethod('optInVideoRecordingStatus');
     return optStatus;
   }
 
@@ -122,7 +128,8 @@ class FlutterUxcam {
 
   static Future<bool> optInSchematicRecordingStatus() async {
     if (Platform.isIOS) {
-      final bool optStatus = await _channel.invokeMethod('optInSchematicRecordingStatus');
+      final bool optStatus =
+          await _channel.invokeMethod('optInSchematicRecordingStatus');
       return optStatus;
     }
     return false;
@@ -191,7 +198,8 @@ class FlutterUxcam {
   }
 
   static Future<void> removeScreenNameToIgnore(String screenName) async {
-    await _channel.invokeMethod('removeScreenNameToIgnore', {"key": screenName});
+    await _channel
+        .invokeMethod('removeScreenNameToIgnore', {"key": screenName});
   }
 
   static Future<void> removeAllScreenNamesToIgnore(String screenName) async {
