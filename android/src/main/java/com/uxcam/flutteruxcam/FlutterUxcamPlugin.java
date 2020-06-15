@@ -89,9 +89,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             if (eventName == null || eventName.length() == 0) {
                 throw new IllegalArgumentException("missing event Name");
             }
-            String props = call.argument("properties");
             try{
-                JSONObject params = new JSONObject(props);
+                String properties = call.argument("properties").toString();
+                JSONObject params = new JSONObject(properties);
                 if (params == null || params.length() == 0) {
                     UXCam.logEvent(eventName);
                 } else {
