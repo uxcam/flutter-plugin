@@ -3,15 +3,13 @@ package com.uxcam.flutteruxcam;
 import android.app.Activity;
 import android.util.Log;
 
-import org.json.JSONObject;
-
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import com.uxcam.UXCam;
-
+import java.util.Map;
 /**
  * FlutterUxcamPlugin
  */
