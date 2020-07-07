@@ -1,6 +1,7 @@
 ## Changelog
 Version         | Changes
 ----------      | ----------
+1.2.0           | Android SDK updated to v3.3.1 which solves Android screen video bug. iOS SDK updated to 3.2.4
 1.1.2-beta.3    | Android SDK updated to 3.3.0-beta.1 which fixes issue with recording embedded Flutter view on release build. iOS SDK updated to 3.2.4
 1.1.2-beta.2    | Dart hashmap to Java JSONObject conversion code compile time issue fixed  
 1.1.2-beta.1    | IOS boolean conversion issue fixed for dart -> Obj C
