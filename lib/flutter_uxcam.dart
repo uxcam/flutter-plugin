@@ -166,6 +166,10 @@ class FlutterUxcam {
     return count;
   }
 
+  static Future<void> uploadPendingSession() async {
+    await _channel.invokeMethod('uploadPendingSession');
+  }
+
   static Future<void> stopApplicationAndUploadData() async {
     await _channel.invokeMethod('stopApplicationAndUploadData');
   }

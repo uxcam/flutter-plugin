@@ -122,7 +122,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             UXCam.deletePendingUploads();
         } else if ("pendingUploads".equals(call.method)) {
             result.success(UXCam.pendingUploads());
-        } else if ("stopApplicationAndUploadData".equals(call.method)) {
+        } else if ("uploadPendingSession".equals(call.method)) {
+            
+        }
+        else if ("stopApplicationAndUploadData".equals(call.method)) {
             UXCam.stopSessionAndUploadData();
         } else if ("tagScreenName".equals(call.method)) {
             String screenName = call.arguments();

@@ -151,6 +151,10 @@
 	{
         result(@( [UXCam pendingUploads]));
     }
+    else if ([@"uploadPendingSession"isEqualToString:call.method])
+	{
+        [UXCam uploadingPendingSessions:nil];
+    }
 	else if ([@"stopApplicationAndUploadData"isEqualToString:call.method])
 	{
         [UXCam stopSessionAndUploadData];
