@@ -21,7 +21,9 @@
 	{
 		[UXCam pluginType:@"flutter" version:@"1.1.2"];
         NSString* apiKey = call.arguments[@"key"];
-        [UXCam startWithKey:apiKey];
+        [UXCam startWithKey:apiKey buildIdentifier:nil completionBlock:^(BOOL started) {
+            result(@(started));
+        }];
     }
 	else if ([@"startNewSession" isEqualToString:call.method])
 	{
@@ -167,12 +169,12 @@
 	else if ([@"urlForCurrentUser"isEqualToString:call.method])
 	{
         NSString* url = [UXCam urlForCurrentUser];
-        result(@[url]);
+        result(url);
     }
 	else if ([@"urlForCurrentSession"isEqualToString:call.method])
 	{
         NSString* url = [UXCam urlForCurrentSession];
-        result(@[url]);
+        result(url);
     }
 	else if ([@"addVerificationListener"isEqualToString:call.method])
 	{

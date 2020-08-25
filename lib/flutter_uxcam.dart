@@ -10,8 +10,9 @@ class FlutterUxcam {
     return version;
   }
 
-  static void startWithKey(String key) async {
-    await _channel.invokeMethod('startWithKey', {"key": key});
+  static Future<bool> startWithKey(String key) async {
+    bool status = await _channel.invokeMethod('startWithKey', {"key": key});
+    return status;
   }
 
   static Future<void> startNewSession() async {
@@ -176,18 +177,11 @@ class FlutterUxcam {
 
   static Future<String> urlForCurrentUser() async {
     String url = await _channel.invokeMethod('urlForCurrentUser');
-    print("flutter_uxcam urlForCurrentUser " + url);
     return url;
   }
 
   static Future<String> urlForCurrentSession() async {
     String url = await _channel.invokeMethod('urlForCurrentSession');
-
-    return url;
-  }
-
-  static Future<String> addVerificationListener() async {
-    String url = await _channel.invokeMethod('addVerificationListener');
     return url;
   }
 

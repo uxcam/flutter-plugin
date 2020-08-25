@@ -36,6 +36,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
         } else if (call.method.equals("startWithKey")) {
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
+            addListener(result);
             UXCam.pluginType("flutter", "1.1.2");
         } else if ("startNewSession".equals(call.method)) {
             UXCam.startNewSession();
@@ -134,15 +135,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             }
             UXCam.tagScreenName(screenName);
         }
-        else if ("addVerificationListener".equals(call.method)) {
+        else if ("urlForCurrentUser".equals(call.method)) {
             String url = UXCam.urlForCurrentUser();
-            if (url == null || url.contains("null")) {
-                addListener(result);
-            }
-            result.success(url);
-        } else if ("urlForCurrentUser".equals(call.method)) {
-            String url = UXCam.urlForCurrentUser();
-            System.out.println("urlForCurrentUser "+url);
             result.success(url);
         } else if ("urlForCurrentSession".equals(call.method)) {
             String url = UXCam.urlForCurrentSession();
@@ -164,12 +158,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
         com.uxcam.UXCam.addVerificationListener(new com.uxcam.OnVerificationListener() {
             @Override
             public void onVerificationSuccess() {
-                callback.success(com.uxcam.UXCam.urlForCurrentUser());
+                callback.success(true);
             }
 
             @Override
             public void onVerificationFailed(String errorMessage) {
-                callback.error(errorMessage,"","");
+                callback.success(false);
             }
         });
     }
