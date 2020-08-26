@@ -3,7 +3,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'flutter_uxcam'
-  s.version          = '1.1.2'
+  s.version          = '1.2.1'
   s.summary          = 'UXCam flutter plugin.'
   s.description      = <<-DESC
 UXCam flutter plugin
