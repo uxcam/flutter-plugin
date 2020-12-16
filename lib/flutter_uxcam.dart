@@ -197,4 +197,14 @@ class FlutterUxcam {
   static Future<void> removeAllScreenNamesToIgnore(String screenName) async {
     await _channel.invokeMethod('removeAllScreenNamesToIgnore');
   }
+
+  static Future<void> setPushNotificationToken(String token) async {
+    await _channel.invokeMethod('setPushNotificationToken', {"key": token});
+  }
+
+  static Future<void> reportBugEvent(String eventName,
+      [Map<String, dynamic> properties]) async {
+    await _channel.invokeMethod(
+        'reportBugEvent', {"eventName": eventName, "properties": properties});
+  }
 }

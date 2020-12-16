@@ -194,6 +194,23 @@
 	{
        [UXCam removeAllScreenNamesToIgnore];
     }
+    else if ([@"setPushNotificationToken" isEqualToString:call.method])
+	{
+        NSString* token = call.arguments[@"key"];
+        [UXCam setPushNotificationToken:token];
+    }
+    else if ([@"reportBugEvent" isEqualToString:call.method])
+	{
+        NSString* eventName = call.arguments[@"eventName"];
+        NSDictionary* properties = call.arguments[@"properties"];
+        if (eventName.length>0 && [properties isKindOfClass:NSDictionary.class])
+		{
+            [UXCam reportBugEvent:eventName properties:properties];
+        }else
+        {
+            [UXCam reportBugEvent:eventName properties:nil];
+        }
+    }
 	else
 	{
         result(FlutterMethodNotImplemented);

@@ -149,6 +149,20 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             UXCam.removeScreenNameToIgnore(screenName);
         } else if ("removeAllScreenNamesToIgnore".equals(call.method)) {
             UXCam.removeAllScreenNamesToIgnore();
+        } else if ("setPushNotificationToken".equals(call.method)) {
+            String token = call.argument("key");
+            UXCam.setPushNotificationToken(token);
+        } else if ("reportBugEvent".equals(call.method)) {
+            String eventName = call.argument("eventName");
+            final Map<String, Object> map = call.argument("properties");
+            if (eventName == null || eventName.length() == 0) {
+                throw new IllegalArgumentException("missing event Name");
+            }
+            if (map == null || map.size() == 0) {
+                UXCam.reportBugEvent(eventName);
+            } else {
+                UXCam.reportBugEvent(eventName, map);
+            }
         } else {
             result.notImplemented();
         }
