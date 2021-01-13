@@ -1,6 +1,7 @@
 ## Changelog
 Version         | Changes
 ----------      | ----------
+1.3.1           | iOS SDK update to v 3.3.1 & Android SDK updated to v3.3.5
 1.3.0           | iOS version updated to 3.3.0, android version updated to 3.3.4, setPushNotificationToken and reportBugEvent API added
 1.2.1           | Dart env updated to use 2.2.0 stable, iOS SDK updated to 3.2.5, startWithKey changed to return session status, user and session URL return type error fixed
 1.2.0           | Android SDK updated to v3.3.1 which solves Android screen video bug. iOS SDK updated to 3.2.4
