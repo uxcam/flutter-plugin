@@ -46,18 +46,15 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             result.success(null);
         } else if ("occludeSensitiveScreen".equals(call.method)) {
             boolean occludeSensitiveScreen = call.argument("key");
-            // Log.d(TAG, "occludeSenstiveScreen: "+occludeSensitiveScreen);
             UXCam.occludeSensitiveScreen(occludeSensitiveScreen);
             result.success(null);
         }else if ("occludeSensitiveScreenWithoutGesture".equals(call.method)) {
             boolean occludeSensitiveScreen = call.argument("key");
             boolean withoutGesture = call.argument("withoutGesture");
-//            Log.d(TAG, "occludeSensitiveScreenWithoutGesture: "+occludeSensitiveScreen);
             UXCam.occludeSensitiveScreen(occludeSensitiveScreen,withoutGesture);
             result.success(null);
         } else if ("setMultiSessionRecord".equals(call.method)) {
             boolean multiSessionRecord = call.argument("key");
-//            Log.d(TAG, "setMultiSessionRecord: "+multiSessionRecord);
             UXCam.setMultiSessionRecord(multiSessionRecord);
             result.success(null);
         } else if ("getMultiSessionRecord".equals(call.method)) {
