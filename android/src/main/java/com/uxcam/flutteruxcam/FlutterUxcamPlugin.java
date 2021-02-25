@@ -40,49 +40,61 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             UXCam.pluginType("flutter", "1.3.1");
         } else if ("startNewSession".equals(call.method)) {
             UXCam.startNewSession();
+            result.success(null);
         } else if ("stopSessionAndUploadData".equals(call.method)) {
             UXCam.stopSessionAndUploadData();
+            result.success(null);
         } else if ("occludeSensitiveScreen".equals(call.method)) {
             boolean occludeSensitiveScreen = call.argument("key");
-            Log.d(TAG, "occludeSenstiveScreen: "+occludeSensitiveScreen);
+            // Log.d(TAG, "occludeSenstiveScreen: "+occludeSensitiveScreen);
             UXCam.occludeSensitiveScreen(occludeSensitiveScreen);
+            result.success(null);
         }else if ("occludeSensitiveScreenWithoutGesture".equals(call.method)) {
             boolean occludeSensitiveScreen = call.argument("key");
             boolean withoutGesture = call.argument("withoutGesture");
 //            Log.d(TAG, "occludeSensitiveScreenWithoutGesture: "+occludeSensitiveScreen);
             UXCam.occludeSensitiveScreen(occludeSensitiveScreen,withoutGesture);
+            result.success(null);
         } else if ("setMultiSessionRecord".equals(call.method)) {
             boolean multiSessionRecord = call.argument("key");
 //            Log.d(TAG, "setMultiSessionRecord: "+multiSessionRecord);
             UXCam.setMultiSessionRecord(multiSessionRecord);
+            result.success(null);
         } else if ("getMultiSessionRecord".equals(call.method)) {
             result.success( UXCam.getMultiSessionRecord());
         } else if ("occludeAllTextView".equals(call.method)) {
             boolean occludeAllTextField = call.argument("key");
             UXCam.occludeAllTextFields(occludeAllTextField);
+            result.success(null);
         } else if ("tagScreenName".equals(call.method)) {
             String eventName = call.argument("key");
             UXCam.tagScreenName(eventName);
+            result.success(null);
         } else if ("setAutomaticScreenNameTagging".equals(call.method)) {
             boolean enable = call.argument("key");
             UXCam.setAutomaticScreenNameTagging(enable);
+            result.success(null);
         } else if ("setUserIdentity".equals(call.method)) {
             String userIdentity = call.argument("key");
             UXCam.setUserIdentity(userIdentity);
+            result.success(null);
         } else if ("setUserProperty".equals(call.method)) {
             String key = call.argument("key");
             String value = call.argument("value");
             UXCam.setUserProperty(key, value);
+            result.success(null);
         } else if ("setSessionProperty".equals(call.method)) {
             String key = call.argument("key");
             String value = call.argument("value");
             UXCam.setSessionProperty(key, value);
+            result.success(null);
         } else if ("logEvent".equals(call.method)) {
             String eventName = call.argument("key");
             if (eventName == null || eventName.length() == 0) {
                 throw new IllegalArgumentException("missing event Name");
             }
             UXCam.logEvent(eventName);
+            result.success(null);
         } else if ("logEventWithProperties".equals(call.method)) {
             String eventName = call.argument("eventName");
             final Map<String, Object> map = call.argument("properties");
@@ -94,46 +106,60 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             } else {
                 UXCam.logEvent(eventName, map);
             }
+            result.success(null);
         } else if ("isRecording".equals(call.method)) {
             result.success( UXCam.isRecording());
         } else if ("pauseScreenRecording".equals(call.method)) {
             UXCam.pauseScreenRecording();
+            result.success(null);
         } else if ("resumeScreenRecording".equals(call.method)) {
             UXCam.resumeScreenRecording();
+            result.success(null);
         } else if ("optInOverall".equals(call.method)) {
             UXCam.optInOverall();
+            result.success(null);
         } else if ("optOutOverall".equals(call.method)) {
             UXCam.optOutOverall();
+            result.success(null);
         } else if ("optInOverallStatus".equals(call.method)) {
             result.success(UXCam.optInOverallStatus());
+            result.success(null);
         } else if ("optIntoVideoRecording".equals(call.method)) {
             UXCam.optIntoVideoRecording();
+            result.success(null);
         } else if ("optOutOfVideoRecording".equals(call.method)) {
             UXCam.optOutOfVideoRecording();
+            result.success(null);
         } else if ("optInVideoRecordingStatus".equals(call.method)) {
             result.success(UXCam.optInVideoRecordingStatus());
         } else if ("cancelCurrentSession".equals(call.method)) {
             UXCam.cancelCurrentSession();
+            result.success(null);
         } else if ("allowShortBreakForAnotherApp".equals(call.method)) {
             boolean enable = call.argument("key");
             UXCam.allowShortBreakForAnotherApp(enable);
+            result.success(null);
         } else if ("resumeShortBreakForAnotherApp".equals(call.method)) {
             UXCam.resumeShortBreakForAnotherApp();
+            result.success(null);
         } else if ("deletePendingUploads".equals(call.method)) {
             UXCam.deletePendingUploads();
+            result.success(null);
         } else if ("pendingUploads".equals(call.method)) {
             result.success(UXCam.pendingUploads());
         } else if ("uploadPendingSession".equals(call.method)) {
-            
+            result.success(null);
         }
         else if ("stopApplicationAndUploadData".equals(call.method)) {
             UXCam.stopSessionAndUploadData();
+            result.success(null);
         } else if ("tagScreenName".equals(call.method)) {
             String screenName = call.arguments();
             if (screenName == null || screenName.length() == 0) {
                 throw new IllegalArgumentException("missing screen Name");
             }
             UXCam.tagScreenName(screenName);
+            result.success(null);
         }
         else if ("urlForCurrentUser".equals(call.method)) {
             String url = UXCam.urlForCurrentUser();
@@ -144,14 +170,18 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
         } else if ("addScreenNameToIgnore".equals(call.method)) {
             String screenName = call.argument("key");
             UXCam.addScreenNameToIgnore(screenName);
+            result.success(null);
         } else if ("removeScreenNameToIgnore".equals(call.method)) {
             String screenName = call.argument("key");
             UXCam.removeScreenNameToIgnore(screenName);
+            result.success(null);
         } else if ("removeAllScreenNamesToIgnore".equals(call.method)) {
             UXCam.removeAllScreenNamesToIgnore();
+            result.success(null);
         } else if ("setPushNotificationToken".equals(call.method)) {
             String token = call.argument("key");
             UXCam.setPushNotificationToken(token);
+            result.success(null);
         } else if ("reportBugEvent".equals(call.method)) {
             String eventName = call.argument("eventName");
             final Map<String, Object> map = call.argument("properties");
@@ -163,6 +193,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             } else {
                 UXCam.reportBugEvent(eventName, map);
             }
+            result.success(null);
         } else {
             result.notImplemented();
         }
