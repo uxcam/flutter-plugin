@@ -9,6 +9,13 @@
 	
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
     [registrar addMethodCallDelegate:instance channel:channel];
+
+    UXCamStreamHandler* uxcamStreamHandler =
+          [[UXCamStreamHandler alloc] init];
+      FlutterEventChannel* eventChannel =
+          [FlutterEventChannel eventChannelWithName:@"flutter_uxcam_verification_listener"
+                                    binaryMessenger:[registrar messenger]];
+      [eventChannel setStreamHandler:uxcamStreamHandler];
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result
@@ -21,9 +28,8 @@
 	{
 		[UXCam pluginType:@"flutter" version:@"1.3.2"];
         NSString* apiKey = call.arguments[@"key"];
-        [UXCam startWithKey:apiKey completionBlock:^(BOOL started) {
-            result(@(started));
-        }];
+        [UXCam startWithKey:apiKey];
+        result(nil);
     }
 	else if ([@"startNewSession" isEqualToString:call.method])
 	{
@@ -249,4 +255,27 @@
         result(FlutterMethodNotImplemented);
     }
 }
+@end
+
+@implementation UXCamStreamHandler
+
+- (FlutterError*)onListenWithArguments:(id)arguments eventSink:(FlutterEventSink)eventSink {
+    if (arguments != nil) {
+    [UXCam startWithKey:arguments completionBlock:^(BOOL started) {
+        if (started == YES){
+            eventSink([NSNumber numberWithBool:YES]);
+        }
+        else{
+            eventSink([NSNumber numberWithBool:NO]);
+        }
+    }];
+    }
+  return nil;
+}
+
+- (FlutterError*)onCancelWithArguments:(id)arguments {
+  
+  return nil;
+}
+
 @end

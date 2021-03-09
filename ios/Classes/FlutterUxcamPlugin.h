@@ -2,3 +2,7 @@
 @interface FlutterUxcamPlugin : NSObject<FlutterPlugin>
 
 @end
+
+@interface UXCamStreamHandler : NSObject <FlutterStreamHandler>
+
+@end

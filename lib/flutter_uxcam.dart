@@ -4,15 +4,20 @@ import 'package:flutter/services.dart';
 
 class FlutterUxcam {
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
+  static const EventChannel _stream =
+      EventChannel('flutter_uxcam_verification_listener');
 
   static Future<String> get platformVersion async {
     final String version = await _channel.invokeMethod('getPlatformVersion');
     return version;
   }
 
-  static Future<bool> startWithKey(String key) async {
-    bool status = await _channel.invokeMethod('startWithKey', {"key": key});
-    return status;
+  static void startWithKey(String key) async {
+    if (Platform.isIOS) {
+      _stream.receiveBroadcastStream(key).drain();
+    } else {
+      await _channel.invokeMethod('startWithKey', {"key": key});
+    }
   }
 
   static Future<void> startNewSession() async {
@@ -206,5 +211,15 @@ class FlutterUxcam {
       [Map<String, dynamic> properties]) async {
     await _channel.invokeMethod(
         'reportBugEvent', {"eventName": eventName, "properties": properties});
+  }
+
+  static void addVerificationListener(status(bool status)) {
+    _stream.receiveBroadcastStream().listen((event) {
+      status(event);
+    });
+  }
+
+  static void removeVerificationListener() {
+    _stream.receiveBroadcastStream().drain();
   }
 }

@@ -7,6 +7,7 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
+import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import com.uxcam.UXCam;
 import java.util.Map;
@@ -23,6 +24,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
     public static void registerWith(Registrar registrar) {
         final MethodChannel channel = new MethodChannel(registrar.messenger(), "flutter_uxcam");
         channel.setMethodCallHandler(new FlutterUxcamPlugin(registrar.activity()));
+
+        final EventChannel eventChannel = new EventChannel(registrar.messenger(), "flutter_uxcam_verification_listener");
+
+        final UXCamStreamHandler eventStreamHandler =
+                new UXCamStreamHandler();
+        eventChannel.setStreamHandler(eventStreamHandler);
     }
 
     private FlutterUxcamPlugin(Activity activity) {
@@ -35,9 +42,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             result.success("Android " + android.os.Build.VERSION.RELEASE);
         } else if (call.method.equals("startWithKey")) {
             String key = call.argument("key");
-            UXCam.startApplicationWithKeyForCordova(activity, key);
-            addListener(result);
             UXCam.pluginType("flutter", "1.3.2");
+            UXCam.startApplicationWithKeyForCordova(activity, key);
+            result.success(null);
         } else if ("startNewSession".equals(call.method)) {
             UXCam.startNewSession();
             result.success(null);
@@ -195,18 +202,25 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             result.notImplemented();
         }
     }
+}
 
-    private void addListener(final Result callback) {
+class UXCamStreamHandler implements EventChannel.StreamHandler {
+    @Override
+    public void onListen(Object arguments, final EventChannel.EventSink events) {
         com.uxcam.UXCam.addVerificationListener(new com.uxcam.OnVerificationListener() {
             @Override
             public void onVerificationSuccess() {
-                callback.success(true);
+                events.success(true);
             }
 
             @Override
             public void onVerificationFailed(String errorMessage) {
-                callback.success(false);
+                events.success(false);
             }
         });
+    }
+
+    @Override
+    public void onCancel(Object arguments) {
     }
 }
