@@ -7,3 +7,5 @@ Generated.xcconfig
 .packages
 package_config.json
 local.properties
+.idea
+.dart_tool
