@@ -1,6 +1,10 @@
+
 #import "FlutterUxcamPlugin.h"
-#import <UXCam/UXCam.h>
+
+@import UXCam;
+
 @implementation FlutterUxcamPlugin
+
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar
 {
     FlutterMethodChannel* channel = [FlutterMethodChannel
@@ -54,7 +58,8 @@
         [UXCam occludeAllTextFields:[occludeAllTextField boolValue]];
         result(nil);
     } else if ([@"occludeAllTextView" isEqualToString:call.method]) {
-        NSLog(@"UXCam: Use occludeAllTextFields instead.");
+		NSNumber *occludeAllTextField = call.arguments[@"key"];
+    	[UXCam occludeAllTextFields:[occludeAllTextField boolValue]];
         result(nil);
     }
 	else if ([@"tagScreenName" isEqualToString:call.method])
@@ -147,7 +152,7 @@
     }
 	else if ([@"optInVideoRecordingStatus"isEqualToString:call.method])
 	{
-        result(@( [UXCam optInSchematicRecordingStatus]));
+        result( @(UXCam.optInSchematicRecordingStatus) );
     }
 	else if ([@"optIntoSchematicRecordings" isEqualToString:call.method])
 	{
@@ -161,7 +166,7 @@
     }
 	else if ([@"optInSchematicRecordingStatus"isEqualToString:call.method])
 	{
-        result(@( [UXCam optInSchematicRecordingStatus]));
+        result( @(UXCam.optInSchematicRecordingStatus) );
     }
 	else if ([@"cancelCurrentSession"isEqualToString:call.method])
 	{
@@ -175,7 +180,7 @@
     }
 	else if ([@"pendingUploads"isEqualToString:call.method])
 	{
-        result(@( [UXCam pendingUploads]));
+        result( @(UXCam.pendingUploads) );
     }
     else if ([@"uploadPendingSession"isEqualToString:call.method])
 	{
