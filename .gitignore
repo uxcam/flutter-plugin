@@ -10,3 +10,5 @@ local.properties
 .idea
 .dart_tool
 /.flutter-plugins
+/android/local.properties
+/.dart_tool/package_config.json
