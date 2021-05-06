@@ -6,12 +6,14 @@ class FlutterUxcam {
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
 
   static Future<String> get platformVersion async {
-    final String version = await _channel.invokeMethod('getPlatformVersion');
+    final String version =
+        await (_channel.invokeMethod('getPlatformVersion') as FutureOr<String>);
     return version;
   }
 
   static Future<bool> startWithKey(String key) async {
-    bool status = await _channel.invokeMethod('startWithKey', {"key": key});
+    bool status =
+        await (_channel.invokeMethod('startWithKey', {"key": key}) as FutureOr<bool>);
     return status;
   }
 
@@ -70,7 +72,7 @@ class FlutterUxcam {
   }
 
   static Future<bool> isRecording() async {
-    bool starter = await _channel.invokeMethod('isRecording');
+    bool starter = await (_channel.invokeMethod('isRecording') as FutureOr<bool>);
     return starter;
   }
 
@@ -91,7 +93,8 @@ class FlutterUxcam {
   }
 
   static Future<bool> optInOverallStatus() async {
-    final bool optStatus = await _channel.invokeMethod('optInOverallStatus');
+    final bool optStatus =
+        await (_channel.invokeMethod('optInOverallStatus') as FutureOr<bool>);
     return optStatus;
   }
 
@@ -105,7 +108,7 @@ class FlutterUxcam {
 
   static Future<bool> optInVideoRecordingStatus() async {
     final bool optStatus =
-        await _channel.invokeMethod('optInVideoRecordingStatus');
+        await (_channel.invokeMethod('optInVideoRecordingStatus') as FutureOr<bool>);
     return optStatus;
   }
 
@@ -124,7 +127,7 @@ class FlutterUxcam {
   static Future<bool> optInSchematicRecordingStatus() async {
     if (Platform.isIOS) {
       final bool optStatus =
-          await _channel.invokeMethod('optInSchematicRecordingStatus');
+          await (_channel.invokeMethod('optInSchematicRecordingStatus') as FutureOr<bool>);
       return optStatus;
     }
     return false;
@@ -145,7 +148,7 @@ class FlutterUxcam {
   }
 
   static Future<bool> getMultiSessionRecord() async {
-    bool starter = await _channel.invokeMethod('getMultiSessionRecord');
+    bool starter = await (_channel.invokeMethod('getMultiSessionRecord') as FutureOr<bool>);
     return starter;
   }
 
@@ -163,7 +166,7 @@ class FlutterUxcam {
   }
 
   static Future<int> pendingUploads() async {
-    int count = await _channel.invokeMethod('pendingUploads');
+    int count = await (_channel.invokeMethod('pendingUploads') as FutureOr<int>);
     return count;
   }
 
@@ -175,13 +178,13 @@ class FlutterUxcam {
     await _channel.invokeMethod('stopApplicationAndUploadData');
   }
 
-  static Future<String> urlForCurrentUser() async {
-    String url = await _channel.invokeMethod('urlForCurrentUser');
+  static Future<String?> urlForCurrentUser() async {
+    String? url = await _channel.invokeMethod('urlForCurrentUser');
     return url;
   }
 
-  static Future<String> urlForCurrentSession() async {
-    String url = await _channel.invokeMethod('urlForCurrentSession');
+  static Future<String?> urlForCurrentSession() async {
+    String? url = await _channel.invokeMethod('urlForCurrentSession');
     return url;
   }
 
@@ -203,7 +206,7 @@ class FlutterUxcam {
   }
 
   static Future<void> reportBugEvent(String eventName,
-      [Map<String, dynamic> properties]) async {
+      [Map<String, dynamic>? properties]) async {
     await _channel.invokeMethod(
         'reportBugEvent', {"eventName": eventName, "properties": properties});
   }

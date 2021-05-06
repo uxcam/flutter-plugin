@@ -1,6 +1,8 @@
 ## Changelog
 Version         | Changes
 ----------      | ----------
+2.0.0			| Support for null-safety, which means a new minimum SDK environment of >=2.12.0
+
 1.3.2           | iOS SDK updated to v3.3.3, integration issue related to flutter driver solved, void function await deadlock fixed
 1.3.1           | iOS SDK update to v 3.3.1 & Android SDK updated to v3.3.5
 1.3.0           | iOS version updated to 3.3.0, android version updated to 3.3.4, setPushNotificationToken and reportBugEvent API added
