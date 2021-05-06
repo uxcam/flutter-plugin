@@ -63,6 +63,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             boolean occludeAllTextField = call.argument("key");
             UXCam.occludeAllTextFields(occludeAllTextField);
             result.success(null);
+        } else if ("occludeAllTextFields".equals(call.method)) {
+            boolean occludeAllTextField = call.argument("key");
+            UXCam.occludeAllTextFields(occludeAllTextField);
+            result.success(null);
         } else if ("tagScreenName".equals(call.method)) {
             String eventName = call.argument("key");
             UXCam.tagScreenName(eventName);
