@@ -9,3 +9,4 @@ package_config.json
 local.properties
 .idea
 .dart_tool
+/.flutter-plugins
