@@ -42,4 +42,4 @@ If you get this error while running in iOS
 >
 >    [!] Automatically assigning platform `ios` with version `8.0` on target `Runner` because no platform was specified. Please specify a platform for this target in your >    >    Podfile. See `https://guides.cocoapods.org/syntax/podfile.html#platform`.
 
-Then inside `ios` folder in `pod` file uncomment this line `# platform :ios, '9.0'` that means removing `#`
+Then inside `ios` folder in `pod` file uncomment this line `# platform :ios, '9.0'` that means removing `#` and then change `9.0` to `10.0`
