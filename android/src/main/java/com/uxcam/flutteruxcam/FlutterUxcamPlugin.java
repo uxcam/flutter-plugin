@@ -37,7 +37,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
             addListener(result);
-            UXCam.pluginType("flutter", "2.0.0-beta.1");
+            UXCam.pluginType("flutter", "2.0.0-beta.2");
         } else if ("startNewSession".equals(call.method)) {
             UXCam.startNewSession();
             result.success(null);
@@ -124,7 +124,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             result.success(null);
         } else if ("optInOverallStatus".equals(call.method)) {
             result.success(UXCam.optInOverallStatus());
-            result.success(null);
         } else if ("optIntoVideoRecording".equals(call.method)) {
             UXCam.optIntoVideoRecording();
             result.success(null);
