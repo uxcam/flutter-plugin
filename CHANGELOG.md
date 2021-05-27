@@ -1,6 +1,7 @@
 ## Changelog
 Version         | Changes
 ----------      | ----------
+2.0.0-beta.3	| Added type specifiers for _channel.invokeMethod calls in the Dart code
 2.0.0-beta.2	| Fix a duplicate result on Android `optInOverallStatus` - thanks The Boston Consulting Group Pty Ltd
 2.0.0-beta.1	| Support for null-safety, which means a new minimum SDK environment of >=2.12.0
 				| For iOS the minimum OS required is now iOS 10.0
