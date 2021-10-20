@@ -1,32 +1,69 @@
 package com.uxcam.flutteruxcam;
 
 import android.app.Activity;
-import android.util.Log;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
+import io.flutter.plugin.common.BinaryMessenger;
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
+
 import com.uxcam.UXCam;
+
 import java.util.Map;
+
+import androidx.annotation.NonNull;
+
 /**
  * FlutterUxcamPlugin
  */
-public class FlutterUxcamPlugin implements MethodCallHandler {
+public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
     public static final String TAG = "FlutterUXCam";
     /**
      * Plugin registration.
      */
-    private final Activity activity;
+    private static Activity activity;
 
     public static void registerWith(Registrar registrar) {
-        final MethodChannel channel = new MethodChannel(registrar.messenger(), "flutter_uxcam");
-        channel.setMethodCallHandler(new FlutterUxcamPlugin(registrar.activity()));
+        activity = registrar.activity();
+        register(registrar.messenger());
     }
 
-    private FlutterUxcamPlugin(Activity activity) {
-        this.activity = activity;
+    @Override
+    public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
+        register(binding.getBinaryMessenger());
+    }
+
+    @Override
+    public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+    }
+
+    public static void register(BinaryMessenger messenger) {
+        final MethodChannel channel = new MethodChannel(messenger, "flutter_uxcam");
+        channel.setMethodCallHandler(new FlutterUxcamPlugin());
+    }
+
+
+    @Override
+    public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
+        activity = activityPluginBinding.getActivity();
+    }
+
+    @Override
+    public void onDetachedFromActivityForConfigChanges() {
+    }
+
+    @Override
+    public void onReattachedToActivityForConfigChanges(ActivityPluginBinding activityPluginBinding) {
+        activity = activityPluginBinding.getActivity();
+    }
+
+    @Override
+    public void onDetachedFromActivity() {
     }
 
     @Override
@@ -37,7 +74,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
             addListener(result);
-            UXCam.pluginType("flutter", "2.0.0");
+            UXCam.pluginType("flutter", "2.0.1");
         } else if ("startNewSession".equals(call.method)) {
             UXCam.startNewSession();
             result.success(null);
@@ -48,17 +85,17 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             boolean occludeSensitiveScreen = call.argument("key");
             UXCam.occludeSensitiveScreen(occludeSensitiveScreen);
             result.success(null);
-        }else if ("occludeSensitiveScreenWithoutGesture".equals(call.method)) {
+        } else if ("occludeSensitiveScreenWithoutGesture".equals(call.method)) {
             boolean occludeSensitiveScreen = call.argument("key");
             boolean withoutGesture = call.argument("withoutGesture");
-            UXCam.occludeSensitiveScreen(occludeSensitiveScreen,withoutGesture);
+            UXCam.occludeSensitiveScreen(occludeSensitiveScreen, withoutGesture);
             result.success(null);
         } else if ("setMultiSessionRecord".equals(call.method)) {
             boolean multiSessionRecord = call.argument("key");
             UXCam.setMultiSessionRecord(multiSessionRecord);
             result.success(null);
         } else if ("getMultiSessionRecord".equals(call.method)) {
-            result.success( UXCam.getMultiSessionRecord());
+            result.success(UXCam.getMultiSessionRecord());
         } else if ("occludeAllTextView".equals(call.method)) {
             boolean occludeAllTextField = call.argument("key");
             UXCam.occludeAllTextFields(occludeAllTextField);
@@ -109,7 +146,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             }
             result.success(null);
         } else if ("isRecording".equals(call.method)) {
-            result.success( UXCam.isRecording());
+            result.success(UXCam.isRecording());
         } else if ("pauseScreenRecording".equals(call.method)) {
             UXCam.pauseScreenRecording();
             result.success(null);
@@ -149,8 +186,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             result.success(UXCam.pendingUploads());
         } else if ("uploadPendingSession".equals(call.method)) {
             result.success(null);
-        }
-        else if ("stopApplicationAndUploadData".equals(call.method)) {
+        } else if ("stopApplicationAndUploadData".equals(call.method)) {
             UXCam.stopSessionAndUploadData();
             result.success(null);
         } else if ("tagScreenName".equals(call.method)) {
@@ -160,8 +196,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             }
             UXCam.tagScreenName(screenName);
             result.success(null);
-        }
-        else if ("urlForCurrentUser".equals(call.method)) {
+        } else if ("urlForCurrentUser".equals(call.method)) {
             String url = UXCam.urlForCurrentUser();
             result.success(url);
         } else if ("urlForCurrentSession".equals(call.method)) {

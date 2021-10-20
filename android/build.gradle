@@ -16,19 +16,17 @@ rootProject.allprojects {
     repositories {
         google()
         jcenter()
-         maven{
-             url 'https://sdk.uxcam.com/android/'
-         }
-        flatDir {
-            dirs 'libs'
+        maven {
+            url 'https://sdk.uxcam.com/android/'
         }
+//        flatDir {dirs 'libs'}
     }
 }
 
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion 30
 
     defaultConfig {
         minSdkVersion 16
@@ -39,6 +37,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.uxcam:uxcam:3.3.5@aar'
+    implementation 'com.uxcam:uxcam:3.3.6@aar'
+    implementation "com.squareup.okhttp3:okhttp:4.8.1"
 //    implementation fileTree(dir: '/Users/uxcam/AndroidStudioProjects/flutter_uxcam/lib/', include: ['*.jar'])
 }
