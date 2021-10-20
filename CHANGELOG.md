@@ -2,7 +2,7 @@
 Version         | Changes
 ----------      | ----------
 2.0.1			| Added plugin support for the Android v2 embedding
-				| Android SDK 3.3.6
+				| Android SDK 3.3.6, iOS SDK 3.3.6
 2.0.0			| Added support for null-safety, which means a new minimum SDK environment of >=2.12.0
 				| Added type specifiers for _channel.invokeMethod calls in the Dart code
 				| Fixed a duplicate result on Android `optInOverallStatus` - thanks The Boston Consulting Group Pty Ltd
