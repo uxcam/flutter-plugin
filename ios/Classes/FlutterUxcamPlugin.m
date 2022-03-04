@@ -3,6 +3,13 @@
 
 @import UXCam;
 
+static const NSString *FlutterAppKey = @"userAppKey";
+static const NSString *FlutterEnableMultiSessionRecord = @"enableMultiSessionRecord";
+static const NSString *FlutterEnableScreenNameTagging = @"enableAutomaticScreenNameTagging";
+static const NSString *FlutterEnableCrashHandling = @"enableCrashHandling";
+static const NSString *FlutterEnableNetworkLogs = @"enableNetworkLogging";
+static const NSString *FlutterEnableAdvancedGesture = @"enableAdvancedGestureRecognition";
+
 @implementation FlutterUxcamPlugin
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar
@@ -51,12 +58,83 @@
 	result([@"iOS " stringByAppendingString:UIDevice.currentDevice.systemVersion]);
 }
 
+- (void)startWithConfiguration:(FlutterMethodCall*)call result:(FlutterResult)result
+{
+    NSDictionary *configDict = call.arguments[@"config"];
+    NSString *appKey = configDict[FlutterAppKey];
+    UXCamConfiguration *config = [[UXCamConfiguration alloc] initWithAppKey:appKey];
+    [self updateConfiguration:config withDict:configDict];
+    
+    [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
+        result(@(started));
+    }];
+}
+
+- (void)updateConfiguration:(FlutterMethodCall*)call result:(FlutterResult)result
+{
+    NSDictionary *configDict = call.arguments[@"config"];
+    UXCamConfiguration *config = UXCam.configuration;
+    if (!config)
+    {
+        NSLog(@"Please call startWithConfiguration: before updating configuration");
+        return;
+    }
+    
+    [self updateConfiguration:config withDict:configDict];
+}
+
+- (void)updateConfiguration:(UXCamConfiguration *)config withDict:(NSDictionary *)configDict
+{
+    NSNumber *enableMultiSessionRecord = configDict[FlutterEnableMultiSessionRecord];
+    if (enableMultiSessionRecord && ![enableMultiSessionRecord isKindOfClass:NSNull.class]) {
+        config.enableMultiSessionRecord = [enableMultiSessionRecord boolValue];
+    }
+    
+    NSNumber *enableCrashHandling = configDict[FlutterEnableCrashHandling];
+    if (enableCrashHandling && ![enableCrashHandling isKindOfClass:NSNull.class]) {
+        config.enableCrashHandling = [enableCrashHandling boolValue];
+    }
+    NSNumber *enableAutomaticScreenNameTagging = configDict[FlutterEnableScreenNameTagging];
+    if (enableAutomaticScreenNameTagging && ![enableAutomaticScreenNameTagging isKindOfClass:NSNull.class]) {
+        config.enableAutomaticScreenNameTagging = [enableAutomaticScreenNameTagging boolValue];
+    }
+    NSNumber *enableNetworkLogging = configDict[FlutterEnableNetworkLogs];
+    if (enableNetworkLogging && ![enableNetworkLogging isKindOfClass:NSNull.class]) {
+        config.enableNetworkLogging = [enableNetworkLogging boolValue];
+    }
+    NSNumber *enableAdvancedGestureRecognition = configDict[FlutterEnableAdvancedGesture];
+    if (enableAdvancedGestureRecognition && ![enableAdvancedGestureRecognition isKindOfClass:NSNull.class]) {
+        config.enableAdvancedGestureRecognition = [enableAdvancedGestureRecognition boolValue];
+    }
+}
+
+- (void)configurationForUXCam:(FlutterMethodCall*)call result:(FlutterResult)result
+{
+    UXCamConfiguration *configuration = UXCam.configuration;
+    if (!configuration)
+    {
+        NSLog(@"Please call startWithConfiguration: before fetching configuration");
+        return result(nil);
+    }
+    
+    NSDictionary *configDict = @{
+        FlutterAppKey: configuration.userAppKey,
+        FlutterEnableMultiSessionRecord: @(configuration.enableMultiSessionRecord),
+        FlutterEnableScreenNameTagging: @(configuration.enableAutomaticScreenNameTagging),
+        FlutterEnableCrashHandling: @(configuration.enableCrashHandling),
+        FlutterEnableAdvancedGesture: @(configuration.enableAdvancedGestureRecognition),
+        FlutterEnableNetworkLogs: @(configuration.enableNetworkLogging)
+    };
+    result(configDict);
+}
+
 - (void)startWithKey:(FlutterMethodCall*)call result:(FlutterResult)result
 {
-	NSString* apiKey = call.arguments[@"key"];
-	[UXCam startWithKey:apiKey completionBlock:^(BOOL started) {
-		result(@(started));
-	}];
+	NSString* appKey = call.arguments[@"key"];
+    UXCamConfiguration *config = [[UXCamConfiguration alloc] initWithAppKey:appKey];
+    [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
+        result(@(started));
+    }];
 }
 
 - (void)startNewSession:(FlutterMethodCall*)call result:(FlutterResult)result

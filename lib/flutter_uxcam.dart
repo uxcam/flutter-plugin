@@ -2,6 +2,51 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
 
+class FlutterUxConfigKeys {
+  static const userAppKey = "userAppKey";
+  static const enableMultiSessionRecord = "enableMultiSessionRecord";
+  static const enableCrashHandling = "enableCrashHandling";
+  static const enableAutomaticScreenNameTagging = "enableAutomaticScreenNameTagging";
+  static const enableNetworkLogging = "enableNetworkLogging";
+  static const enableAdvancedGestureRecognition = "enableAdvancedGestureRecognition";
+}
+
+
+class FlutterUxConfig {
+  String userAppKey;
+
+  // If value is not specified for below variables, default values will be applied as per sdk
+  bool? enableMultiSessionRecord;
+  bool? enableCrashHandling;
+  bool? enableAutomaticScreenNameTagging;
+  bool? enableNetworkLogging;
+  bool? enableAdvancedGestureRecognition;
+
+  FlutterUxConfig(this.userAppKey);
+
+  factory FlutterUxConfig.fromJson(Map<String, dynamic> json) {
+      var userAppKey = json[FlutterUxConfigKeys.userAppKey];
+      var config = FlutterUxConfig(userAppKey);
+      config.enableMultiSessionRecord = json[FlutterUxConfigKeys.enableMultiSessionRecord];
+      config.enableCrashHandling = json[FlutterUxConfigKeys.enableCrashHandling];
+      config.enableAutomaticScreenNameTagging = json[FlutterUxConfigKeys.enableAutomaticScreenNameTagging];
+      config.enableNetworkLogging = json[FlutterUxConfigKeys.enableNetworkLogging];
+      config.enableAdvancedGestureRecognition = json[FlutterUxConfigKeys.enableAdvancedGestureRecognition];
+      return config;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      FlutterUxConfigKeys.userAppKey: userAppKey,
+      FlutterUxConfigKeys.enableMultiSessionRecord: enableMultiSessionRecord,
+      FlutterUxConfigKeys.enableCrashHandling: enableCrashHandling,
+      FlutterUxConfigKeys.enableAutomaticScreenNameTagging: enableAutomaticScreenNameTagging,
+      FlutterUxConfigKeys.enableNetworkLogging: enableNetworkLogging,
+      FlutterUxConfigKeys.enableAdvancedGestureRecognition: enableAdvancedGestureRecognition
+    };
+  }
+}
+
 class FlutterUxcam {
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
 
@@ -9,6 +54,23 @@ class FlutterUxcam {
     final String? version =
         await _channel.invokeMethod<String>('getPlatformVersion');
     return version!;
+  }
+
+  static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
+    final bool? status =
+    await _channel.invokeMethod<bool>('startWithConfiguration', {"config": config.toJson()});
+    return status!;
+  }
+
+  static Future<FlutterUxConfig> configurationForUXCam() async {
+    final Map<String, dynamic>? json = await _channel.invokeMapMethod('configurationForUXCam');
+    return FlutterUxConfig.fromJson(json!);
+  }
+
+  static Future<bool> updateConfiguration(FlutterUxConfig config) async {
+    final bool? status =
+    await _channel.invokeMethod<bool>('updateConfiguration', {"config": config.toJson()});
+    return status!;
   }
 
   static Future<bool> startWithKey(String key) async {
