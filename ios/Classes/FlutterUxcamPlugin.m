@@ -9,6 +9,9 @@ static const NSString *FlutterEnableScreenNameTagging = @"enableAutomaticScreenN
 static const NSString *FlutterEnableCrashHandling = @"enableCrashHandling";
 static const NSString *FlutterEnableNetworkLogs = @"enableNetworkLogging";
 static const NSString *FlutterEnableAdvancedGesture = @"enableAdvancedGestureRecognition";
+static const NSString *FlutterOcclusion = @"occlusion";
+static const NSString *FlutterOccludeScreens = @"screens";
+static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
 @implementation FlutterUxcamPlugin
 
@@ -105,6 +108,21 @@ static const NSString *FlutterEnableAdvancedGesture = @"enableAdvancedGestureRec
     NSNumber *enableAdvancedGestureRecognition = configDict[FlutterEnableAdvancedGesture];
     if (enableAdvancedGestureRecognition && ![enableAdvancedGestureRecognition isKindOfClass:NSNull.class]) {
         config.enableAdvancedGestureRecognition = [enableAdvancedGestureRecognition boolValue];
+    }
+
+    NSArray *occlusionList = configDict[FlutterOcclusion];
+    if (occlusionList) {
+        UXCamOcclusion *occlusion = [[UXCamOcclusion alloc] init];
+        for (NSDictionary *occlusionJson in occlusionList) {
+            id <UXCamOcclusionSetting> setting = [UXCamOcclusion getSettingFromJson:occlusionJson];
+            if (setting)
+            {
+                NSArray *screens = occlusionJson[FlutterOccludeScreens];
+                BOOL excludeMentionedScreens = [occlusionJson[FlutterExcludeScreens] boolValue];
+                [occlusion applySettings:@[setting] screens:screens excludeMentionedScreens: excludeMentionedScreens];
+            }
+        }
+        config.occlusion = occlusion;
     }
 }
 

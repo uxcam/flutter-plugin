@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:flutter_uxcam/flutter_occlusion.dart';
 
 class FlutterUxConfigKeys {
   static const userAppKey = "userAppKey";
@@ -9,6 +10,7 @@ class FlutterUxConfigKeys {
   static const enableAutomaticScreenNameTagging = "enableAutomaticScreenNameTagging";
   static const enableNetworkLogging = "enableNetworkLogging";
   static const enableAdvancedGestureRecognition = "enableAdvancedGestureRecognition";
+  static const occlusion = "occlusion";
 }
 
 
@@ -21,6 +23,7 @@ class FlutterUxConfig {
   bool? enableAutomaticScreenNameTagging;
   bool? enableNetworkLogging;
   bool? enableAdvancedGestureRecognition;
+  List<FlutterUXOcclusion>? occlusions;
 
   FlutterUxConfig(this.userAppKey);
 
@@ -42,7 +45,8 @@ class FlutterUxConfig {
       FlutterUxConfigKeys.enableCrashHandling: enableCrashHandling,
       FlutterUxConfigKeys.enableAutomaticScreenNameTagging: enableAutomaticScreenNameTagging,
       FlutterUxConfigKeys.enableNetworkLogging: enableNetworkLogging,
-      FlutterUxConfigKeys.enableAdvancedGestureRecognition: enableAdvancedGestureRecognition
+      FlutterUxConfigKeys.enableAdvancedGestureRecognition: enableAdvancedGestureRecognition,
+      FlutterUxConfigKeys.occlusion: occlusions?.map((occlusion) => occlusion.toJson()).toList()
     };
   }
 }
