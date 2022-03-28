@@ -13,8 +13,6 @@ enum BlurType {
 
 class FlutterUXBlur extends FlutterUXOcclusion {
 
-  FlutterUXBlur(): super();
-
   int blurRadius = 10;
   bool hideGestures = false;
 
