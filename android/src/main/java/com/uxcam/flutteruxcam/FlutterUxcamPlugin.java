@@ -11,6 +11,7 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
+import com.uxcam.datamodel.UXConfig;
 
 import com.uxcam.UXCam;
 
@@ -18,11 +19,19 @@ import java.util.Map;
 
 import androidx.annotation.NonNull;
 
+import org.json.JSONObject;
+
 /**
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
     public static final String TAG = "FlutterUXCam";
+    public static final String USER_APP_KEY = "userAppKey";
+    public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
+    public static final String ENABLE_CRASH_HANDLING = "enableCrashHandling";
+    public static final String ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING = "enableAutomaticScreenNameTagging";
+    public static final String ENABLE_IMPROVED_SCREEN_CAPTURE = "enableImprovedScreenCapture";
+
     /**
      * Plugin registration.
      */
@@ -229,8 +238,45 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 UXCam.reportBugEvent(eventName, map);
             }
             result.success(null);
+        } else if ("startWithConfiguration".equals(call.method)) {
+            Map<String, Object> configMap = call.argument("config");
+            startWithConfig(configMap);
         } else {
             result.notImplemented();
+        }
+    }
+
+    private void startWithConfig(Map<String, Object> configMap) {
+        try {
+            String appKey = (String) configMap.get(USER_APP_KEY);
+            Boolean enableMultiSessionRecord = null;
+            if (configMap.get(ENABLE_MUTLI_SESSION_RECORD) != null)
+                enableMultiSessionRecord = (boolean) configMap.get(ENABLE_MUTLI_SESSION_RECORD);
+            Boolean enableCrashHandling = null;
+            if (configMap.get(ENABLE_CRASH_HANDLING) != null)
+                enableCrashHandling = (boolean) configMap.get(ENABLE_CRASH_HANDLING);
+            Boolean enableAutomaticScreenNameTagging = null;
+            if (configMap.get(ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING) != null)
+                enableAutomaticScreenNameTagging = (boolean) configMap.get(ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING);
+            Boolean enableImprovedScreenCapture = null;
+            if (configMap.get(ENABLE_IMPROVED_SCREEN_CAPTURE) != null)
+                enableImprovedScreenCapture = (boolean) configMap.get(ENABLE_IMPROVED_SCREEN_CAPTURE);
+            // todo occlusion
+
+            UXConfig.Builder uxConfigBuilder = new UXConfig.Builder(appKey);
+            if (enableMultiSessionRecord != null)
+                uxConfigBuilder.enableMultiSessionRecord(enableMultiSessionRecord);
+            if (enableCrashHandling != null)
+                uxConfigBuilder.enableCrashHandling(enableCrashHandling);
+            if (enableAutomaticScreenNameTagging != null)
+                uxConfigBuilder.enableAutomaticScreenNameTagging(enableAutomaticScreenNameTagging);
+            if (enableImprovedScreenCapture != null)
+                uxConfigBuilder.enableImprovedScreenCapture(enableImprovedScreenCapture);
+
+            UXConfig config = uxConfigBuilder.build();
+            UXCam.startWithConfigurationCrossPlatform(activity, config);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

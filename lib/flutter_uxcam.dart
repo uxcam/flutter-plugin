@@ -11,6 +11,7 @@ class FlutterUxConfigKeys {
   static const enableNetworkLogging = "enableNetworkLogging";
   static const enableAdvancedGestureRecognition = "enableAdvancedGestureRecognition";
   static const occlusion = "occlusion";
+  static const enableImprovedScreenCapture = "enableImprovedScreenCapture";
 }
 
 
@@ -23,6 +24,7 @@ class FlutterUxConfig {
   bool? enableAutomaticScreenNameTagging;
   bool? enableNetworkLogging;
   bool? enableAdvancedGestureRecognition;
+  bool? enableImprovedScreenCapture;
   List<FlutterUXOcclusion>? occlusions;
 
   FlutterUxConfig(this.userAppKey);
@@ -35,6 +37,7 @@ class FlutterUxConfig {
       config.enableAutomaticScreenNameTagging = json[FlutterUxConfigKeys.enableAutomaticScreenNameTagging];
       config.enableNetworkLogging = json[FlutterUxConfigKeys.enableNetworkLogging];
       config.enableAdvancedGestureRecognition = json[FlutterUxConfigKeys.enableAdvancedGestureRecognition];
+      config.enableImprovedScreenCapture = json[FlutterUxConfigKeys.enableImprovedScreenCapture];
       return config;
   }
 
@@ -46,6 +49,7 @@ class FlutterUxConfig {
       FlutterUxConfigKeys.enableAutomaticScreenNameTagging: enableAutomaticScreenNameTagging,
       FlutterUxConfigKeys.enableNetworkLogging: enableNetworkLogging,
       FlutterUxConfigKeys.enableAdvancedGestureRecognition: enableAdvancedGestureRecognition,
+      FlutterUxConfigKeys.enableImprovedScreenCapture: enableImprovedScreenCapture,
       FlutterUxConfigKeys.occlusion: occlusions?.map((occlusion) => occlusion.toJson()).toList()
     };
   }
