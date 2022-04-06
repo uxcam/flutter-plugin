@@ -27,11 +27,19 @@ class FlutterUxConfig {
   bool? enableImprovedScreenCapture;
   List<FlutterUXOcclusion>? occlusions;
 
-  FlutterUxConfig(this.userAppKey);
+  FlutterUxConfig({
+    required this.userAppKey,
+    this.enableMultiSessionRecord,
+    this.enableCrashHandling,
+    this.enableAutomaticScreenNameTagging,
+    this.enableNetworkLogging,
+    this.enableAdvancedGestureRecognition,
+    this.occlusions
+  });
 
   factory FlutterUxConfig.fromJson(Map<String, dynamic> json) {
       var userAppKey = json[FlutterUxConfigKeys.userAppKey];
-      var config = FlutterUxConfig(userAppKey);
+      var config = FlutterUxConfig(userAppKey: userAppKey);
       config.enableMultiSessionRecord = json[FlutterUxConfigKeys.enableMultiSessionRecord];
       config.enableCrashHandling = json[FlutterUxConfigKeys.enableCrashHandling];
       config.enableAutomaticScreenNameTagging = json[FlutterUxConfigKeys.enableAutomaticScreenNameTagging];

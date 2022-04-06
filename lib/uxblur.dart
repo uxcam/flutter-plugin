@@ -30,6 +30,18 @@ class FlutterUXBlur extends FlutterUXOcclusion {
     FlutterUxBlurKeys.hideGestures: hideGestures
   };
 
+  FlutterUXBlur({
+    int blurRadius = 10,
+    BlurType blurType = BlurType.gaussian,
+    bool hideGestures = false,
+    List<String> screens = const [],
+    bool excludeMentionedScreens = false
+  }): super(screens, excludeMentionedScreens) {
+    this.blurRadius = blurRadius;
+    this.blurType = blurType;
+    this.hideGestures = hideGestures;
+  }
+
   String getName(BlurType type) {
     switch (type) {
       case BlurType.gaussian: return "gaussianBlur";
@@ -40,23 +52,4 @@ class FlutterUXBlur extends FlutterUXOcclusion {
 
     }
   }
-}
-
-class FlutterUXBlurBuilder extends FlutterUXOcclusionBuilder {
-
-  FlutterUXBlur get _occlusion => occlusion as FlutterUXBlur;
-
-  FlutterUXBlurBuilder() {
-    occlusion = FlutterUXBlur();
-  }
-
-  void blurRadius(int radius) {
-    _occlusion.blurRadius = radius;
-  }
-
-  void hideGestures(bool hide) {
-    _occlusion.hideGestures = hide;
-  }
-
-  FlutterUXBlur build() => _occlusion;
 }

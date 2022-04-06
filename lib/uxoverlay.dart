@@ -24,23 +24,14 @@ class FlutterUXOverlay extends FlutterUXOcclusion {
     FlutterUxOverlayKeys.hideGestures: hideGestures
   };
 
-}
-
-class FlutterUXOverlayBuilder extends FlutterUXOcclusionBuilder {
-
-  FlutterUXOverlay get _occlusion => occlusion as FlutterUXOverlay;
-
-  FlutterUXOverlayBuilder() {
-    occlusion = FlutterUXOverlay();
+  FlutterUXOverlay({
+    Color color = Colors.red,
+    bool hideGestures = false,
+    List<String> screens = const [],
+    bool excludeMentionedScreens = false
+  }): super(screens, excludeMentionedScreens) {
+    this.color = color;
+    this.hideGestures = hideGestures;
   }
 
-  void color(Color color) {
-    _occlusion.color = color;
-  }
-
-  void hideGestures(bool hide) {
-    _occlusion.hideGestures = hide;
-  }
-
-  FlutterUXOverlay build() => _occlusion;
 }

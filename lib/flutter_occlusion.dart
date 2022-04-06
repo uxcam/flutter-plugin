@@ -22,6 +22,8 @@ abstract class FlutterUXOcclusion {
   bool excludeMentionedScreens = false;
   Map<String, dynamic>? get configuration;
 
+  FlutterUXOcclusion(this.screens, this.excludeMentionedScreens);
+
   Map<String, dynamic> toJson() {
     return {
       FlutterUxOcclusionKeys.name: name,
@@ -31,23 +33,4 @@ abstract class FlutterUXOcclusion {
       FlutterUxOcclusionKeys.config: configuration
     };
   }
-}
-
-abstract class FlutterUXOcclusionBuilder {
-
-  late FlutterUXOcclusion occlusion;
-
-  void screens(List<String> screens) {
-    occlusion.screens = screens;
-  }
-
-
-  void excludeMentionedScreens(bool exclude) {
-    if (occlusion.screens.isEmpty) {
-      throw 'Please setup screens property before calling excludeMentionedScreens method';
-    }
-    occlusion.excludeMentionedScreens = exclude;
-  }
-
-  FlutterUXOcclusion build();
 }
