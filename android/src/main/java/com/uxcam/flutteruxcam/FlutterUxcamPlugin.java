@@ -311,15 +311,38 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private UXCamOcclusion getOcclusion(Map<String, Object> occlusionMap) {
         int typeIndex = (int) occlusionMap.get(TYPE);
         switch (typeIndex) {
-            case 3: {
+            case 2:
+                return (UXCamOcclusion) getOverlay(occlusionMap);
+            case 3:
                 return (UXCamOcclusion) getBlur(occlusionMap);
-            }
             default:
                 return null;
         }
     }
 
+    private UXCamOverlay getOverlay(Map<String, Object> overlayMap) {
+        // get data
+        List<String> screens = (List<String>) overlayMap.get(SCREENS);
+        Boolean excludeMentionedScreens = (Boolean) overlayMap.get(EXCLUDE_MENTIONED_SCREENS);
+        Map<String, Object> configMap = (Map<String, Object>) overlayMap.get(CONFIG);
+        Boolean hideGestures = null;
+        if (configMap != null) {
+            hideGestures = (Boolean) configMap.get(HIDE_GESTURES);
+        }
+
+        // set data
+        UXCamOverlay.Builder overlayBuilder = new UXCamOverlay.Builder();
+        if (screens != null && !screens.isEmpty())
+            overlayBuilder.screens(screens);
+        if (excludeMentionedScreens != null)
+            overlayBuilder.excludeMentionedScreens(excludeMentionedScreens);
+        if (hideGestures != null)
+            overlayBuilder.withoutGesture(hideGestures);
+        return overlayBuilder.build();
+    }
+
     private UXCamBlur getBlur(Map<String, Object> blurMap) {
+        // get data
         List<String> screens = (List<String>) blurMap.get(SCREENS);
         Boolean excludeMentionedScreens = (Boolean) blurMap.get(EXCLUDE_MENTIONED_SCREENS);
         Map<String, Object> configMap = (Map<String, Object>) blurMap.get(CONFIG);
@@ -329,6 +352,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             blurRadius = (Integer) configMap.get(BLUR_RADIUS);
             hideGestures = (Boolean) configMap.get(HIDE_GESTURES);
         }
+
+        // set data
         UXCamBlur.Builder blurBuilder = new UXCamBlur.Builder();
         if (screens != null && !screens.isEmpty())
             blurBuilder.screens(screens);
