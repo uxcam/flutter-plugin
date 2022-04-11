@@ -10,7 +10,7 @@ class FlutterUXOverlay extends FlutterUXOcclusion {
 
 
   Color color = Colors.red;
-  bool hideGestures = false;
+  bool hideGestures = true;
 
   @override
   String get name => 'UXOcclusionTypeOverlay'; // not used.. only to make it compatible with blur

@@ -34,6 +34,7 @@ class FlutterUxConfig {
     this.enableAutomaticScreenNameTagging,
     this.enableNetworkLogging,
     this.enableAdvancedGestureRecognition,
+    this.enableImprovedScreenCapture,
     this.occlusions
   });
 
