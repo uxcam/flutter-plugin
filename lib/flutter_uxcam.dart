@@ -33,63 +33,6 @@ class FlutterUxConfig {
     this.enableAutomaticScreenNameTagging,
     this.enableNetworkLogging,
     this.enableAdvancedGestureRecognition,
-    this.enableImprovedScreenCapture,
-    this.occlusions
-  });
-
-  factory FlutterUxConfig.fromJson(Map<String, dynamic> json) {
-      var userAppKey = json[FlutterUxConfigKeys.userAppKey];
-      var config = FlutterUxConfig(userAppKey: userAppKey);
-      config.enableMultiSessionRecord = json[FlutterUxConfigKeys.enableMultiSessionRecord];
-      config.enableCrashHandling = json[FlutterUxConfigKeys.enableCrashHandling];
-      config.enableAutomaticScreenNameTagging = json[FlutterUxConfigKeys.enableAutomaticScreenNameTagging];
-      config.enableNetworkLogging = json[FlutterUxConfigKeys.enableNetworkLogging];
-      config.enableAdvancedGestureRecognition = json[FlutterUxConfigKeys.enableAdvancedGestureRecognition];
-      return config;
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      FlutterUxConfigKeys.userAppKey: userAppKey,
-      FlutterUxConfigKeys.enableMultiSessionRecord: enableMultiSessionRecord,
-      FlutterUxConfigKeys.enableCrashHandling: enableCrashHandling,
-      FlutterUxConfigKeys.enableAutomaticScreenNameTagging: enableAutomaticScreenNameTagging,
-      FlutterUxConfigKeys.enableNetworkLogging: enableNetworkLogging,
-      FlutterUxConfigKeys.enableAdvancedGestureRecognition: enableAdvancedGestureRecognition,
-      FlutterUxConfigKeys.occlusion: occlusions?.map((occlusion) => occlusion.toJson()).toList()
-    };
-  }
-}
-
-class FlutterUxConfigKeys {
-  static const userAppKey = "userAppKey";
-  static const enableMultiSessionRecord = "enableMultiSessionRecord";
-  static const enableCrashHandling = "enableCrashHandling";
-  static const enableAutomaticScreenNameTagging = "enableAutomaticScreenNameTagging";
-  static const enableNetworkLogging = "enableNetworkLogging";
-  static const enableAdvancedGestureRecognition = "enableAdvancedGestureRecognition";
-  static const occlusion = "occlusion";
-}
-
-
-class FlutterUxConfig {
-  String userAppKey;
-
-  // If value is not specified for below variables, default values will be applied as per sdk
-  bool? enableMultiSessionRecord;
-  bool? enableCrashHandling;
-  bool? enableAutomaticScreenNameTagging;
-  bool? enableNetworkLogging;
-  bool? enableAdvancedGestureRecognition;
-  List<FlutterUXOcclusion>? occlusions;
-
-  FlutterUxConfig({
-    required this.userAppKey,
-    this.enableMultiSessionRecord,
-    this.enableCrashHandling,
-    this.enableAutomaticScreenNameTagging,
-    this.enableNetworkLogging,
-    this.enableAdvancedGestureRecognition,
     this.occlusions
   });
 
