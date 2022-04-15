@@ -24,7 +24,6 @@ class FlutterUxConfig {
   bool? enableAutomaticScreenNameTagging;
   bool? enableNetworkLogging;
   bool? enableAdvancedGestureRecognition;
-  bool? enableImprovedScreenCapture;
   List<FlutterUXOcclusion>? occlusions;
 
   FlutterUxConfig({
@@ -34,7 +33,6 @@ class FlutterUxConfig {
     this.enableAutomaticScreenNameTagging,
     this.enableNetworkLogging,
     this.enableAdvancedGestureRecognition,
-    this.enableImprovedScreenCapture,
     this.occlusions
   });
 
@@ -46,7 +44,6 @@ class FlutterUxConfig {
       config.enableAutomaticScreenNameTagging = json[FlutterUxConfigKeys.enableAutomaticScreenNameTagging];
       config.enableNetworkLogging = json[FlutterUxConfigKeys.enableNetworkLogging];
       config.enableAdvancedGestureRecognition = json[FlutterUxConfigKeys.enableAdvancedGestureRecognition];
-      config.enableImprovedScreenCapture = json[FlutterUxConfigKeys.enableImprovedScreenCapture];
       return config;
   }
 
@@ -58,7 +55,6 @@ class FlutterUxConfig {
       FlutterUxConfigKeys.enableAutomaticScreenNameTagging: enableAutomaticScreenNameTagging,
       FlutterUxConfigKeys.enableNetworkLogging: enableNetworkLogging,
       FlutterUxConfigKeys.enableAdvancedGestureRecognition: enableAdvancedGestureRecognition,
-      FlutterUxConfigKeys.enableImprovedScreenCapture: enableImprovedScreenCapture,
       FlutterUxConfigKeys.occlusion: occlusions?.map((occlusion) => occlusion.toJson()).toList()
     };
   }
