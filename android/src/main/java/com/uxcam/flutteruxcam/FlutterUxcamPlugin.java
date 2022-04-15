@@ -1,6 +1,7 @@
 package com.uxcam.flutteruxcam;
 
 import android.app.Activity;
+import android.util.Log;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
