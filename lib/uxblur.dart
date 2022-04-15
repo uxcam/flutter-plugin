@@ -33,7 +33,7 @@ class FlutterUXBlur extends FlutterUXOcclusion {
   FlutterUXBlur({
     int blurRadius = 10,
     BlurType blurType = BlurType.gaussian,
-    bool hideGestures = false,
+    bool hideGestures = true,
     List<String> screens = const [],
     bool excludeMentionedScreens = false
   }): super(screens, excludeMentionedScreens) {

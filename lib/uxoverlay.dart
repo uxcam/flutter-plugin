@@ -26,7 +26,7 @@ class FlutterUXOverlay extends FlutterUXOcclusion {
 
   FlutterUXOverlay({
     Color color = Colors.red,
-    bool hideGestures = false,
+    bool hideGestures = true,
     List<String> screens = const [],
     bool excludeMentionedScreens = false
   }): super(screens, excludeMentionedScreens) {
