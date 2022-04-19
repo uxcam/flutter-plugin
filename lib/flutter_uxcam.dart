@@ -251,6 +251,7 @@ class FlutterUxcam {
     await _channel.invokeMethod('uploadPendingSession');
   }
 
+  @Deprecated("Please use stopSessionAndUploadData() instead")
   static Future<void> stopApplicationAndUploadData() async {
     await _channel.invokeMethod('stopApplicationAndUploadData');
   }
@@ -288,5 +289,21 @@ class FlutterUxcam {
       [Map<String, dynamic>? properties]) async {
     await _channel.invokeMethod(
         'reportBugEvent', {"eventName": eventName, "properties": properties});
+  }
+
+  static Future<bool> applyOcclusion(FlutterUXOcclusion occlusion) async {
+    final bool? status = await _channel.invokeMethod<bool>(
+        'applyOcclusion',
+        { "occlusion": occlusion.toJson()}
+    );
+    return status!;
+  }
+
+  static Future<bool> removeOcclusion(FlutterUXOcclusion occlusion) async {
+    final bool? status = await _channel.invokeMethod<bool>(
+        'removeOcclusion',
+        { "occlusion": occlusion.toJson() }
+    );
+    return status!;
   }
 }

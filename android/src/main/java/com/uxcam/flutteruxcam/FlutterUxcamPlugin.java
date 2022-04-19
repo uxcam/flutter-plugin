@@ -258,6 +258,17 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("startWithConfiguration".equals(call.method)) {
             Map<String, Object> configMap = call.argument("config");
             startWithConfig(configMap);
+            result.success(null);
+        } else if ("applyOcclusion".equals(call.method))  {
+            Map<String, Object> occlusionMap = call.argument("occlusion");
+            UXCamOcclusion occlusion = getOcclusion(occlusionMap);
+            UXCam.applyOcclusion(occlusion);
+            result.success(null);
+        } else if ("removeOcclusion".equals(call.method)) {
+            Map<String, Object> occlusionMap = call.argument("occlusion");
+            UXCamOcclusion occlusion = getOcclusion(occlusionMap);
+            UXCam.removeOcclusion(occlusion);
+            result.success(null);
         } else {
             result.notImplemented();
         }
