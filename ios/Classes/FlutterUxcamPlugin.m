@@ -73,6 +73,34 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
     }];
 }
 
+- (void)applyOcclusion:(FlutterMethodCall*)call result:(FlutterResult)result
+{
+    NSDictionary *occlusionJson = call.arguments[@"occlusion"];
+    if (occlusionJson && ![occlusionJson isKindOfClass:NSNull.class]) {
+        id <UXCamOcclusionSetting> setting = [UXCamOcclusion getSettingFromJson:occlusionJson];
+        if (setting)
+        {
+            [UXCam applyOcclusion:setting];
+        }
+    }
+}
+
+- (void)removeOcclusion:(FlutterMethodCall*)call result:(FlutterResult)result
+{
+    NSDictionary *occlusionJson = call.arguments[@"occlusion"];
+    if (occlusionJson && ![occlusionJson isKindOfClass:NSNull.class]) {
+        id <UXCamOcclusionSetting> setting = [UXCamOcclusion getSettingFromJson:occlusionJson];
+        if (setting)
+        {
+            [UXCam removeOcclusionOfType:setting.type];
+        }
+        else
+        {
+            [UXCam removeOcclusion];
+        }
+    }
+}
+
 - (void)updateConfiguration:(FlutterMethodCall*)call result:(FlutterResult)result
 {
     NSDictionary *configDict = call.arguments[@"config"];
