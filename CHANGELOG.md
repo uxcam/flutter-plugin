@@ -1,7 +1,7 @@
 ## Changelog
 Version         | Changes
 ----------      | ----------
-2.1.0           | iOS SDK update to v 3.4.1 & Android SDK updated to v3.4.0
+2.1.0           | iOS SDK updated to v 3.4.1 & Android SDK updated to v3.4.0
 2.0.1			| Added plugin support for the Android v2 embedding
 				| Android SDK 3.3.6, iOS SDK 3.3.6
 2.0.0			| Added support for null-safety, which means a new minimum SDK environment of >=2.12.0
