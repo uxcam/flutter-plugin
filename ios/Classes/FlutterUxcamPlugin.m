@@ -191,8 +191,9 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
 - (void)stopSessionAndUploadData:(FlutterMethodCall*)call result:(FlutterResult)result
 {
-	[UXCam stopSessionAndUploadData];
-	result(nil);
+	[UXCam stopSessionAndUploadData:^{
+           result(nil);
+    }];
 }
 
 - (void)allowShortBreakForAnotherApp:(FlutterMethodCall*)call result:(FlutterResult)result
