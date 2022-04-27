@@ -12,7 +12,8 @@ Inside your dart file import flutter_uxcam like this
 `import 'package:flutter_uxcam/flutter_uxcam.dart';`
 
 Then inside the first method that gets called add the following code snippets; most likely inside the class of `lib/main.dart` file that's getting called by this `void main() => runApp(MyApp());` where `MyApp` is the name of your class.
-`FlutterUxcam.startWithKey("UXCAM_APP_KEY");`
+`FlutterUxConfig config = FlutterUxConfig(userAppKey: "UXCAM_APP_KEY");`
+`FlutterUxcam.startWithConfiguration(config);`
 >UXCAM_APP_KEY is available at https://uxcam.com 
 
 ### Example
@@ -25,7 +26,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     FlutterUxcam.optIntoSchematicRecordings(); // Confirm that you have user permission for screen recording
-    FlutterUxcam.startWithKey("UXCAM_APP_KEY");
+    FlutterUxConfig config = FlutterUxConfig(userAppKey: "UXCAM_APP_KEY");
+    FlutterUxcam.startWithConfiguration(config);
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
