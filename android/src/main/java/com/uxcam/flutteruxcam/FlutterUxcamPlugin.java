@@ -100,7 +100,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
             addListener(result);
-            UXCam.pluginType("flutter", "2.1.0");
+            UXCam.pluginType("flutter", "2.1.1");
         } else if ("startNewSession".equals(call.method)) {
             UXCam.startNewSession();
             result.success(null);
@@ -258,6 +258,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("startWithConfiguration".equals(call.method)) {
             Map<String, Object> configMap = call.argument("config");
             boolean success = startWithConfig(configMap);
+            UXCam.pluginType("flutter", "2.1.1");
             result.success(success);
         } else if ("applyOcclusion".equals(call.method))  {
             Map<String, Object> occlusionMap = call.argument("occlusion");
