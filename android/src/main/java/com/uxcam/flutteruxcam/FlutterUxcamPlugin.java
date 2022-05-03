@@ -257,8 +257,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             result.success(null);
         } else if ("startWithConfiguration".equals(call.method)) {
             Map<String, Object> configMap = call.argument("config");
-            startWithConfig(configMap);
-            result.success(null);
+            boolean success = startWithConfig(configMap);
+            result.success(success);
         } else if ("applyOcclusion".equals(call.method))  {
             Map<String, Object> occlusionMap = call.argument("occlusion");
             UXCamOcclusion occlusion = getOcclusion(occlusionMap);
@@ -274,7 +274,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     }
 
-    private void startWithConfig(Map<String, Object> configMap) {
+    private boolean startWithConfig(Map<String, Object> configMap) {
         try {
             String appKey = (String) configMap.get(USER_APP_KEY);
             Boolean enableMultiSessionRecord = (Boolean) configMap.get(ENABLE_MUTLI_SESSION_RECORD);
@@ -304,8 +304,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
             UXConfig config = uxConfigBuilder.build();
             UXCam.startWithConfigurationCrossPlatform(activity, config);
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
     }
 
