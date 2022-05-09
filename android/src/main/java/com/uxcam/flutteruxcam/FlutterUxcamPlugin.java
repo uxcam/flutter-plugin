@@ -264,12 +264,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             Map<String, Object> occlusionMap = call.argument("occlusion");
             UXCamOcclusion occlusion = getOcclusion(occlusionMap);
             UXCam.applyOcclusion(occlusion);
-            result.success(null);
+            result.success(true);
         } else if ("removeOcclusion".equals(call.method)) {
             Map<String, Object> occlusionMap = call.argument("occlusion");
             UXCamOcclusion occlusion = getOcclusion(occlusionMap);
             UXCam.removeOcclusion(occlusion);
-            result.success(null);
+            result.success(true);
         } else {
             result.notImplemented();
         }
