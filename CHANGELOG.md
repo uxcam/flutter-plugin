@@ -1,12 +1,16 @@
 ## Changelog
 Version         | Changes
 ----------      | ----------
+2.1.1           | Fixed NPE on startWithConfiguration and occlusion API Android
+                | User identity can be set to null in setUserIdentity method to remove previous set value
+2.1.0           | iOS SDK updated to v 3.4.1 & Android SDK updated to v3.4.0
+2.0.1			| Added plugin support for the Android v2 embedding
+				| Android SDK 3.3.6, iOS SDK 3.3.6
 2.0.0			| Added support for null-safety, which means a new minimum SDK environment of >=2.12.0
 				| Added type specifiers for _channel.invokeMethod calls in the Dart code
 				| Fixed a duplicate result on Android `optInOverallStatus` - thanks The Boston Consulting Group Pty Ltd
 				| iOS SDK 3.3.4 & Android SDK 3.3.5
 				| For iOS the minimum OS required is now iOS 10.0
-				|
 1.3.2           | iOS SDK updated to v3.3.3, integration issue related to flutter driver solved, void function await deadlock fixed
 1.3.1           | iOS SDK update to v 3.3.1 & Android SDK updated to v3.3.5
 1.3.0           | iOS version updated to 3.3.0, android version updated to 3.3.4, setPushNotificationToken and reportBugEvent API added

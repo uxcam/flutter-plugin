@@ -8,25 +8,88 @@ import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
+import io.flutter.plugin.common.BinaryMessenger;
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
+
 import com.uxcam.UXCam;
+import com.uxcam.datamodel.UXCamBlur;
+import com.uxcam.datamodel.UXCamOverlay;
+import com.uxcam.datamodel.UXCamOcclusion;
+import com.uxcam.datamodel.UXCamOccludeAllTextFields;
+import com.uxcam.datamodel.UXConfig;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+
+import androidx.annotation.NonNull;
+
 /**
  * FlutterUxcamPlugin
  */
-public class FlutterUxcamPlugin implements MethodCallHandler {
+public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
     public static final String TAG = "FlutterUXCam";
+    public static final String USER_APP_KEY = "userAppKey";
+    public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
+    public static final String ENABLE_CRASH_HANDLING = "enableCrashHandling";
+    public static final String ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING = "enableAutomaticScreenNameTagging";
+    public static final String ENABLE_IMPROVED_SCREEN_CAPTURE = "enableImprovedScreenCapture";
+    public static final String OCCLUSION = "occlusion";
+    public static final String SCREENS = "screens";
+    public static final String NAME = "name";
+    public static final String TYPE = "type";
+    public static final String EXCLUDE_MENTIONED_SCREENS = "excludeMentionedScreens";
+    public static final String CONFIG = "config";
+    public static final String BLUR_RADIUS = "radius";
+    public static final String HIDE_GESTURES = "hideGestures";
+    public static final String GAUSSIAN_BLUR = "gaussianBlur";
+    public static final String STACK_BLUR = "stackBlur";
+    public static final String BOX_BLUR = "boxBlur";
+    public static final String BOKEH_BLUR = "bokehBlur";
+
     /**
      * Plugin registration.
      */
-    private final Activity activity;
+    private static Activity activity;
 
     public static void registerWith(Registrar registrar) {
-        final MethodChannel channel = new MethodChannel(registrar.messenger(), "flutter_uxcam");
-        channel.setMethodCallHandler(new FlutterUxcamPlugin(registrar.activity()));
+        activity = registrar.activity();
+        register(registrar.messenger());
     }
 
-    private FlutterUxcamPlugin(Activity activity) {
-        this.activity = activity;
+    @Override
+    public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
+        register(binding.getBinaryMessenger());
+    }
+
+    @Override
+    public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+    }
+
+    public static void register(BinaryMessenger messenger) {
+        final MethodChannel channel = new MethodChannel(messenger, "flutter_uxcam");
+        channel.setMethodCallHandler(new FlutterUxcamPlugin());
+    }
+
+
+    @Override
+    public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
+        activity = activityPluginBinding.getActivity();
+    }
+
+    @Override
+    public void onDetachedFromActivityForConfigChanges() {
+    }
+
+    @Override
+    public void onReattachedToActivityForConfigChanges(ActivityPluginBinding activityPluginBinding) {
+        activity = activityPluginBinding.getActivity();
+    }
+
+    @Override
+    public void onDetachedFromActivity() {
     }
 
     @Override
@@ -37,7 +100,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
             addListener(result);
-            UXCam.pluginType("flutter", "2.0.0");
+            UXCam.pluginType("flutter", "2.1.1");
         } else if ("startNewSession".equals(call.method)) {
             UXCam.startNewSession();
             result.success(null);
@@ -48,17 +111,17 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             boolean occludeSensitiveScreen = call.argument("key");
             UXCam.occludeSensitiveScreen(occludeSensitiveScreen);
             result.success(null);
-        }else if ("occludeSensitiveScreenWithoutGesture".equals(call.method)) {
+        } else if ("occludeSensitiveScreenWithoutGesture".equals(call.method)) {
             boolean occludeSensitiveScreen = call.argument("key");
             boolean withoutGesture = call.argument("withoutGesture");
-            UXCam.occludeSensitiveScreen(occludeSensitiveScreen,withoutGesture);
+            UXCam.occludeSensitiveScreen(occludeSensitiveScreen, withoutGesture);
             result.success(null);
         } else if ("setMultiSessionRecord".equals(call.method)) {
             boolean multiSessionRecord = call.argument("key");
             UXCam.setMultiSessionRecord(multiSessionRecord);
             result.success(null);
         } else if ("getMultiSessionRecord".equals(call.method)) {
-            result.success( UXCam.getMultiSessionRecord());
+            result.success(UXCam.getMultiSessionRecord());
         } else if ("occludeAllTextView".equals(call.method)) {
             boolean occludeAllTextField = call.argument("key");
             UXCam.occludeAllTextFields(occludeAllTextField);
@@ -109,7 +172,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             }
             result.success(null);
         } else if ("isRecording".equals(call.method)) {
-            result.success( UXCam.isRecording());
+            result.success(UXCam.isRecording());
         } else if ("pauseScreenRecording".equals(call.method)) {
             UXCam.pauseScreenRecording();
             result.success(null);
@@ -149,8 +212,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             result.success(UXCam.pendingUploads());
         } else if ("uploadPendingSession".equals(call.method)) {
             result.success(null);
-        }
-        else if ("stopApplicationAndUploadData".equals(call.method)) {
+        } else if ("stopApplicationAndUploadData".equals(call.method)) {
             UXCam.stopSessionAndUploadData();
             result.success(null);
         } else if ("tagScreenName".equals(call.method)) {
@@ -160,8 +222,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
             }
             UXCam.tagScreenName(screenName);
             result.success(null);
-        }
-        else if ("urlForCurrentUser".equals(call.method)) {
+        } else if ("urlForCurrentUser".equals(call.method)) {
             String url = UXCam.urlForCurrentUser();
             result.success(url);
         } else if ("urlForCurrentSession".equals(call.method)) {
@@ -194,9 +255,130 @@ public class FlutterUxcamPlugin implements MethodCallHandler {
                 UXCam.reportBugEvent(eventName, map);
             }
             result.success(null);
+        } else if ("startWithConfiguration".equals(call.method)) {
+            Map<String, Object> configMap = call.argument("config");
+            boolean success = startWithConfig(configMap);
+            UXCam.pluginType("flutter", "2.1.1");
+            result.success(success);
+        } else if ("applyOcclusion".equals(call.method))  {
+            Map<String, Object> occlusionMap = call.argument("occlusion");
+            UXCamOcclusion occlusion = getOcclusion(occlusionMap);
+            UXCam.applyOcclusion(occlusion);
+            result.success(true);
+        } else if ("removeOcclusion".equals(call.method)) {
+            Map<String, Object> occlusionMap = call.argument("occlusion");
+            UXCamOcclusion occlusion = getOcclusion(occlusionMap);
+            UXCam.removeOcclusion(occlusion);
+            result.success(true);
         } else {
             result.notImplemented();
         }
+    }
+
+    private boolean startWithConfig(Map<String, Object> configMap) {
+        try {
+            String appKey = (String) configMap.get(USER_APP_KEY);
+            Boolean enableMultiSessionRecord = (Boolean) configMap.get(ENABLE_MUTLI_SESSION_RECORD);
+            Boolean enableCrashHandling = (Boolean) configMap.get(ENABLE_CRASH_HANDLING);
+            Boolean enableAutomaticScreenNameTagging = (Boolean) configMap.get(ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING);
+            Boolean enableImprovedScreenCapture = (Boolean) configMap.get(ENABLE_IMPROVED_SCREEN_CAPTURE);
+
+            // occlusion
+            List<UXCamOcclusion> occlusionList = null;
+            if (configMap.get(OCCLUSION) != null) {
+                List<Map<String, Object>> occlusionObjects = (List<Map<String, Object>>) configMap.get(OCCLUSION);
+                occlusionList = convertToOcclusionList(occlusionObjects);
+            }
+
+
+            UXConfig.Builder uxConfigBuilder = new UXConfig.Builder(appKey);
+            if (enableMultiSessionRecord != null)
+                uxConfigBuilder.enableMultiSessionRecord(enableMultiSessionRecord);
+            if (enableCrashHandling != null)
+                uxConfigBuilder.enableCrashHandling(enableCrashHandling);
+            if (enableAutomaticScreenNameTagging != null)
+                uxConfigBuilder.enableAutomaticScreenNameTagging(enableAutomaticScreenNameTagging);
+            if (enableImprovedScreenCapture != null)
+                uxConfigBuilder.enableImprovedScreenCapture(enableImprovedScreenCapture);
+            if (occlusionList != null)
+                uxConfigBuilder.occlusions(occlusionList);
+
+            UXConfig config = uxConfigBuilder.build();
+            UXCam.startWithConfigurationCrossPlatform(activity, config);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private List<UXCamOcclusion> convertToOcclusionList(List<Map<String, Object>> occlusionObjects) {
+        List<UXCamOcclusion> occlusionList = new ArrayList<UXCamOcclusion>();
+        for (Map<String, Object> occlusionMap :
+                occlusionObjects) {
+            UXCamOcclusion occlusion = getOcclusion(occlusionMap);
+            if (occlusion != null)
+                occlusionList.add(getOcclusion(occlusionMap));
+        }
+        return occlusionList;
+    }
+
+    private UXCamOcclusion getOcclusion(Map<String, Object> occlusionMap) {
+        int typeIndex = (int) occlusionMap.get(TYPE);
+        switch (typeIndex) {
+            case 2:
+                return (UXCamOcclusion) getOverlay(occlusionMap);
+            case 3:
+                return (UXCamOcclusion) getBlur(occlusionMap);
+            default:
+                return null;
+        }
+    }
+
+    private UXCamOverlay getOverlay(Map<String, Object> overlayMap) {
+        // get data
+        List<String> screens = (List<String>) overlayMap.get(SCREENS);
+        Boolean excludeMentionedScreens = (Boolean) overlayMap.get(EXCLUDE_MENTIONED_SCREENS);
+        Map<String, Object> configMap = (Map<String, Object>) overlayMap.get(CONFIG);
+        Boolean hideGestures = null;
+        if (configMap != null) {
+            hideGestures = (Boolean) configMap.get(HIDE_GESTURES);
+        }
+
+        // set data
+        UXCamOverlay.Builder overlayBuilder = new UXCamOverlay.Builder();
+        if (screens != null && !screens.isEmpty())
+            overlayBuilder.screens(screens);
+        if (excludeMentionedScreens != null)
+            overlayBuilder.excludeMentionedScreens(excludeMentionedScreens);
+        if (hideGestures != null)
+            overlayBuilder.withoutGesture(hideGestures);
+        return overlayBuilder.build();
+    }
+
+    private UXCamBlur getBlur(Map<String, Object> blurMap) {
+        // get data
+        List<String> screens = (List<String>) blurMap.get(SCREENS);
+        Boolean excludeMentionedScreens = (Boolean) blurMap.get(EXCLUDE_MENTIONED_SCREENS);
+        Map<String, Object> configMap = (Map<String, Object>) blurMap.get(CONFIG);
+        Integer blurRadius = null;
+        Boolean hideGestures = null;
+        if (configMap != null) {
+            blurRadius = (Integer) configMap.get(BLUR_RADIUS);
+            hideGestures = (Boolean) configMap.get(HIDE_GESTURES);
+        }
+
+        // set data
+        UXCamBlur.Builder blurBuilder = new UXCamBlur.Builder();
+        if (screens != null && !screens.isEmpty())
+            blurBuilder.screens(screens);
+        if (excludeMentionedScreens != null)
+            blurBuilder.excludeMentionedScreens(excludeMentionedScreens);
+        if (blurRadius != null)
+            blurBuilder.blurRadius(blurRadius);
+        if (hideGestures != null)
+            blurBuilder.withoutGesture(hideGestures);
+        return blurBuilder.build();
     }
 
     private void addListener(final Result callback) {
