@@ -122,7 +122,7 @@ class FlutterUxcam {
     await _channel.invokeMethod('tagScreenName', {"key": screenName});
   }
 
-  static Future<void> setUserIdentity(String userIdentity) async {
+  static Future<void> setUserIdentity(String? userIdentity) async {
     await _channel.invokeMethod('setUserIdentity', {"key": userIdentity});
   }
 
