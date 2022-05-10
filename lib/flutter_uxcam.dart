@@ -10,8 +10,7 @@ class FlutterUxConfigKeys {
   static const enableAutomaticScreenNameTagging = "enableAutomaticScreenNameTagging";
   static const enableNetworkLogging = "enableNetworkLogging";
   static const enableAdvancedGestureRecognition = "enableAdvancedGestureRecognition";
-  static const occlusions = "occlusions";
-  static const enableImprovedScreenCapture = "enableImprovedScreenCapture";
+  static const occlusion = "occlusion";
 }
 
 
@@ -55,7 +54,7 @@ class FlutterUxConfig {
       FlutterUxConfigKeys.enableAutomaticScreenNameTagging: enableAutomaticScreenNameTagging,
       FlutterUxConfigKeys.enableNetworkLogging: enableNetworkLogging,
       FlutterUxConfigKeys.enableAdvancedGestureRecognition: enableAdvancedGestureRecognition,
-      FlutterUxConfigKeys.occlusions: occlusions?.map((occlusion) => occlusion.toJson()).toList()
+      FlutterUxConfigKeys.occlusion: occlusions?.map((occlusion) => occlusion.toJson()).toList()
     };
   }
 }
