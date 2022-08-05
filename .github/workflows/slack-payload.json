@@ -1,20 +1,19 @@
 {
-    "text": ":rocket: UXCam iOS Flutter Plugin Released :rocket:",
+    "text": ":rocket: UXCam Flutter Plugin Released :rocket:",
 	"blocks": [
         {
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": "<!here> UXCam iOS Flutter Plugin __FLUTTER_VERSION__ has been released.\n:rocket: UXCam Flutter Plugin  __FLUTTER_VERSION__ :rocket:\n:date:  __RELEASE_DATE__"
+				"text": "<!here> UXCam Flutter Plugin __FLUTTER_VERSION__ has been released.\n:rocket: UXCam Flutter Plugin  __FLUTTER_VERSION__ :rocket:\n:date:  __RELEASE_DATE__"
 			}
 		},
 		{
 			"type": "section",
 			"fields": [
 				{
-					"type": "plain_text",
-					"text": "*CHANGELOG(Internal):*\n__CHANGELOG__",
-					"emoji": true
+					"type": "mrkdwn",
+					"text": "*CHANGELOG(Internal):*\n__CHANGELOG__"
 				}
 			]
 		},
@@ -22,13 +21,12 @@
 			"type": "section",
 			"fields": [
 				{
-					"type": "plain_text",
+					"type": "mrkdwn",
 					"text": "*SDK*\nFlutter Plugin"
 				},
 				{
-					"type": "plain_text",
-					"text": "*Version*\n__FLUTTER_VERSION__",
-					"emoji": true
+					"type": "mrkdwn",
+					"text": "*Version*\n__FLUTTER_VERSION__"
 				}
 			]
 		}

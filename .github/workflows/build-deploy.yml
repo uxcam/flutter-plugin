@@ -1,4 +1,4 @@
-name: Flutter Deploy
+name: Publish Flutter Package
 on:
   workflow_dispatch:
     inputs:
@@ -56,7 +56,7 @@ jobs:
         run: |
             current_tag=$(git describe --tags --abbrev=0)
             previous_tag=$(git describe --tags --abbrev=0 ${current_tag}^)  
-            logs=$(git log ${current_tag}...${previous_tag} --pretty=format:"%s" -i --grep="^feat.*:" --grep="^fix.*:")
+            logs=$(git log ${current_tag}...${previous_tag} --pretty=format:"%s" -i --grep="^feat.*:" --grep="^fix.*:" --no-merges)
 
             # Remove new line in multiline change logs as sed doesn't support it
             logs=$((sed -e '$ ! s/$/\\n/g' | tr -d '\n')  <<< $logs)
