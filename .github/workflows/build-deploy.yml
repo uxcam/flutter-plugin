@@ -39,7 +39,7 @@ jobs:
       - name: Delete old credentials file
         run: git clean -fd
       - name: Publish package
-        if: github.event.inputs.publish == true
+        if: ${{ inputs.publish }}
         uses: sakebook/actions-flutter-pub-publisher@v1.4.1
         with:
            credential: ${{ secrets.PUB_CREDENTIALS }}
@@ -47,6 +47,7 @@ jobs:
            skip_test: true
            dry_run: false
       - name: Add new tag to github
+        if: ${{ inputs.publish }}
         run: |
             version="v${{ steps.get-version.outputs.version }}"
             git tag -a $version -m "Release: $version"
@@ -54,9 +55,20 @@ jobs:
       - name: Generate Changelogs
         id: changelogs
         run: |
-            current_tag=$(git describe --tags --abbrev=0)
+           if ${{ inputs.publish }}; then
+              current_tag=$(git describe --tags --abbrev=0)
+            else 
+              current_tag=HEAD
+            fi
+
             previous_tag=$(git describe --tags --abbrev=0 ${current_tag}^)  
             logs=$(git log ${current_tag}...${previous_tag} --pretty=format:"%s" -i --grep="^feat.*:" --grep="^fix.*:" --no-merges)
+
+            #santize commit logs 
+            logs=$(awk -F ":" '{ print $2 }' <<< $logs | sed -e 's/^ *//g' | sed -e 's/^./\u&/g')
+
+            #prepend line number 
+            logs=$(awk '{print NR, "-", $0}' <<< $logs)
 
             # Remove new line in multiline change logs as sed doesn't support it
             logs=$((sed -e '$ ! s/$/\\n/g' | tr -d '\n')  <<< $logs)
@@ -65,6 +77,7 @@ jobs:
             #save logs to new file 
             touch changelog.txt
             echo "$logs" > changelog.txt
+            
       - name: Generate Slack notification payload
         id: slack-payload 
         run: |
