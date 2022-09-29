@@ -1,6 +1,8 @@
 ## Changelog
 Version         | Changes
 ----------      | ----------
+2.1.4           | Fixed issue on 2.1.3
+2.1.3           | Updated Android SDK to 3.4.4
 2.1.2			| Updated iOS SDK to 3.4.2 and Android SDK to 3.4.3
 2.1.1           | Fixed NPE on startWithConfiguration and occlusion API Android
                 | User identity can be set to null in setUserIdentity method to remove previous set value

@@ -1,4 +1,4 @@
-
+\
 #import "FlutterUxcamPlugin.h"
 
 @import UXCam;
@@ -23,7 +23,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 	
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
     [registrar addMethodCallDelegate:instance channel:channel];
-	[UXCam pluginType:@"flutter" version:@"2.1.2"];
+	[UXCam pluginType:@"flutter" version:@"2.1.4"];
 }
 
 // The handler method - this is the entry point from the Dart code
