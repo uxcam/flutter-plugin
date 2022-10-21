@@ -1,6 +1,7 @@
 package com.uxcam.flutteruxcam;
 
 import android.app.Activity;
+import android.os.Build;
 import android.util.Log;
 
 import io.flutter.plugin.common.MethodCall;
@@ -30,7 +31,7 @@ import androidx.annotation.NonNull;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.1.5";
+    private static final String TYPE_VERSION = "2.2.0";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
@@ -96,7 +97,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onMethodCall(MethodCall call, Result result) {
         if (call.method.equals("getPlatformVersion")) {
-            result.success("Android " + android.os.Build.VERSION.RELEASE);
+            result.success("Android " + Build.VERSION.RELEASE);
         } else if (call.method.equals("startWithKey")) {
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
@@ -283,9 +284,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             Boolean enableCrashHandling = (Boolean) configMap.get(ENABLE_CRASH_HANDLING);
             Boolean enableAutomaticScreenNameTagging = (Boolean) configMap.get(ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING);
             Boolean enableImprovedScreenCapture = (Boolean) configMap.get(ENABLE_IMPROVED_SCREEN_CAPTURE);
-
-            // occlusion
-            List<UXCamOcclusion> occlusionList = null;
+             List<UXCamOcclusion> occlusionList = null;
             if (configMap.get(OCCLUSION) != null) {
                 List<Map<String, Object>> occlusionObjects = (List<Map<String, Object>>) configMap.get(OCCLUSION);
                 occlusionList = convertToOcclusionList(occlusionObjects);
