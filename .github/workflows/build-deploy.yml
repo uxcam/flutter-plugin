@@ -28,24 +28,29 @@ jobs:
             version=$(grep '^version:' pubspec.yaml | awk '{ print $2 }')
             echo $version
             echo "::set-output name=version::$version"
-      - name: Verify version
-        uses: sakebook/actions-flutter-pub-publisher@v1.4.1
+      # Install dependencies
+      - name: Install Flutter 🎯
+        uses: subosito/flutter-action@v2
         with:
-           credential: ${{ secrets.PUB_CREDENTIALS }}
-           flutter_package: true
-           skip_test: true
-           dry_run: true
-      # delete previously created credentials file
-      - name: Delete old credentials file
-        run: git clean -fd
+          channel: 'stable'
+      
+      - name: Install dependencies 📚
+        run: |
+          flutter pub get
+
+      - name: Verify version
+        run: | 
+          dart pub publish --dry-run
       - name: Publish package
         if: ${{ inputs.publish }}
-        uses: sakebook/actions-flutter-pub-publisher@v1.4.1
-        with:
-           credential: ${{ secrets.PUB_CREDENTIALS }}
-           flutter_package: true
-           skip_test: true
-           dry_run: false
+        run: | 
+          mkdir -p $HOME/.config/dart
+          CREDENTIALS="${{ secrets.PUB_CREDENTIALS }}"
+          CREDENTIALS=$( echo -n $CREDENTIALS | base64 --decode)
+          cat <<EOF > $HOME/.config/dart/pub-credentials.json
+          $CREDENTIALS
+          EOF
+          dart pub publish -f
       - name: Add new tag to github
         if: ${{ inputs.publish }}
         run: |
