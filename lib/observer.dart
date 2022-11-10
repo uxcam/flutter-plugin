@@ -29,7 +29,7 @@ bool defaultRouteFilter(Route<dynamic>? route) => route is PageRoute;
 /// MaterialApp(
 ///   ...
 ///   navigatorObservers: [
-///     UXCamNavigatorObserver(),
+///     FlutterUxcamNavigatorObserver(),
 ///   ],
 ///   ...
 /// )
