@@ -1,5 +1,3 @@
-
-
 import 'package:flutter_uxcam/flutter_occlusion.dart';
 
 class FlutterUxBlurKeys {
@@ -7,12 +5,9 @@ class FlutterUxBlurKeys {
   static const hideGestures = "hideGestures";
 }
 
-enum BlurType {
-  gaussian, stack, box, bokeh
-}
+enum BlurType { gaussian, stack, box, bokeh }
 
 class FlutterUXBlur extends FlutterUXOcclusion {
-
   int blurRadius = 10;
   bool hideGestures = true;
 
@@ -26,17 +21,17 @@ class FlutterUXBlur extends FlutterUXOcclusion {
 
   @override
   Map<String, dynamic>? get configuration => {
-    FlutterUxBlurKeys.blurRadius: blurRadius,
-    FlutterUxBlurKeys.hideGestures: hideGestures
-  };
+        FlutterUxBlurKeys.blurRadius: blurRadius,
+        FlutterUxBlurKeys.hideGestures: hideGestures
+      };
 
-  FlutterUXBlur({
-    int blurRadius = 10,
-    BlurType blurType = BlurType.gaussian,
-    bool hideGestures = true,
-    List<String> screens = const [],
-    bool excludeMentionedScreens = false
-  }): super(screens, excludeMentionedScreens) {
+  FlutterUXBlur(
+      {int blurRadius = 10,
+      BlurType blurType = BlurType.gaussian,
+      bool hideGestures = true,
+      List<String> screens = const [],
+      bool excludeMentionedScreens = false})
+      : super(screens, excludeMentionedScreens) {
     this.blurRadius = blurRadius;
     this.blurType = blurType;
     this.hideGestures = hideGestures;
@@ -44,12 +39,14 @@ class FlutterUXBlur extends FlutterUXOcclusion {
 
   String getName(BlurType type) {
     switch (type) {
-      case BlurType.gaussian: return "gaussianBlur";
-      case BlurType.stack: return "stackBlur";
-      case BlurType.box: return "boxBlur";
-      case BlurType.bokeh: return "bokehBlur";
-
-
+      case BlurType.gaussian:
+        return "gaussianBlur";
+      case BlurType.stack:
+        return "stackBlur";
+      case BlurType.box:
+        return "boxBlur";
+      case BlurType.bokeh:
+        return "bokehBlur";
     }
   }
 }
