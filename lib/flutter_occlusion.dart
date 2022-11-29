@@ -1,7 +1,3 @@
-
-
-import 'package:flutter/cupertino.dart';
-
 class FlutterUxOcclusionKeys {
   static const screens = "screens";
   static const name = "name";
@@ -10,12 +6,9 @@ class FlutterUxOcclusionKeys {
   static const config = "config";
 }
 
-enum UXOcclusionType {
-  none, occludeAllTextFields, overlay, blur, unknown
-}
+enum UXOcclusionType { none, occludeAllTextFields, overlay, blur, unknown }
 
 abstract class FlutterUXOcclusion {
-
   String get name;
   UXOcclusionType get type;
   List<String> screens = [];
