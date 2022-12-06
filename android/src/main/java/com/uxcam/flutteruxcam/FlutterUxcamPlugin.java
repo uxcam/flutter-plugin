@@ -204,6 +204,11 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             boolean enable = call.argument("key");
             UXCam.allowShortBreakForAnotherApp(enable);
             result.success(null);
+        } else if ("allowShortBreakForAnotherAppWithDuration".equals(call.method)) {
+            int duration = call.argument("duration");
+            Log.e("DURATION", duration + "");
+            UXCam.allowShortBreakForAnotherApp(duration);
+            result.success(null);
         } else if ("resumeShortBreakForAnotherApp".equals(call.method)) {
             UXCam.resumeShortBreakForAnotherApp();
             result.success(null);
@@ -262,7 +267,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             boolean success = startWithConfig(configMap);
             UXCam.pluginType("flutter", "2.1.1");
             result.success(success);
-        } else if ("applyOcclusion".equals(call.method))  {
+        } else if ("applyOcclusion".equals(call.method)) {
             Map<String, Object> occlusionMap = call.argument("occlusion");
             UXCamOcclusion occlusion = getOcclusion(occlusionMap);
             UXCam.applyOcclusion(occlusion);
@@ -284,7 +289,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             Boolean enableCrashHandling = (Boolean) configMap.get(ENABLE_CRASH_HANDLING);
             Boolean enableAutomaticScreenNameTagging = (Boolean) configMap.get(ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING);
             Boolean enableImprovedScreenCapture = (Boolean) configMap.get(ENABLE_IMPROVED_SCREEN_CAPTURE);
-             List<UXCamOcclusion> occlusionList = null;
+            List<UXCamOcclusion> occlusionList = null;
             if (configMap.get(OCCLUSION) != null) {
                 List<Map<String, Object>> occlusionObjects = (List<Map<String, Object>>) configMap.get(OCCLUSION);
                 occlusionList = convertToOcclusionList(occlusionObjects);
@@ -300,8 +305,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 uxConfigBuilder.enableAutomaticScreenNameTagging(enableAutomaticScreenNameTagging);
             if (enableImprovedScreenCapture != null)
                 uxConfigBuilder.enableImprovedScreenCapture(enableImprovedScreenCapture);
-            if (occlusionList != null)
-                uxConfigBuilder.occlusions(occlusionList);
+            if (occlusionList != null) uxConfigBuilder.occlusions(occlusionList);
 
             UXConfig config = uxConfigBuilder.build();
             UXCam.startWithConfigurationCrossPlatform(activity, config);
@@ -314,11 +318,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private List<UXCamOcclusion> convertToOcclusionList(List<Map<String, Object>> occlusionObjects) {
         List<UXCamOcclusion> occlusionList = new ArrayList<UXCamOcclusion>();
-        for (Map<String, Object> occlusionMap :
-                occlusionObjects) {
+        for (Map<String, Object> occlusionMap : occlusionObjects) {
             UXCamOcclusion occlusion = getOcclusion(occlusionMap);
-            if (occlusion != null)
-                occlusionList.add(getOcclusion(occlusionMap));
+            if (occlusion != null) occlusionList.add(getOcclusion(occlusionMap));
         }
         return occlusionList;
     }
@@ -347,12 +349,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         // set data
         UXCamOverlay.Builder overlayBuilder = new UXCamOverlay.Builder();
-        if (screens != null && !screens.isEmpty())
-            overlayBuilder.screens(screens);
+        if (screens != null && !screens.isEmpty()) overlayBuilder.screens(screens);
         if (excludeMentionedScreens != null)
             overlayBuilder.excludeMentionedScreens(excludeMentionedScreens);
-        if (hideGestures != null)
-            overlayBuilder.withoutGesture(hideGestures);
+        if (hideGestures != null) overlayBuilder.withoutGesture(hideGestures);
         return overlayBuilder.build();
     }
 
@@ -370,14 +370,11 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         // set data
         UXCamBlur.Builder blurBuilder = new UXCamBlur.Builder();
-        if (screens != null && !screens.isEmpty())
-            blurBuilder.screens(screens);
+        if (screens != null && !screens.isEmpty()) blurBuilder.screens(screens);
         if (excludeMentionedScreens != null)
             blurBuilder.excludeMentionedScreens(excludeMentionedScreens);
-        if (blurRadius != null)
-            blurBuilder.blurRadius(blurRadius);
-        if (hideGestures != null)
-            blurBuilder.withoutGesture(hideGestures);
+        if (blurRadius != null) blurBuilder.blurRadius(blurRadius);
+        if (hideGestures != null) blurBuilder.withoutGesture(hideGestures);
         return blurBuilder.build();
     }
 
