@@ -39,7 +39,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.uxcam:uxcam:3.5.1'
+    implementation 'com.uxcam:uxcam:3.5.2'
     implementation "com.squareup.okhttp3:okhttp:4.8.1"
 //    implementation fileTree(dir: '/Users/uxcam/AndroidStudioProjects/flutter_uxcam/lib/', include: ['*.jar'])
 }
