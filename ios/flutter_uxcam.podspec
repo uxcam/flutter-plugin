@@ -16,7 +16,7 @@ UXCam flutter plugin
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
   s.static_framework = true
-  s.dependency 'UXCam','~> 3.5.0'
+  s.dependency 'UXCam','~> 3.4.5'
   s.ios.deployment_target = '10.0'
 end
 
