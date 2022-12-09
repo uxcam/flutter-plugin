@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 
-/// Here using NavigatorObserver instead of [RouteObserver] because 
-/// [RouteObserver] only works for Navigator 1.0 and will log nothing 
+/// Here using NavigatorObserver instead of [RouteObserver] because
+/// [RouteObserver] only works for Navigator 1.0 and will log nothing
 /// or perform no calls in case of Navigator 2.0.
 class FlutterUxcamNavigatorObserver extends NavigatorObserver {
   /// Using this approach as we need to keep track of screens
@@ -16,8 +16,13 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
-    screenNames.add(route.settings.name!);
-    setAndTaggingScreenName();
+    /// This line of code is required as there are scenarios where we have
+    /// routing like in popup menu but it is not handled by routing in 
+    /// [onGenerateRoute].
+    if (route.settings.name != null) { 
+      screenNames.add(route.settings.name!);
+      setAndTaggingScreenName();
+    }
   }
 
   @override

@@ -8,12 +8,13 @@ class FlutterUxConfigKeys {
   static const userAppKey = "userAppKey";
   static const enableMultiSessionRecord = "enableMultiSessionRecord";
   static const enableCrashHandling = "enableCrashHandling";
-  static const enableAutomaticScreenNameTagging = "enableAutomaticScreenNameTagging";
+  static const enableAutomaticScreenNameTagging =
+      "enableAutomaticScreenNameTagging";
   static const enableNetworkLogging = "enableNetworkLogging";
-  static const enableAdvancedGestureRecognition = "enableAdvancedGestureRecognition";
+  static const enableAdvancedGestureRecognition =
+      "enableAdvancedGestureRecognition";
   static const occlusion = "occlusion";
 }
-
 
 class FlutterUxConfig {
   String userAppKey;
@@ -26,25 +27,28 @@ class FlutterUxConfig {
   bool? enableAdvancedGestureRecognition;
   List<FlutterUXOcclusion>? occlusions;
 
-  FlutterUxConfig({
-    required this.userAppKey,
-    this.enableMultiSessionRecord,
-    this.enableCrashHandling,
-    this.enableAutomaticScreenNameTagging,
-    this.enableNetworkLogging,
-    this.enableAdvancedGestureRecognition,
-    this.occlusions
-  });
+  FlutterUxConfig(
+      {required this.userAppKey,
+      this.enableMultiSessionRecord,
+      this.enableCrashHandling,
+      this.enableAutomaticScreenNameTagging,
+      this.enableNetworkLogging,
+      this.enableAdvancedGestureRecognition,
+      this.occlusions});
 
   factory FlutterUxConfig.fromJson(Map<String, dynamic> json) {
-      var userAppKey = json[FlutterUxConfigKeys.userAppKey];
-      var config = FlutterUxConfig(userAppKey: userAppKey);
-      config.enableMultiSessionRecord = json[FlutterUxConfigKeys.enableMultiSessionRecord];
-      config.enableCrashHandling = json[FlutterUxConfigKeys.enableCrashHandling];
-      config.enableAutomaticScreenNameTagging = json[FlutterUxConfigKeys.enableAutomaticScreenNameTagging];
-      config.enableNetworkLogging = json[FlutterUxConfigKeys.enableNetworkLogging];
-      config.enableAdvancedGestureRecognition = json[FlutterUxConfigKeys.enableAdvancedGestureRecognition];
-      return config;
+    var userAppKey = json[FlutterUxConfigKeys.userAppKey];
+    var config = FlutterUxConfig(userAppKey: userAppKey);
+    config.enableMultiSessionRecord =
+        json[FlutterUxConfigKeys.enableMultiSessionRecord];
+    config.enableCrashHandling = json[FlutterUxConfigKeys.enableCrashHandling];
+    config.enableAutomaticScreenNameTagging =
+        json[FlutterUxConfigKeys.enableAutomaticScreenNameTagging];
+    config.enableNetworkLogging =
+        json[FlutterUxConfigKeys.enableNetworkLogging];
+    config.enableAdvancedGestureRecognition =
+        json[FlutterUxConfigKeys.enableAdvancedGestureRecognition];
+    return config;
   }
 
   Map<String, dynamic> toJson() {
@@ -52,10 +56,13 @@ class FlutterUxConfig {
       FlutterUxConfigKeys.userAppKey: userAppKey,
       FlutterUxConfigKeys.enableMultiSessionRecord: enableMultiSessionRecord,
       FlutterUxConfigKeys.enableCrashHandling: enableCrashHandling,
-      FlutterUxConfigKeys.enableAutomaticScreenNameTagging: enableAutomaticScreenNameTagging,
+      FlutterUxConfigKeys.enableAutomaticScreenNameTagging:
+          enableAutomaticScreenNameTagging,
       FlutterUxConfigKeys.enableNetworkLogging: enableNetworkLogging,
-      FlutterUxConfigKeys.enableAdvancedGestureRecognition: enableAdvancedGestureRecognition,
-      FlutterUxConfigKeys.occlusion: occlusions?.map((occlusion) => occlusion.toJson()).toList()
+      FlutterUxConfigKeys.enableAdvancedGestureRecognition:
+          enableAdvancedGestureRecognition,
+      FlutterUxConfigKeys.occlusion:
+          occlusions?.map((occlusion) => occlusion.toJson()).toList()
     };
   }
 }
@@ -70,19 +77,20 @@ class FlutterUxcam {
   }
 
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
-    final bool? status =
-    await _channel.invokeMethod<bool>('startWithConfiguration', {"config": config.toJson()});
+    final bool? status = await _channel.invokeMethod<bool>(
+        'startWithConfiguration', {"config": config.toJson()});
     return status!;
   }
 
   static Future<FlutterUxConfig> configurationForUXCam() async {
-    final Map<String, dynamic>? json = await _channel.invokeMapMethod('configurationForUXCam');
+    final Map<String, dynamic>? json =
+        await _channel.invokeMapMethod('configurationForUXCam');
     return FlutterUxConfig.fromJson(json!);
   }
 
   static Future<bool> updateConfiguration(FlutterUxConfig config) async {
-    final bool? status =
-    await _channel.invokeMethod<bool>('updateConfiguration', {"config": config.toJson()});
+    final bool? status = await _channel
+        .invokeMethod<bool>('updateConfiguration', {"config": config.toJson()});
     return status!;
   }
 
@@ -293,17 +301,13 @@ class FlutterUxcam {
 
   static Future<bool> applyOcclusion(FlutterUXOcclusion occlusion) async {
     final bool? status = await _channel.invokeMethod<bool>(
-        'applyOcclusion',
-        { "occlusion": occlusion.toJson()}
-    );
+        'applyOcclusion', {"occlusion": occlusion.toJson()});
     return status!;
   }
 
   static Future<bool> removeOcclusion(FlutterUXOcclusion occlusion) async {
     final bool? status = await _channel.invokeMethod<bool>(
-        'removeOcclusion',
-        { "occlusion": occlusion.toJson() }
-    );
+        'removeOcclusion', {"occlusion": occlusion.toJson()});
     return status!;
   }
 }
