@@ -23,7 +23,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 	
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
     [registrar addMethodCallDelegate:instance channel:channel];
-	[UXCam pluginType:@"flutter" version:@"2.2.1"];
+	[UXCam pluginType:@"flutter" version:@"2.2.2"];
 }
 
 // The handler method - this is the entry point from the Dart code
@@ -200,13 +200,6 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 	BOOL continueSession = [call.arguments[@"key"] boolValue];
 	[UXCam allowShortBreakForAnotherApp:continueSession];
 	result(nil);
-}
-
-- (void)allowShortBreakForAnotherAppWithDuration:(FlutterMethodCall*)call result:(FlutterResult)result
-{
-    int duration = [call.arguments[@"duration"] intValue];
-    [UXCam setAllowShortBreakMaxDuration:duration];
-    result(nil);
 }
 
 - (void)occludeSensitiveScreen:(FlutterMethodCall*)call result:(FlutterResult)result
