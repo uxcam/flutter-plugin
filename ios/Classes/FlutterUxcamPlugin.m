@@ -205,8 +205,9 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 - (void)allowShortBreakForAnotherAppWithDuration:(FlutterMethodCall*)call result:(FlutterResult)result
 {
     int duration = [call.arguments[@"duration"] intValue];
-    [UXCam setAllowShortBreakMaxDuration:duration];
-    result(nil);
+		[UXCam allowShortBreakForAnotherApp:YES];
+		[UXCam setAllowShortBreakMaxDuration:duration];
+		result(nil);
 }
 
 - (void)occludeSensitiveScreen:(FlutterMethodCall*)call result:(FlutterResult)result

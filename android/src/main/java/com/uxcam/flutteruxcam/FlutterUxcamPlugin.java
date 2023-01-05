@@ -205,10 +205,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             UXCam.allowShortBreakForAnotherApp(enable);
             result.success(null);
         } else if ("allowShortBreakForAnotherAppWithDuration".equals(call.method)) {
-            int duration = [call.arguments[@"duration"] intValue];
-            [UXCam allowShortBreakForAnotherApp:YES];
-            [UXCam setAllowShortBreakMaxDuration:duration];
-            result(nil);
+            int duration = call.argument("duration");
+            UXCam.allowShortBreakForAnotherApp(duration);
+            result.success(null);
         } else if ("resumeShortBreakForAnotherApp".equals(call.method)) {
             UXCam.resumeShortBreakForAnotherApp();
             result.success(null);
