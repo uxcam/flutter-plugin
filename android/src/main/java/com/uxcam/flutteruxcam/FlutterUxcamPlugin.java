@@ -15,10 +15,10 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
-import com.uxcam.datamodel.UXCamBlur;
-import com.uxcam.datamodel.UXCamOverlay;
-import com.uxcam.datamodel.UXCamOcclusion;
-import com.uxcam.datamodel.UXCamOccludeAllTextFields;
+import com.uxcam.screenshot.model.UXCamBlur;
+import com.uxcam.screenshot.model.UXCamOverlay;
+import com.uxcam.screenshot.model.UXCamOcclusion;
+import com.uxcam.screenshot.model.UXCamOccludeAllTextFields;
 import com.uxcam.datamodel.UXConfig;
 
 import java.util.ArrayList;
