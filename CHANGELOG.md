@@ -1,6 +1,7 @@
 ## Changelog
 Version         | Changes
 ----------      | ----------
+2.3.0			| Updated iOS SDK to 3.5.2 and Android SDK to 3.6.0, Addition of Occlusion Functionality From Flutter Side
 2.2.2			| Updated Android SDK to 3.5.2
 2.2.1			| Updated iOS SDK to 3.4.5 and Android SDK to 3.5.1
 2.2.0	 		| Updated iOS SDK to 3.4.4 and Android SDK to 3.5.0

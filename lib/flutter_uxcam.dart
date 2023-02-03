@@ -310,4 +310,17 @@ class FlutterUxcam {
         'removeOcclusion', {"occlusion": occlusion.toJson()});
     return status!;
   }
+
+  /// Here the coordinates are the location of the view/enclosing box 
+  /// x0 - topLeft, y0 - topLeft
+  /// x1 - bottomRight, y1 - bottomRight
+  /// The Coordinates are similar to normal graph plotting
+  static Future<void> occludeRectWithCoordinates(int x0, int y0, int x1, int y1) async {
+    await _channel.invokeMethod<void>("occludeRectWithCoordinates", {
+      "x0": x0,
+      "y0": y0,
+      "x1": x1,
+      "y1": y1,
+    });
+  }
 }
