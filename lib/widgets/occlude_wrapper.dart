@@ -66,7 +66,6 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
       bound.bottom.ratioToInt,
     );
 
-    debugPrint(occludePoint.toString());
     FlutterUxcam.occludeRectWithCoordinates(
       occludePoint.topLeftX,
       occludePoint.topLeftY,
