@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.json.JSONArray;
 import androidx.annotation.NonNull;
 
 /**
@@ -117,6 +118,16 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             boolean occludeSensitiveScreen = call.argument("key");
             boolean withoutGesture = call.argument("withoutGesture");
             UXCam.occludeSensitiveScreen(occludeSensitiveScreen, withoutGesture);
+            result.success(null);
+        } else if (call.method.equals("occludeRectWithCoordinates")) {
+            JSONArray data = new JSONArray();
+            data.put(call.argument("x0"));
+            data.put(call.argument("y0"));
+            data.put(call.argument("x1"));
+            data.put(call.argument("y1"));
+            JSONArray coordinates = new JSONArray();
+            coordinates.put(data);
+            UXCam.occludeRectsOnNextFrame(coordinates);
             result.success(null);
         } else if ("setMultiSessionRecord".equals(call.method)) {
             boolean multiSessionRecord = call.argument("key");
