@@ -23,7 +23,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 	
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
     [registrar addMethodCallDelegate:instance channel:channel];
-	[UXCam pluginType:@"flutter" version:@"2.2.2"];
+	[UXCam pluginType:@"flutter" version:@"2.3.0"];
 }
 
 // The handler method - this is the entry point from the Dart code
@@ -98,6 +98,23 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
             [UXCam removeOcclusion];
         }
     }
+}
+
+- (void)occludeRectWithCoordinates:(FlutterMethodCall*)call result:(FlutterResult)result
+{
+    NSNumber* x0 = call.arguments[@"x0"];
+    NSNumber* y0 = call.arguments[@"y0"];
+    NSNumber* x1 = call.arguments[@"x1"];
+    NSNumber* y1 = call.arguments[@"y1"];
+    
+    NSNumber *width = @(x1.integerValue - x0.integerValue);
+    NSNumber *height = @(y1.integerValue - y0.integerValue);
+    
+    NSArray<NSArray<NSNumber*>*> *coordinates = @[@[x0, y0, width, height]];
+    
+    [UXCam occludeRectsOnNextFrame:coordinates];
+    
+    result(nil);
 }
 
 - (void)updateConfiguration:(FlutterMethodCall*)call result:(FlutterResult)result

@@ -15,23 +15,24 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
-import com.uxcam.datamodel.UXCamBlur;
-import com.uxcam.datamodel.UXCamOverlay;
-import com.uxcam.datamodel.UXCamOcclusion;
-import com.uxcam.datamodel.UXCamOccludeAllTextFields;
+import com.uxcam.screenshot.model.UXCamBlur;
+import com.uxcam.screenshot.model.UXCamOverlay;
+import com.uxcam.screenshot.model.UXCamOcclusion;
+import com.uxcam.screenshot.model.UXCamOccludeAllTextFields;
 import com.uxcam.datamodel.UXConfig;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.json.JSONArray;
 import androidx.annotation.NonNull;
 
 /**
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.2.2";
+    private static final String TYPE_VERSION = "2.3.0";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
@@ -117,6 +118,16 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             boolean occludeSensitiveScreen = call.argument("key");
             boolean withoutGesture = call.argument("withoutGesture");
             UXCam.occludeSensitiveScreen(occludeSensitiveScreen, withoutGesture);
+            result.success(null);
+        } else if (call.method.equals("occludeRectWithCoordinates")) {
+            JSONArray data = new JSONArray();
+            data.put(call.argument("x0"));
+            data.put(call.argument("y0"));
+            data.put(call.argument("x1"));
+            data.put(call.argument("y1"));
+            JSONArray coordinates = new JSONArray();
+            coordinates.put(data);
+            UXCam.occludeRectsOnNextFrame(coordinates);
             result.success(null);
         } else if ("setMultiSessionRecord".equals(call.method)) {
             boolean multiSessionRecord = call.argument("key");
