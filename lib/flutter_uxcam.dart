@@ -226,6 +226,21 @@ class FlutterUxcam {
         .invokeMethod('allowShortBreakForAnotherApp', {"key": continueSession});
   }
 
+  /// Pausing Screen Recording by adding Occlusion for screen passing duration
+  /// parameter.
+  ///
+  /// [duration] is timeInMillisecond.
+  ///
+  /// eg: FlutterUXCam.allowShortBreakWithMaxDuration(4000) meaning 4 seconds.
+  ///
+  /// Note: JUST FOR Android - Time to wait before closing current session.
+  /// By default the method will wait 180000ms (3 min) to end the session.
+  static Future<void> allowShortBreakForAnotherAppWithDuration(
+      int duration) async {
+    await _channel.invokeMethod(
+        'allowShortBreakForAnotherAppWithDuration', {"duration": duration});
+  }
+
   static Future<void> setMultiSessionRecord(bool multiSessionRecord) async {
     await _channel
         .invokeMethod('setMultiSessionRecord', {"key": multiSessionRecord});
