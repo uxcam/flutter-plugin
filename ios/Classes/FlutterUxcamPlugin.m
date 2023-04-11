@@ -1,4 +1,3 @@
-\
 #import "FlutterUxcamPlugin.h"
 
 @import UXCam;
@@ -23,7 +22,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 	
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
     [registrar addMethodCallDelegate:instance channel:channel];
-	[UXCam pluginType:@"flutter" version:@"2.3.0"];
+		[UXCam pluginType:@"flutter" version:@"2.3.1"];
 }
 
 // The handler method - this is the entry point from the Dart code
@@ -35,7 +34,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 	SEL selector = NSSelectorFromString(selectorName);
 	if ([self respondsToSelector:selector])
 	{
-		NSLog(@"Hitting the invoke path for %@", call.method);
+		// NSLog(@"Hitting the invoke path for %@", call.method);
 		// From https://stackoverflow.com/a/15761474/701926
 		NSInvocation *inv = [NSInvocation invocationWithMethodSignature:[self methodSignatureForSelector:selector]];
 		[inv setSelector:selector];
