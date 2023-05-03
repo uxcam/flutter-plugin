@@ -32,7 +32,7 @@ import androidx.annotation.NonNull;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.3.1";
+    private static final String TYPE_VERSION = "2.4.0";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
@@ -275,7 +275,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("startWithConfiguration".equals(call.method)) {
             Map<String, Object> configMap = call.argument("config");
             boolean success = startWithConfig(configMap);
-            UXCam.pluginType("flutter", "2.1.1");
+            UXCam.pluginType("flutter", TYPE_VERSION);
             result.success(success);
         } else if ("applyOcclusion".equals(call.method)) {
             Map<String, Object> occlusionMap = call.argument("occlusion");
