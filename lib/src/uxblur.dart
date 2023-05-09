@@ -1,4 +1,4 @@
-import 'package:flutter_uxcam/flutter_occlusion.dart';
+import 'package:flutter_uxcam/src/flutter_occlusion.dart';
 
 class FlutterUxBlurKeys {
   static const blurRadius = "radius";

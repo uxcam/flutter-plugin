@@ -3,8 +3,8 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_uxcam/flutter_uxcam.dart';
-import 'package:flutter_uxcam/helpers/screen_lifecycle.dart';
+import 'package:flutter_uxcam/src/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/helpers/screen_lifecycle.dart';
 
 class OccludeWrapper extends StatefulWidget {
   final Widget child;
