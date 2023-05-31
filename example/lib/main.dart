@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
 
     FlutterUxcam.startWithConfiguration(config);
 
-    return MaterialApp(home: UXCamPage());
+    return const MaterialApp(home: UXCamPage());
   }
 }
 
@@ -104,7 +104,7 @@ class FeatureSection extends StatelessWidget {
           onPressed: onPressed,
           child: Text(buttonTitle),
         ),
-        Divider(),
+        const Divider(),
       ],
     );
   }
