@@ -91,7 +91,8 @@ extension GlobalKeyExtension on GlobalKey {
 extension UtilIntExtension on double {
   int get ratioToInt {
     final bool isAndroid = Platform.isAndroid;
-    final double pixelRatio = window.devicePixelRatio;
+    final double pixelRatio =
+        PlatformDispatcher.instance.views.first.devicePixelRatio;
     return (this * (isAndroid ? pixelRatio : 1.0)).toInt();
   }
 }
