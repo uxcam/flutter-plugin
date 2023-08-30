@@ -1,6 +1,7 @@
 ## Changelog
 Version | Changes |
 -- | -- |
+2.4.4			| Updated iOS SDK to 3.6.5 and Android SDK to 3.6.14 |
 2.4.3			| Updated iOS SDK to 3.6.4 and Android SDK to 3.6.13 |
 2.4.2			| Updated iOS SDK to 3.6.3 and Android SDK to 3.6.7 |
 2.4.1			| Updated Android SDK to 3.6.6<br/> Addition of Documentation for Methods |

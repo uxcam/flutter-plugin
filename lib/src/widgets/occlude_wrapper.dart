@@ -25,7 +25,7 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
 
   @override
   void initState() {
-    Timer.periodic(const Duration(milliseconds: 100), (_) {
+    Timer.periodic(const Duration(milliseconds: 50), (_) {
       if (enableOcclusion) {
         getOccludePoints();
       }
