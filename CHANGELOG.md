@@ -1,6 +1,7 @@
 ## Changelog
 Version | Changes |
 -- | -- |
+2.4.6			| Updated iOS SDK to 3.6.6 and Android SDK to 3.6.15 |
 2.4.5			| Fixed Version Update Issue in Android to 3.6.14 |
 2.4.4			| Updated iOS SDK to 3.6.5 and Android SDK to 3.6.14 |
 2.4.3			| Updated iOS SDK to 3.6.4 and Android SDK to 3.6.13 |
