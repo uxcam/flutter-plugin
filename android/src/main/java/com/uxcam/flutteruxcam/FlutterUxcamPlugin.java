@@ -15,6 +15,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
+import com.uxcam.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
 import com.uxcam.screenshot.model.UXCamOcclusion;
@@ -24,6 +25,7 @@ import com.uxcam.datamodel.UXConfig;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.json.JSONArray;
 import androidx.annotation.NonNull;
@@ -32,7 +34,7 @@ import androidx.annotation.NonNull;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.4.7";
+    private static final String TYPE_VERSION = "2.5.0";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
@@ -145,7 +147,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             result.success(null);
         } else if ("tagScreenName".equals(call.method)) {
             String eventName = call.argument("key");
-            UXCam.tagScreenName(eventName);
+            FlutterFacade.getInstance().tagScreenName(eventName);
             result.success(null);
         } else if ("setAutomaticScreenNameTagging".equals(call.method)) {
             boolean enable = call.argument("key");
@@ -232,13 +234,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("stopApplicationAndUploadData".equals(call.method)) {
             UXCam.stopSessionAndUploadData();
             result.success(null);
-        } else if ("tagScreenName".equals(call.method)) {
-            String screenName = call.arguments();
-            if (screenName == null || screenName.length() == 0) {
-                throw new IllegalArgumentException("missing screen Name");
-            }
-            UXCam.tagScreenName(screenName);
-            result.success(null);
         } else if ("urlForCurrentUser".equals(call.method)) {
             String url = UXCam.urlForCurrentUser();
             result.success(url);
@@ -270,6 +265,18 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 UXCam.reportBugEvent(eventName);
             } else {
                 UXCam.reportBugEvent(eventName, map);
+            }
+            result.success(null);
+        } else if ("reportExceptionEvent".equals(call.method)) {
+            final String dartExceptionMessage = Objects.requireNonNull(call.argument("exception"));
+            final List<Map<String, String>> errorElements = Objects.requireNonNull(call.argument("stackTraceElements"));
+
+            final Map<String, Object> map = call.argument("properties");
+
+            if (map == null || map.size() == 0) {
+                UXCam.reportExceptionEvent(parseToException(dartExceptionMessage, errorElements));
+            } else {
+                UXCam.reportExceptionEvent(parseToException(dartExceptionMessage, errorElements), map);
             }
             result.success(null);
         } else if ("startWithConfiguration".equals(call.method)) {
@@ -400,5 +407,33 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 callback.success(false);
             }
         });
+    }
+
+    private Exception parseToException(String dartExceptionMessage, List<Map<String, String>> errorElements) {
+        final List<StackTraceElement> elements = new ArrayList<>();
+        Exception exception = new FlutterError(dartExceptionMessage);
+
+        for (Map<String, String> errorElement : errorElements) {
+            final StackTraceElement stackTraceElement = generateStackTraceElement(errorElement);
+            if (stackTraceElement != null) {
+                elements.add(stackTraceElement);
+            }
+        }
+        exception.setStackTrace(elements.toArray(new StackTraceElement[0]));
+        return exception;
+    }
+
+    private StackTraceElement generateStackTraceElement(Map<String, String> errorElement) {
+        try {
+            String fileName = errorElement.get("file");
+            String lineNumber = errorElement.get("line");
+            String className = errorElement.get("class");
+            String methodName = errorElement.get("method");
+
+            return new StackTraceElement(className == null ? "" : className, methodName, fileName, Integer.parseInt(Objects.requireNonNull(lineNumber)));
+        } catch (Exception e) {
+            Log.e(TAG, "Unable to generate stack trace element from Dart error.");
+            return null;
+        }
     }
 }

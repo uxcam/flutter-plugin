@@ -1,6 +1,7 @@
 ## Changelog
 Version | Changes |
 -- | -- |
+2.5.0			| Updated iOS SDK to 3.6.9 and Android SDK to 3.6.21<br/> Addition of Exception Capture Feature. |
 2.4.7			| Updated iOS SDK to 3.6.8 and Android SDK to 3.6.19 |
 2.4.6			| Updated iOS SDK to 3.6.6 and Android SDK to 3.6.15 |
 2.4.5			| Fixed Version Update Issue in Android to 3.6.14 |
