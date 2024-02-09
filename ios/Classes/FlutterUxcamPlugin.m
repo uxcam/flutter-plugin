@@ -486,9 +486,9 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
         NSString *lineNumber = stackTraceMap[@"line"];
         NSString *methodName = stackTraceMap[@"method"];
         
-        NSString *concatinatedString = [NSString stringWithFormat:@"%@.%@ (%@:%@) ", className, methodName, fileName, lineNumber];
+        NSString *concatenatedString = [NSString stringWithFormat:@"%@.%@ (%@:%@) ", className, methodName, fileName, lineNumber];
         
-        [stackTrace addObject:concatinatedString];
+        [stackTrace addObject:concatenatedString];
     }
     
     [UXCam reportExceptionEvent:exception reason:exception callStacks:stackTrace properties:nil];
