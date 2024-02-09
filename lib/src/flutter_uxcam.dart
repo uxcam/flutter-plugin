@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/src/flutter_occlusion.dart';
+import 'package:stack_trace/stack_trace.dart';
 
 class FlutterUxConfigKeys {
   static const userAppKey = "userAppKey";
@@ -464,6 +465,24 @@ class FlutterUxcam {
         'reportBugEvent', {"eventName": eventName, "properties": properties});
   }
 
+  /// This method is used for sending any report as Bug as key value pair
+  static Future<void> reportExceptionEvent(
+    dynamic exception,
+    StackTrace? stack,
+  ) async {
+    final StackTrace stackTrace = (stack == null || stack.toString().isEmpty)
+        ? StackTrace.current
+        : stack;
+
+    final List<Map<String, String>> stackTraceElements =
+        getStackTraceElements(stackTrace);
+
+    await _channel.invokeMethod('reportExceptionEvent', {
+      "exception": exception.toString(),
+      "stackTraceElements": stackTraceElements,
+    });
+  }
+
   /// This method is used for applying occlusion (or Blur) settings
   static Future<bool> applyOcclusion(FlutterUXOcclusion occlusion) async {
     final bool? status = await _channel.invokeMethod<bool>(
@@ -491,4 +510,27 @@ class FlutterUxcam {
       "y1": y1,
     });
   }
+}
+
+List<Map<String, String>> getStackTraceElements(StackTrace stackTrace) {
+  final Trace trace = Trace.parseVM(stackTrace.toString()).terse;
+  final List<Map<String, String>> elements = <Map<String, String>>[];
+
+  for (final Frame frame in trace.frames) {
+    final Map<String, String> element = <String, String>{
+      'file': frame.library,
+      'line': frame.line?.toString() ?? '0',
+    };
+    final String member = frame.member ?? '<fn>';
+    final List<String> members = member.split('.');
+    if (members.length > 1) {
+      element['method'] = members.sublist(1).join('.');
+      element['class'] = members.first;
+    } else {
+      element['method'] = member;
+    }
+    elements.add(element);
+  }
+
+  return elements;
 }
