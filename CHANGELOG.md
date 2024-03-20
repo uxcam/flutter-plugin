@@ -1,6 +1,7 @@
 ## Changelog
 Version | Changes |
 -- | -- |
+2.5.2			| Updated iOS SDK to 3.6.11 and Android SDK to 3.6.23 |
 2.5.1			| Addition of namespace to build.gradle for Gradle 8 support. |
 2.5.0			| Updated iOS SDK to 3.6.9 and Android SDK to 3.6.21<br/> Addition of Exception Capture Feature. |
 2.4.7			| Updated iOS SDK to 3.6.8 and Android SDK to 3.6.19 |
