@@ -1,7 +1,7 @@
 ## Changelog
 Version | Changes |
 -- | -- |
-2.5.4           | Updated iOS SDK to 3.6.14 and Android SDK to 3.6.27 |
+2.5.4           | Updated iOS SDK to 3.6.14 and Android SDK to 3.6.28 |
 2.5.3			| Updated iOS SDK to 3.6.13 and Android SDK to 3.6.26 |
 2.5.2			| Updated iOS SDK to 3.6.11 and Android SDK to 3.6.23 |
 2.5.1			| Addition of namespace to build.gradle for Gradle 8 support. |
