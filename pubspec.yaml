@@ -1,6 +1,6 @@
 name: flutter_uxcam
 description: A Wrapper Plugin for UXCam SDK which helps to connect and configure SDK to flutter apps.
-version: 2.5.4
+version: 2.5.5
 homepage: https://uxcam.com/
 
 environment:
