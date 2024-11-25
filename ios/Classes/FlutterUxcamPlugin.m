@@ -74,19 +74,13 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 - (void)applyOcclusion:(FlutterMethodCall*)call result:(FlutterResult)result
 {
     NSDictionary *occlusionJson = call.arguments[@"occlusion"];
-    NSArray<NSString *> *screens = call.arguments[@"screens"];
     if (occlusionJson && ![occlusionJson isKindOfClass:NSNull.class]) {
         id <UXCamOcclusionSetting> setting = [UXCamOcclusion getSettingFromJson:occlusionJson];
+        NSArray *screens = [occlusionJson objectForKey:@"screens"];;
         if (setting)
         {
-            if (screens)
-            {  
-                [UXCam applyOcclusion:setting toScreens:screens];
-            }
-            else
-            {
-                [UXCam applyOcclusion:setting];
-            }
+            [UXCam applyOcclusion:setting toScreens:screens];
+
         }
     }
 }
