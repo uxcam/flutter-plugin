@@ -76,7 +76,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
     NSDictionary *occlusionJson = call.arguments[@"occlusion"];
     if (occlusionJson && ![occlusionJson isKindOfClass:NSNull.class]) {
         id <UXCamOcclusionSetting> setting = [UXCamOcclusion getSettingFromJson:occlusionJson];
-        NSArray<NSString *> *screens = occlusionJson[@"screens"] ?: [];
+        NSArray<NSString *> *screens = occlusionJson[@"screens"] ?: @[];
         if (setting)
         {
             [UXCam applyOcclusion:setting toScreens:screens];
