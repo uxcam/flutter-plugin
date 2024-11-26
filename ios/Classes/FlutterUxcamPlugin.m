@@ -3,6 +3,7 @@
 @import UXCam;
 
 static const NSString *FlutterAppKey = @"userAppKey";
+static const NSString *FlutterConfiguration = @"config";
 static const NSString *FlutterEnableMultiSessionRecord = @"enableMultiSessionRecord";
 static const NSString *FlutterEnableScreenNameTagging = @"enableAutomaticScreenNameTagging";
 static const NSString *FlutterEnableCrashHandling = @"enableCrashHandling";
@@ -22,7 +23,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
     
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
     [registrar addMethodCallDelegate:instance channel:channel];
-    [UXCam pluginType:@"flutter" version:@"2.5.5"];
+    [UXCam pluginType:@"flutter" version:@"2.5.6"];
 }
 
 // The handler method - this is the entry point from the Dart code
@@ -61,7 +62,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
 - (void)startWithConfiguration:(FlutterMethodCall*)call result:(FlutterResult)result
 {
-    NSDictionary *configDict = call.arguments[@"config"];
+    NSDictionary *configDict = call.arguments[FlutterConfiguration];
     NSString *appKey = configDict[FlutterAppKey];
     UXCamConfiguration *config = [[UXCamConfiguration alloc] initWithAppKey:appKey];
     [self updateConfiguration:config withDict:configDict];
@@ -73,19 +74,21 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
 - (void)applyOcclusion:(FlutterMethodCall*)call result:(FlutterResult)result
 {
-    NSDictionary *occlusionJson = call.arguments[@"occlusion"];
+    NSDictionary *occlusionJson = call.arguments[FlutterOcclusion];
     if (occlusionJson && ![occlusionJson isKindOfClass:NSNull.class]) {
         id <UXCamOcclusionSetting> setting = [UXCamOcclusion getSettingFromJson:occlusionJson];
+        NSArray<NSString *> *screens = occlusionJson[FlutterOccludeScreens] ?: @[];
         if (setting)
         {
-            [UXCam applyOcclusion:setting];
+            [UXCam applyOcclusion:setting toScreens:screens];
+
         }
     }
 }
 
 - (void)removeOcclusion:(FlutterMethodCall*)call result:(FlutterResult)result
 {
-    NSDictionary *occlusionJson = call.arguments[@"occlusion"];
+    NSDictionary *occlusionJson = call.arguments[FlutterOcclusion];
     if (occlusionJson && ![occlusionJson isKindOfClass:NSNull.class]) {
         id <UXCamOcclusionSetting> setting = [UXCamOcclusion getSettingFromJson:occlusionJson];
         if (setting)
@@ -118,7 +121,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
 - (void)updateConfiguration:(FlutterMethodCall*)call result:(FlutterResult)result
 {
-    NSDictionary *configDict = call.arguments[@"config"];
+    NSDictionary *configDict = call.arguments[FlutterConfiguration];
     UXCamConfiguration *config = UXCam.configuration;
     if (!config)
     {
