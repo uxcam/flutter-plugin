@@ -21,28 +21,28 @@ class OccludeWrapper extends StatefulWidget {
 class _OccludeWrapperState extends State<OccludeWrapper> {
   late OccludePoint occludePoint;
   final GlobalKey _widgetKey = GlobalKey();
-  bool enableOcclusion = true;
+  Timer? _timer = null;
 
-  @override
-  void initState() {
-    Timer.periodic(const Duration(milliseconds: 50), (_) {
-      if (enableOcclusion) {
-        getOccludePoints();
-      }
+  void startTimer() {
+    _timer = Timer.periodic(const Duration(milliseconds: 50), (_) {
+      getOccludePoints();
     });
-    super.initState();
+  }
+
+  void cancelTimer() {
+    _timer?.cancel();
+    _timer = null;
+    FlutterUxcam.occludeRectWithCoordinates(0, 0, 0, 0);
   }
 
   @override
   Widget build(BuildContext context) {
     return ScreenLifecycle(
       onFocusLost: () {
-        if (mounted) {
-          enableOcclusion = false;
-        }
+        cancelTimer();
       },
       onFocusGained: () {
-        enableOcclusion = true;
+        startTimer();
       },
       child: Container(
         key: _widgetKey,
