@@ -24,6 +24,7 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
   Timer? _timer = null;
 
   void startTimer() {
+    getOccludePoints();
     _timer = Timer.periodic(const Duration(milliseconds: 50), (_) {
       getOccludePoints();
     });
