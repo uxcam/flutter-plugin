@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/src/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/screen_lifecycle.dart';
