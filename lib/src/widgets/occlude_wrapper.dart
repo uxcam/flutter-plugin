@@ -24,6 +24,7 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
   Timer? _timer = null;
 
   void startTimer() {
+    getOccludePoints();
     _timer = Timer.periodic(const Duration(milliseconds: 50), (_) {
       getOccludePoints();
     });
@@ -33,6 +34,14 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
     _timer?.cancel();
     _timer = null;
     FlutterUxcam.occludeRectWithCoordinates(0, 0, 0, 0);
+  }
+
+  @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      getOccludePoints();
+    });
+    super.initState();
   }
 
   @override
