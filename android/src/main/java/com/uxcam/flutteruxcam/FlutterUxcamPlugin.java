@@ -129,7 +129,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             data.put(call.argument("y1"));
             JSONArray coordinates = new JSONArray();
             coordinates.put(data);
-            UXCam.occludeRectsOnNextFrame(coordinates);
+            UXCam.flutterOccludeRectsOnNextFrame(coordinates);
             result.success(null);
         } else if ("setMultiSessionRecord".equals(call.method)) {
             boolean multiSessionRecord = call.argument("key");
