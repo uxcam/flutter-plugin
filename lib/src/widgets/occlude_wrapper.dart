@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/src/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/screen_lifecycle.dart';
@@ -24,7 +25,6 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
   Timer? _timer = null;
 
   void startTimer() {
-    getOccludePoints();
     _timer = Timer.periodic(const Duration(milliseconds: 50), (_) {
       getOccludePoints();
     });
@@ -34,6 +34,12 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
     _timer?.cancel();
     _timer = null;
     FlutterUxcam.occludeRectWithCoordinates(0, 0, 0, 0);
+  }
+
+  @override
+  void initState() {
+    getOccludePoints();
+    super.initState();
   }
 
   @override
