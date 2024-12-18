@@ -37,6 +37,14 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
   }
 
   @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      getOccludePoints();
+    });
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ScreenLifecycle(
       onFocusLost: () {
