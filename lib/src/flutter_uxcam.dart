@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/src/flutter_occlusion.dart';
-import 'package:flutter_uxcam/src/widgets/occlude_warpper_manager.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper.dart';
 import 'package:stack_trace/stack_trace.dart';
 

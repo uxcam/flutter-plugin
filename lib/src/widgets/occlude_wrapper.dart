@@ -5,7 +5,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/src/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/screen_lifecycle.dart';
-import 'package:flutter_uxcam/src/widgets/occlude_warpper_manager.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 
 class OccludeWrapper extends StatefulWidget {
   final Widget child;
@@ -55,16 +55,6 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
     );
   }
 
-  void registerOcclusionWidget() {
-    var item = OcclusionWrapperItem(widget,_widgetKey);
-    OcclusionWrapperManager.instance.registerOcclusionWrapper(item);
-  }
-
-  void unRegisterOcclusionWidget() {
-    var item = OcclusionWrapperItem(widget,_widgetKey);
-    OcclusionWrapperManager.instance.unRegisterOcclusionWrapper(item);
-  }
-
   void getOccludePoints() {
     // Preventing Extra Operation
     if (!mounted) return;
@@ -87,6 +77,17 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
       occludePoint.bottomRightY,
     );
   }
+
+  void registerOcclusionWidget() {
+    var item = OcclusionWrapperItem(widget,_widgetKey);
+    OcclusionWrapperManager.instance.registerOcclusionWrapper(item);
+  }
+
+  void unRegisterOcclusionWidget() {
+    var item = OcclusionWrapperItem(widget,_widgetKey);
+    OcclusionWrapperManager.instance.unRegisterOcclusionWrapper(item);
+  }
+}
 
 extension OccludeWrapperExtensions on OccludeWrapper {
   OccludePoint getOccludePoint(GlobalKey<State<StatefulWidget>> key) {
