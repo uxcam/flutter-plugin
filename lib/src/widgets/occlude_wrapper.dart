@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/src/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/screen_lifecycle.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_warpper_manager.dart';
 
 class OccludeWrapper extends StatefulWidget {
   final Widget child;
@@ -40,9 +41,11 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
   Widget build(BuildContext context) {
     return ScreenLifecycle(
       onFocusLost: () {
+        unRegisterOcclusionWidget();
         cancelTimer();
       },
       onFocusGained: () {
+        registerOcclusionWidget();
         startTimer();
       },
       child: Container(
@@ -50,6 +53,16 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
         child: widget.child,
       ),
     );
+  }
+
+  void registerOcclusionWidget() {
+    var item = OcclusionWrapperItem(widget,_widgetKey);
+    OcclusionWrapperManager.instance.registerOcclusionWrapper(item);
+  }
+
+  void unRegisterOcclusionWidget() {
+    var item = OcclusionWrapperItem(widget,_widgetKey);
+    OcclusionWrapperManager.instance.unRegisterOcclusionWrapper(item);
   }
 
   void getOccludePoints() {
@@ -73,6 +86,28 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
       occludePoint.bottomRightX,
       occludePoint.bottomRightY,
     );
+  }
+
+extension OccludeWrapperExtensions on OccludeWrapper {
+  OccludePoint getOccludePoint(GlobalKey<State<StatefulWidget>> key) {
+
+    var occludePoint = OccludePoint(0, 0, 0, 0);
+
+    Rect? bound = key.globalPaintBounds;
+
+    if (bound == null) return occludePoint;
+
+    occludePoint = OccludePoint(
+      bound.left.ratioToInt,
+      bound.top.ratioToInt,
+      bound.right.ratioToInt,
+      bound.bottom.ratioToInt,
+    );
+
+    OcclusionWrapperManager.instance.updateOcclusionRects(occludePoint);
+
+    return occludePoint;
+
   }
 }
 
@@ -114,5 +149,14 @@ class OccludePoint {
   @override
   String toString() {
     return 'OccludePoint(topLeftX: $topLeftX, topLeftY: $topLeftY, bottomRightX: $bottomRightX, bottomRightY: $bottomRightY)';
+  }
+
+  Map<String, int> toJson() {
+    return {
+      "x0": topLeftX,
+      "y0": topLeftY,
+      "x1": bottomRightX,
+      "y1": bottomRightY,
+    };
   }
 }

@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/src/flutter_occlusion.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_warpper_manager.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_wrapper.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 class FlutterUxConfigKeys {
@@ -104,7 +106,21 @@ class FlutterUxcam {
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
+
+    _channel.setMethodCallHandler((MethodCall call) async {
+      if (call.method == "requestAllOcclusionRects") {
+        final String requestId = call.arguments as String;
+        return _handleRequestData(requestId);
+      }
+    });
     return status!;
+  }
+
+  /// This method collects the occlusionWrapper Rects as list.
+  static List<Map<String,int>> _handleRequestData(String requestId) {
+    // Simulate data preparation
+    var rects = OcclusionWrapperManager.instance.occlusionRects.map((rect) => rect.toJson()).toList();
+    return rects;
   }
 
   /// This call is available only for IOS portion of the SDK so not sure will work on Android.
