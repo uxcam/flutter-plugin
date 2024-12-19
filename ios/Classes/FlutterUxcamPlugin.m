@@ -13,6 +13,14 @@ static const NSString *FlutterOcclusion = @"occlusion";
 static const NSString *FlutterOccludeScreens = @"screens";
 static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
+typedef NSArray<NSArray<NSNumber*>*>* OcclusionRectArray;
+typedef OcclusionRectArray (^OcclusionRectCompletionBlock)(void);
+
+@interface FlutterUxcamPlugin ()
+@property(nonatomic, strong) FlutterMethodChannel *flutterChannel;
+@property (nonatomic, copy) void (^occludeRectsRequestHandler)(OcclusionRectCompletionBlock);
+@end
+
 @implementation FlutterUxcamPlugin
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar
@@ -22,6 +30,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
                                      binaryMessenger:[registrar messenger]];
     
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
+    instance.flutterChannel = channel;
     [registrar addMethodCallDelegate:instance channel:channel];
     [UXCam pluginType:@"flutter" version:@"2.5.6"];
 }
@@ -54,6 +63,24 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
     }
 }
 
+- (OcclusionRectArray)requestOcclusionRectOnDemand {
+    __block OcclusionRectArray response = nil;
+
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+    [self.flutterChannel invokeMethod:@"requestAllOcclusionRects"
+                             arguments:nil
+                               result:^(id _Nullable flutterResult) {
+        response = flutterResult;
+        dispatch_semaphore_signal(semaphore);
+    }];
+
+    // Wait for the Flutter response (blocking)
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+
+    return response;
+}
+
 // The methods that map onto the Native UXCam calls
 - (void)getPlatformVersion:(FlutterMethodCall*)call result:(FlutterResult)result
 {
@@ -66,10 +93,21 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
     NSString *appKey = configDict[FlutterAppKey];
     UXCamConfiguration *config = [[UXCamConfiguration alloc] initWithAppKey:appKey];
     [self updateConfiguration:config withDict:configDict];
+
+    self.occludeRectsRequestHandler = ^(OcclusionRectCompletionBlock) {
+       
+   };
     
     [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
         result(@(started));
     }];
+}
+
+- (OcclusionRectCompletionBlock)getValueClosure {
+    // Return a block capturing self.value
+    return ^{
+        return self.requestOcclusionRectOnDemand;
+    };
 }
 
 - (void)applyOcclusion:(FlutterMethodCall*)call result:(FlutterResult)result
@@ -483,7 +521,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
     // HERE we need to convert NSArray<NSDictionary*>* to NSArray<NSString*>*
     NSMutableArray<NSString*>* stackTrace = [NSMutableArray array];
     
-    for (NSDictionary* stackTraceMap in stackTraceElements) {        
+    for (NSDictionary* stackTraceMap in stackTraceElements) {
         NSString *className = stackTraceMap[@"class"];
         NSString *fileName = stackTraceMap[@"file"];
         NSString *lineNumber = stackTraceMap[@"line"];
