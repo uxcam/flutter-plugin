@@ -32,7 +32,7 @@ typedef OcclusionRectArray (^OcclusionRectCompletionBlock)(void);
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
     instance.flutterChannel = channel;
     [registrar addMethodCallDelegate:instance channel:channel];
-    [UXCam pluginType:@"flutter" version:@"2.5.6"];
+    [UXCam pluginType:@"flutter" version:@"2.5.7"];
 }
 
 // The handler method - this is the entry point from the Dart code
