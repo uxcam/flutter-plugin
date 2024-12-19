@@ -61,6 +61,7 @@ typedef void (^OcclusionRectCompletionBlock)(NSArray* _Nonnull rects);
         result(FlutterMethodNotImplemented);
     }
 }
+
 // The methods that map onto the Native UXCam calls
 - (void)getPlatformVersion:(FlutterMethodCall*)call result:(FlutterResult)result
 {
