@@ -34,13 +34,7 @@ class OcclusionWrapperManager {
   }
 
   List<OccludePoint> getOccludePoints() {
-    final rects = <OccludePoint>[];
-    // Preventing Extra Operation
-    for (var wrapper in items) {
-      var rect = wrapper.widget.getOccludePoint(wrapper.key);
-      rects.add(rect);
-    }
-    return rects;
+    return items.map((wrapper) => wrapper.widget.getOccludePoint(wrapper.key)).toList();
   }
 
   void updateOcclusionRects(OccludePoint rect) {
@@ -49,6 +43,12 @@ class OcclusionWrapperManager {
 
   void resetOcclusionRect() {
     occlusionRects.clear();
+  }
+
+  List<Map<String, dynamic>> sendOcclusionRects() {
+    var _occlusionPoints = getOccludePoints();
+    var json = _occlusionPoints.map((rect) => rect.toJson()).toList();
+    return json;
   }
 
 

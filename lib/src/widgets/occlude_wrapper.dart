@@ -50,11 +50,11 @@ class _OccludeWrapperState extends State<OccludeWrapper> {
     return ScreenLifecycle(
       onFocusLost: () {
         unRegisterOcclusionWidget();
-        cancelTimer();
+        // cancelTimer();
       },
       onFocusGained: () {
         registerOcclusionWidget();
-        startTimer();
+        // startTimer();
       },
       child: Container(
         key: _widgetKey,
@@ -113,8 +113,6 @@ extension OccludeWrapperExtensions on OccludeWrapper {
       bound.bottom.ratioToInt,
     );
 
-    OcclusionWrapperManager.instance.updateOcclusionRects(occludePoint);
-
     return occludePoint;
 
   }
@@ -160,7 +158,7 @@ class OccludePoint {
     return 'OccludePoint(topLeftX: $topLeftX, topLeftY: $topLeftY, bottomRightX: $bottomRightX, bottomRightY: $bottomRightY)';
   }
 
-  Map<String, int> toJson() {
+  Map<String, dynamic> toJson() {
     return {
       "x0": topLeftX,
       "y0": topLeftY,
