@@ -108,7 +108,8 @@ class FlutterUxcam {
 
     _channel.setMethodCallHandler((MethodCall call) async {
       if (call.method == "requestAllOcclusionRects") {
-        return _handleRequestData();
+        var json = _handleRequestData();
+        return json;
       }
       return null;
     });
@@ -117,7 +118,8 @@ class FlutterUxcam {
 
   /// This method collects the occlusionWrapper Rects as list.
   static List<Map<String, dynamic>> _handleRequestData() {
-    var rects = OcclusionWrapperManager.instance.sendOcclusionRects();
+    var instance = OcclusionWrapperManager.instance;
+    var rects = instance.sendOcclusionRects();
     return rects;
   }
 

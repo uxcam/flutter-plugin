@@ -112,8 +112,8 @@ typedef NSArray<NSArray<NSNumber*>*>*  (^OcclusionRectCompletionBlock)(void);
     UXCamConfiguration *config = [[UXCamConfiguration alloc] initWithAppKey:appKey];
     [self updateConfiguration:config withDict:configDict];
     
-    // self.occludeRectsRequestHandler = [self getOcclusionRect];
-    // [UXCam setOccludeRectsRequestHandler:self.occludeRectsRequestHandler];
+    self.occludeRectsRequestHandler = [self getOcclusionRect];
+    [UXCam setOccludeRectsRequestHandler:self.occludeRectsRequestHandler];
     
     [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
         result(@(started));
