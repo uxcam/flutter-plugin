@@ -13,11 +13,11 @@ static const NSString *FlutterOcclusion = @"occlusion";
 static const NSString *FlutterOccludeScreens = @"screens";
 static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
-typedef NSArray<NSArray<NSNumber*>*>*  (^OcclusionRectCompletionBlock)(void);
+typedef void (^OcclusionRectCompletionBlock)(NSArray* _Nonnull rects);
 
 @interface FlutterUxcamPlugin ()
 @property(nonatomic, strong) FlutterMethodChannel *flutterChannel;
-@property (nonatomic, copy) NSArray<NSArray<NSNumber*>*>* (^occludeRectsRequestHandler)(void);
+@property (nonatomic, copy) void (^occludeRectsRequestHandler)(void (^)(NSArray *));
 @end
 
 @implementation FlutterUxcamPlugin
@@ -61,44 +61,6 @@ typedef NSArray<NSArray<NSNumber*>*>*  (^OcclusionRectCompletionBlock)(void);
         result(FlutterMethodNotImplemented);
     }
 }
-
-- (NSArray<NSArray<NSNumber*>*>* )requestOcclusionRectOnDemand {
-    __block NSArray *response = nil;
-
-    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-
-    [self.flutterChannel invokeMethod:@"requestAllOcclusionRects"
-                             arguments:nil
-                               result:^(id _Nullable flutterResult) {
-        
-        if ([flutterResult isKindOfClass:[NSArray class]]) {
-            response = (NSArray *)flutterResult;
-        }
-        dispatch_semaphore_signal(semaphore);
-    }];
-
-//    dispatch_time_t *time = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC));
-//    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_NOW);
-    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
-    
-    NSMutableArray<NSArray<NSNumber*> *> *parsedRect = [NSMutableArray array];
-    for (NSDictionary *rectdict in response) {
-        
-        NSNumber* x0 = rectdict[@"x0"];
-        NSNumber* y0 = rectdict[@"y0"];
-        NSNumber* x1 = rectdict[@"x1"];
-        NSNumber* y1 = rectdict[@"y1"];
-        
-        NSNumber *width = @(x1.integerValue - x0.integerValue);
-        NSNumber *height = @(y1.integerValue - y0.integerValue);
-        
-        NSArray<NSNumber*> *coordinates = @[x0, y0, width, height];
-        
-        [parsedRect addObject:coordinates];
-    }
-    return [parsedRect copy];
-}
-
 // The methods that map onto the Native UXCam calls
 - (void)getPlatformVersion:(FlutterMethodCall*)call result:(FlutterResult)result
 {
@@ -112,20 +74,102 @@ typedef NSArray<NSArray<NSNumber*>*>*  (^OcclusionRectCompletionBlock)(void);
     UXCamConfiguration *config = [[UXCamConfiguration alloc] initWithAppKey:appKey];
     [self updateConfiguration:config withDict:configDict];
     
-    self.occludeRectsRequestHandler = [self getOcclusionRect];
-    [UXCam setOccludeRectsRequestHandler:self.occludeRectsRequestHandler];
+    __weak FlutterUxcamPlugin *weakSelf = self;
+    self.occludeRectsRequestHandler = ^(OcclusionRectCompletionBlock completion){
+        [weakSelf requestAllRectsFromFlutterWithCompletion: completion];
+    };
+    
+    [UXCam setOccludeRectsRequestHandler: self.occludeRectsRequestHandler];
     
     [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
         result(@(started));
     }];
 }
 
-- (OcclusionRectCompletionBlock) getOcclusionRect
-{
-    return ^{
-        return self.requestOcclusionRectOnDemand;
-    };
+- (void)requestAllRectsFromFlutterWithCompletion:(OcclusionRectCompletionBlock)completion {
+    
+    [self.flutterChannel invokeMethod:@"requestAllOcclusionRects"
+                            arguments:nil
+                               result:^(id _Nullable flutterResult) {
+        if ([flutterResult isKindOfClass:[NSArray class]]) {
+            if ([flutterResult isKindOfClass:[NSArray class]]) {
+                NSArray *response = (NSArray *)flutterResult;
+                
+                NSMutableArray<NSArray<NSNumber*> *> *parsedRect = [NSMutableArray array];
+                for (NSDictionary *rectdict in response) {
+                    
+                    NSNumber* x0 = rectdict[@"x0"];
+                    NSNumber* y0 = rectdict[@"y0"];
+                    NSNumber* x1 = rectdict[@"x1"];
+                    NSNumber* y1 = rectdict[@"y1"];
+                    
+                    NSNumber *width = @(x1.integerValue - x0.integerValue);
+                    NSNumber *height = @(y1.integerValue - y0.integerValue);
+                    
+                    NSArray<NSNumber*> *coordinates = @[x0, y0, width, height];
+                    
+                    [parsedRect addObject:coordinates];
+                }
+                completion([parsedRect copy]);
+            }
+        } else {
+            completion(@[]);
+        }
+    }];
 }
+
+//- (OcclusionRectCompletionBlock) getOcclusionRect
+//{
+//    return ^{
+//        return self.requestOcclusionRectOnDemand;
+//    };
+//}
+//
+//- (NSArray<NSArray<NSNumber*>*>* )requestOcclusionRectOnDemand {
+//    __block NSArray *response = nil;
+//
+//    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+//    
+//    dispatch_queue_t backgroundQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+//    
+//    dispatch_async(backgroundQueue, ^{
+//        dispatch_async(dispatch_get_main_queue(), ^{
+//            [self.flutterChannel invokeMethod:@"requestAllOcclusionRects"
+//                                    arguments:nil
+//                                       result:^(id _Nullable flutterResult) {
+//                
+//                if ([flutterResult isKindOfClass:[NSArray class]]) {
+//                    response = (NSArray *)flutterResult;
+//                }
+//                dispatch_semaphore_signal(semaphore);
+//            }];
+//        });
+//        
+//        dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+//        
+//    });
+//
+////    dispatch_time_t *time = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC));
+////    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_NOW);
+//    dispatch_sync(backgroundQueue, ^{});
+//    
+//    NSMutableArray<NSArray<NSNumber*> *> *parsedRect = [NSMutableArray array];
+//    for (NSDictionary *rectdict in response) {
+//        
+//        NSNumber* x0 = rectdict[@"x0"];
+//        NSNumber* y0 = rectdict[@"y0"];
+//        NSNumber* x1 = rectdict[@"x1"];
+//        NSNumber* y1 = rectdict[@"y1"];
+//        
+//        NSNumber *width = @(x1.integerValue - x0.integerValue);
+//        NSNumber *height = @(y1.integerValue - y0.integerValue);
+//        
+//        NSArray<NSNumber*> *coordinates = @[x0, y0, width, height];
+//        
+//        [parsedRect addObject:coordinates];
+//    }
+//    return [parsedRect copy];
+//}
 
 - (void)applyOcclusion:(FlutterMethodCall*)call result:(FlutterResult)result
 {
