@@ -34,7 +34,7 @@ import androidx.annotation.NonNull;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.5.6";
+    private static final String TYPE_VERSION = "2.5.7";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
@@ -129,7 +129,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             data.put(call.argument("y1"));
             JSONArray coordinates = new JSONArray();
             coordinates.put(data);
-            UXCam.occludeRectsOnNextFrame(coordinates);
+            UXCam.flutterOccludeRectsOnNextFrame(coordinates);
             result.success(null);
         } else if ("setMultiSessionRecord".equals(call.method)) {
             boolean multiSessionRecord = call.argument("key");
