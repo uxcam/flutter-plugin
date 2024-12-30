@@ -137,7 +137,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 {
     NSNumber *enableIntegrationLogging = configDict[FlutterEnableIntegrationLogging];
     if (enableIntegrationLogging && ![FlutterEnableIntegrationLogging isKindOfClass:NSNull.class]) {
-        config.enableIntegrationLogging = [FlutterEnableIntegrationLogging boolValue];
+        config.enableIntegrationLogging = [enableIntegrationLogging boolValue];
     }
     
     NSNumber *enableMultiSessionRecord = configDict[FlutterEnableMultiSessionRecord];
