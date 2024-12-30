@@ -4,6 +4,7 @@
 
 static const NSString *FlutterAppKey = @"userAppKey";
 static const NSString *FlutterConfiguration = @"config";
+static const NSString *FlutterEnableIntegrationLogging = @"enableIntegrationLogging";
 static const NSString *FlutterEnableMultiSessionRecord = @"enableMultiSessionRecord";
 static const NSString *FlutterEnableScreenNameTagging = @"enableAutomaticScreenNameTagging";
 static const NSString *FlutterEnableCrashHandling = @"enableCrashHandling";
@@ -134,6 +135,11 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
 - (void)updateConfiguration:(UXCamConfiguration *)config withDict:(NSDictionary *)configDict
 {
+    NSNumber *enableIntegrationLogging = configDict[FlutterEnableIntegrationLogging];
+    if (enableIntegrationLogging && ![FlutterEnableIntegrationLogging isKindOfClass:NSNull.class]) {
+        config.enableIntegrationLogging = [FlutterEnableIntegrationLogging boolValue];
+    }
+    
     NSNumber *enableMultiSessionRecord = configDict[FlutterEnableMultiSessionRecord];
     if (enableMultiSessionRecord && ![enableMultiSessionRecord isKindOfClass:NSNull.class]) {
         config.enableMultiSessionRecord = [enableMultiSessionRecord boolValue];
@@ -183,6 +189,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
     
     NSDictionary *configDict = @{
         FlutterAppKey: configuration.userAppKey,
+        FlutterEnableIntegrationLogging: @(configuration.enableIntegrationLogging),
         FlutterEnableMultiSessionRecord: @(configuration.enableMultiSessionRecord),
         FlutterEnableScreenNameTagging: @(configuration.enableAutomaticScreenNameTagging),
         FlutterEnableCrashHandling: @(configuration.enableCrashHandling),
