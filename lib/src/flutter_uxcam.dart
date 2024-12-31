@@ -7,6 +7,7 @@ import 'package:stack_trace/stack_trace.dart';
 
 class FlutterUxConfigKeys {
   static const userAppKey = "userAppKey";
+  static const enableIntegrationLogging = "enableIntegrationLogging";
   static const enableMultiSessionRecord = "enableMultiSessionRecord";
   static const enableCrashHandling = "enableCrashHandling";
   static const enableAutomaticScreenNameTagging =
@@ -23,6 +24,8 @@ class FlutterUxConfigKeys {
 /// 
 /// [userAppKey] is String. Required. Should be present to start SDK
 /// 
+/// [enableIntegrationLogging] is boolean and default set to false.
+/// 
 /// [enableMultiSessionRecord] is boolean
 /// 
 /// [enableCrashHandling] is boolean
@@ -37,6 +40,7 @@ class FlutterUxConfigKeys {
 class FlutterUxConfig {
   String userAppKey;
 
+  bool? enableIntegrationLogging;
   bool? enableMultiSessionRecord;
   bool? enableCrashHandling;
   bool? enableAutomaticScreenNameTagging;
@@ -46,6 +50,7 @@ class FlutterUxConfig {
 
   FlutterUxConfig({
     required this.userAppKey,
+    this.enableIntegrationLogging,
     this.enableMultiSessionRecord,
     this.enableCrashHandling,
     this.enableAutomaticScreenNameTagging,
@@ -57,6 +62,8 @@ class FlutterUxConfig {
   factory FlutterUxConfig.fromJson(Map<String, dynamic> json) {
     var userAppKey = json[FlutterUxConfigKeys.userAppKey];
     var config = FlutterUxConfig(userAppKey: userAppKey);
+    config.enableIntegrationLogging = 
+        json[FlutterUxConfigKeys.enableIntegrationLogging];
     config.enableMultiSessionRecord =
         json[FlutterUxConfigKeys.enableMultiSessionRecord];
     config.enableCrashHandling = json[FlutterUxConfigKeys.enableCrashHandling];
@@ -72,6 +79,7 @@ class FlutterUxConfig {
   Map<String, dynamic> toJson() {
     return {
       FlutterUxConfigKeys.userAppKey: userAppKey,
+      FlutterUxConfigKeys.enableIntegrationLogging: enableIntegrationLogging,
       FlutterUxConfigKeys.enableMultiSessionRecord: enableMultiSessionRecord,
       FlutterUxConfigKeys.enableCrashHandling: enableCrashHandling,
       FlutterUxConfigKeys.enableAutomaticScreenNameTagging:
