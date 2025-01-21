@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/src/flutter_occlusion.dart';
+import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 class FlutterUxConfigKeys {
@@ -110,11 +111,15 @@ class FlutterUxcam {
   ///
   /// * [FlutterUxConfig](https://pub.dev/documentation/flutter_uxcam/latest/uxcam/FlutterUxConfig-class.html)
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
+    
+    ChannelCallback.handleChannelCallBacks(_channel);
+
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
+
     return status!;
   }
-
+  
   /// This call is available only for IOS portion of the SDK so not sure will work on Android.
   static Future<FlutterUxConfig> configurationForUXCam() async {
     final Map<String, dynamic>? json =
