@@ -317,7 +317,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
             UXConfig.Builder uxConfigBuilder = new UXConfig.Builder(appKey);
             if (enableIntegrationLogging != null)
-                // uxConfigBuilder.enableIntegrationLogging(enableIntegrationLogging);
+                uxConfigBuilder.enableIntegrationLogging(enableIntegrationLogging);
             if (enableMultiSessionRecord != null)
                 uxConfigBuilder.enableMultiSessionRecord(enableMultiSessionRecord);
             if (enableCrashHandling != null)
