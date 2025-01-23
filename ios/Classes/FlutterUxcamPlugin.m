@@ -204,7 +204,7 @@ typedef void (^FrameRenderingCompletionBlock)(BOOL status);
 - (void)updateConfiguration:(UXCamConfiguration *)config withDict:(NSDictionary *)configDict
 {
     NSNumber *enableIntegrationLogging = configDict[FlutterEnableIntegrationLogging];
-    if (enableIntegrationLogging && ![FlutterEnableIntegrationLogging isKindOfClass:NSNull.class]) {
+    if (enableIntegrationLogging && ![enableIntegrationLogging isKindOfClass:NSNull.class]) {
         config.enableIntegrationLogging = [enableIntegrationLogging boolValue];
     }
     
