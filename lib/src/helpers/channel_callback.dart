@@ -47,24 +47,27 @@ class ChannelCallback {
 
     try {
       // Immediate state update
-      _isRenderingPaused = true;
-      _preventRender = true;
 
       // debugPrint("Occlusion Rects: Rendering visibility notified");
       VisibilityDetectorController.instance.notifyNow();
       // Ensure frame handling is synchronized
-      await WidgetsBinding.instance.endOfFrame;
+      await hasFrameEnded();
+
+      _isRenderingPaused = true;
+      _preventRender = true;
 
       if (_preventRender) {
         if (!_isFrameDeferred) {
           WidgetsBinding.instance.deferFirstFrame();
+          // debugPrint("Occlusion Rects: Rendering frame deferred successfully");
           _isFrameDeferred = true;
         }
 
         _cachedData = _handleRequestData();
         
         // Wait for frame to complete deferring
-        await WidgetsBinding.instance.endOfFrame;
+        // debugPrint("Occlusion Rects: Rendering frame waiting end of frame");
+        await hasFrameEnded();
         // debugPrint("Occlusion Rects: Rendering paused successfully");
       }
 
@@ -99,7 +102,7 @@ class ChannelCallback {
       _preventRender = false;
 
       // Ensure frame scheduling is synchronized
-      await WidgetsBinding.instance.endOfFrame;
+      await hasFrameEnded();
       VisibilityDetectorController.instance.notifyNow();
 
       // Allow frames to resume
@@ -111,7 +114,7 @@ class ChannelCallback {
       // debugPrint("Occlusion Rects: Rendering visibility notified after resume");
       VisibilityDetectorController.instance.notifyNow();
       // Wait for frame to complete
-      await WidgetsBinding.instance.endOfFrame;
+      await hasFrameEnded();
       // debugPrint("Occlusion Rects: Resumed rendering successfully");
 
 
@@ -130,6 +133,20 @@ class ChannelCallback {
     var instance = OcclusionWrapperManager();
     var rects = instance.fetchOcclusionRects();
     return rects;
+  }
+
+  static Future<bool> hasFrameEnded() async {
+    try {
+      await WidgetsBinding.instance.endOfFrame.timeout(
+        const Duration(milliseconds: 100), // as to support 10fps at max
+        onTimeout: () {
+          return false;
+        },
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
 }
