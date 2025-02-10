@@ -138,7 +138,7 @@ class ChannelCallback {
   static Future<bool> hasFrameEnded() async {
     try {
       await WidgetsBinding.instance.endOfFrame.timeout(
-        const Duration(milliseconds: 100), // as to support 10fps at max
+        const Duration(milliseconds: 50), // as to support 10fps at max
         onTimeout: () {
           return false;
         },
