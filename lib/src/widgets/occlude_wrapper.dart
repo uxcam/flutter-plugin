@@ -45,7 +45,6 @@ class _OccludeWrapperState extends State<OccludeWrapper> with WidgetsBindingObse
     _uniqueId = UniqueKey();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint("Occlusion Rects: Widget added to occlusion list through initState.");
       registerOcclusionWidget();
       getOccludePoints();
     });
@@ -54,7 +53,6 @@ class _OccludeWrapperState extends State<OccludeWrapper> with WidgetsBindingObse
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    debugPrint("Occlusion Rects: Widget removed from occlusion list through dispose.");
     unRegisterOcclusionWidget();
     super.dispose();
   }
@@ -66,10 +64,8 @@ class _OccludeWrapperState extends State<OccludeWrapper> with WidgetsBindingObse
       onVisibilityChanged: (VisibilityInfo visibilityInfo) {
         final visibilityFraction = visibilityInfo.visibleFraction;
         if (visibilityFraction == 0) {
-          debugPrint("Occlusion Rects: Widget removed from occlusion list through visibility.");
           unRegisterOcclusionWidget();
         } else {
-          debugPrint("Occlusion Rects: Widget added to occlusion list through visibility.");
           registerOcclusionWidget();
         }
       },
