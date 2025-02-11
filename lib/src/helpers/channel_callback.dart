@@ -19,15 +19,10 @@ class ChannelCallback {
       try {
         if (call.method == "requestAllOcclusionRects") {
           var json = _cachedData;
-          // debugPrint("Occlusion Rects: bounds $json");
-          // debugPrint("Occlusion Rects: Waiting for resume rendering.");
           await _resumeRendering();
-          // debugPrint("Data from requestAllOcclusionRects: $json");
           return json;
         } else if (call.method == "pauseRendering") {
-          // debugPrint("Occlusion Rects: Pause rendering initiated.");
           var status = await _pauseRendering();
-          // debugPrint("Occlusion Rects: Pause rendering status: $status");
           return status;
         }
         return null;
@@ -40,7 +35,6 @@ class ChannelCallback {
 
   static Future<bool> _pauseRendering() async {
     if (_isRenderingPaused) {
-      // debugPrint("Occlusion Rects: Already paused rendering");
       VisibilityDetectorController.instance.notifyNow();
       return true;
     }
@@ -50,7 +44,6 @@ class ChannelCallback {
       // Ensure frame handling is synchronized
       await hasFrameEnded();
 
-      // debugPrint("Occlusion Rects: Rendering visibility notified");
       VisibilityDetectorController.instance.notifyNow();
 
       _isRenderingPaused = true;
@@ -59,16 +52,13 @@ class ChannelCallback {
       if (_preventRender) {
         if (!_isFrameDeferred) {
           WidgetsBinding.instance.deferFirstFrame();
-          // debugPrint("Occlusion Rects: Rendering frame deferred successfully");
           _isFrameDeferred = true;
         }
 
         _cachedData = _handleRequestData();
         
         // Wait for frame to complete deferring
-        // debugPrint("Occlusion Rects: Rendering frame waiting end of frame");
         await hasFrameEnded();
-        // debugPrint("Occlusion Rects: Rendering paused successfully");
       }
 
 
@@ -81,22 +71,17 @@ class ChannelCallback {
         WidgetsBinding.instance.allowFirstFrame();
         _isFrameDeferred = false;
       }
-      // debugPrint("Occlusion Rects: Error pausing render: $e");
       return false;
     }
   }
 
   static Future<bool> _resumeRendering() async {
     if (!_isRenderingPaused) {
-      // debugPrint("Occlusion Rects: Already resumed rendering");
-      // debugPrint("Occlusion Rects: Rendering visibility notified after resume");
       VisibilityDetectorController.instance.notifyNow();
       return true;
     }
 
     try {
-      // debugPrint("Occlusion Rects: Resuming rendering");
-      
       // Update state immediately
       _isRenderingPaused = false;
       _preventRender = false;
@@ -111,11 +96,9 @@ class ChannelCallback {
         _isFrameDeferred = false;
       }
 
-      // debugPrint("Occlusion Rects: Rendering visibility notified after resume");
       VisibilityDetectorController.instance.notifyNow();
       // Wait for frame to complete
       await hasFrameEnded();
-      // debugPrint("Occlusion Rects: Resumed rendering successfully");
 
 
       return true;
@@ -123,7 +106,6 @@ class ChannelCallback {
       // Restore state on error
       _isRenderingPaused = true;
       _preventRender = true;
-      // debugPrint("Occlusion Rects: Error resuming render: $e");
       return false;
     }
   }
