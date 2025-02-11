@@ -4,6 +4,7 @@
 
 static const NSString *FlutterAppKey = @"userAppKey";
 static const NSString *FlutterConfiguration = @"config";
+static const NSString *FlutterEnableIntegrationLogging = @"enableIntegrationLogging";
 static const NSString *FlutterEnableMultiSessionRecord = @"enableMultiSessionRecord";
 static const NSString *FlutterEnableScreenNameTagging = @"enableAutomaticScreenNameTagging";
 static const NSString *FlutterEnableCrashHandling = @"enableCrashHandling";
@@ -12,6 +13,18 @@ static const NSString *FlutterEnableAdvancedGesture = @"enableAdvancedGestureRec
 static const NSString *FlutterOcclusion = @"occlusion";
 static const NSString *FlutterOccludeScreens = @"screens";
 static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
+
+static const NSString *FlutterChanelCallBackMethodPause = @"pauseRendering";
+static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllOcclusionRects";
+
+typedef void (^OcclusionRectCompletionBlock)(NSArray* _Nonnull rects);
+typedef void (^FrameRenderingCompletionBlock)(BOOL status);
+
+@interface FlutterUxcamPlugin ()
+@property(nonatomic, strong) FlutterMethodChannel *flutterChannel;
+@property (nonatomic, copy) void (^occludeRectsRequestHandler)(void (^)(NSArray *));
+@property (nonatomic, copy) void (^pauseForOcclusionNextFrameRequestHandler)(void (^)(BOOL));
+@end
 
 @implementation FlutterUxcamPlugin
 
@@ -22,6 +35,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
                                      binaryMessenger:[registrar messenger]];
     
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
+    instance.flutterChannel = channel;
     [registrar addMethodCallDelegate:instance channel:channel];
     [UXCam pluginType:@"flutter" version:@"2.5.7"];
 }
@@ -67,9 +81,63 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
     UXCamConfiguration *config = [[UXCamConfiguration alloc] initWithAppKey:appKey];
     [self updateConfiguration:config withDict:configDict];
     
+    __weak FlutterUxcamPlugin *weakSelf = self;
+    self.pauseForOcclusionNextFrameRequestHandler = ^(FrameRenderingCompletionBlock completion) {
+        [weakSelf pauseUIRenderingWithCompletion: completion];
+    };
+    self.occludeRectsRequestHandler = ^(OcclusionRectCompletionBlock completion){
+        [weakSelf requestAllRectsFromFlutterWithCompletion: completion];
+    };
+    
+    [UXCam pauseForOcclusionNextFrameRequestHandler: self.pauseForOcclusionNextFrameRequestHandler];
+    [UXCam setOccludeRectsRequestHandler: self.occludeRectsRequestHandler];
+    
     [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
         result(@(started));
     }];
+}
+
+- (void)pauseUIRenderingWithCompletion:(FrameRenderingCompletionBlock)completion
+{
+    [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodPause
+                            arguments:nil
+                               result:^(id _Nullable flutterResult) {
+        completion([flutterResult boolValue] ?: NO);
+    }];
+}
+
+- (void)requestAllRectsFromFlutterWithCompletion:(OcclusionRectCompletionBlock)completion {
+    
+    [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodResumeWithData
+                            arguments:nil
+                               result:^(id _Nullable flutterResult) {
+        if ([flutterResult isKindOfClass:[NSArray class]]) {
+            NSArray *response = (NSArray *)flutterResult;
+            NSArray *parsedRect = [self getRectsFromJson:response];
+            completion([parsedRect copy]);
+        } else {
+            completion(@[]);
+        }
+    }];
+}
+
+-(NSArray*) getRectsFromJson:(NSArray*)jsonArray {
+    NSMutableArray<NSArray<NSNumber*> *> *parsedRect = [NSMutableArray array];
+    for (NSDictionary *rectdict in jsonArray) {
+        
+        NSNumber* x0 = rectdict[@"x0"];
+        NSNumber* y0 = rectdict[@"y0"];
+        NSNumber* x1 = rectdict[@"x1"];
+        NSNumber* y1 = rectdict[@"y1"];
+        
+        NSNumber *width = @(x1.integerValue - x0.integerValue);
+        NSNumber *height = @(y1.integerValue - y0.integerValue);
+        
+        NSArray<NSNumber*> *coordinates = @[x0, y0, width, height];
+        
+        [parsedRect addObject:coordinates];
+    }
+    return [parsedRect copy];
 }
 
 - (void)applyOcclusion:(FlutterMethodCall*)call result:(FlutterResult)result
@@ -134,6 +202,11 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
 - (void)updateConfiguration:(UXCamConfiguration *)config withDict:(NSDictionary *)configDict
 {
+    NSNumber *enableIntegrationLogging = configDict[FlutterEnableIntegrationLogging];
+    if (enableIntegrationLogging && ![enableIntegrationLogging isKindOfClass:NSNull.class]) {
+        config.enableIntegrationLogging = [enableIntegrationLogging boolValue];
+    }
+    
     NSNumber *enableMultiSessionRecord = configDict[FlutterEnableMultiSessionRecord];
     if (enableMultiSessionRecord && ![enableMultiSessionRecord isKindOfClass:NSNull.class]) {
         config.enableMultiSessionRecord = [enableMultiSessionRecord boolValue];
@@ -183,6 +256,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
     
     NSDictionary *configDict = @{
         FlutterAppKey: configuration.userAppKey,
+        FlutterEnableIntegrationLogging: @(configuration.enableIntegrationLogging),
         FlutterEnableMultiSessionRecord: @(configuration.enableMultiSessionRecord),
         FlutterEnableScreenNameTagging: @(configuration.enableAutomaticScreenNameTagging),
         FlutterEnableCrashHandling: @(configuration.enableCrashHandling),
@@ -483,7 +557,7 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
     // HERE we need to convert NSArray<NSDictionary*>* to NSArray<NSString*>*
     NSMutableArray<NSString*>* stackTrace = [NSMutableArray array];
     
-    for (NSDictionary* stackTraceMap in stackTraceElements) {        
+    for (NSDictionary* stackTraceMap in stackTraceElements) {
         NSString *className = stackTraceMap[@"class"];
         NSString *fileName = stackTraceMap[@"file"];
         NSString *lineNumber = stackTraceMap[@"line"];

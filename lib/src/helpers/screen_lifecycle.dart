@@ -1,3 +1,4 @@
+
 import 'package:flutter/widgets.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -67,8 +68,21 @@ class _ScreenLifecycleState extends State<ScreenLifecycle>
   }
 
   void notifyToggleCallback() {
-    !_isAppInVisible && _isAppInForeground
+    !_isAppInVisible && _isAppInForeground && _isVisible(widget)
         ? widget.onFocusGained?.call()
         : widget.onFocusLost?.call();
+  }
+
+  bool _isVisible(Widget widget) {
+    if (widget is Visibility) {
+      return widget.visible;
+    }
+    if (widget is Opacity) {
+      return widget.opacity > 0;
+    }
+    if (widget is Offstage) {
+      return !widget.offstage;
+    }
+    return true;
   }
 }
