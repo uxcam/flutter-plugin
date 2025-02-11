@@ -47,11 +47,11 @@ class ChannelCallback {
 
     try {
       // Immediate state update
+      // Ensure frame handling is synchronized
+      await hasFrameEnded();
 
       // debugPrint("Occlusion Rects: Rendering visibility notified");
       VisibilityDetectorController.instance.notifyNow();
-      // Ensure frame handling is synchronized
-      await hasFrameEnded();
 
       _isRenderingPaused = true;
       _preventRender = true;
