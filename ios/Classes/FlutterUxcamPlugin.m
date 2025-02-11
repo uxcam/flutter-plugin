@@ -14,6 +14,9 @@ static const NSString *FlutterOcclusion = @"occlusion";
 static const NSString *FlutterOccludeScreens = @"screens";
 static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
+static const NSString *FlutterChanelCallBackPause = @"pauseRendering";
+static const NSString *FlutterChanelCallBackResumeWithData = @"requestAllOcclusionRects";
+
 typedef void (^OcclusionRectCompletionBlock)(NSArray* _Nonnull rects);
 typedef void (^FrameRenderingCompletionBlock)(BOOL status);
 
@@ -96,7 +99,7 @@ typedef void (^FrameRenderingCompletionBlock)(BOOL status);
 
 - (void)pauseUIRenderingWithCompletion:(FrameRenderingCompletionBlock)completion
 {
-    [self.flutterChannel invokeMethod:@"pauseRendering"
+    [self.flutterChannel invokeMethod:FlutterChanelCallBackPause
                             arguments:nil
                                result:^(id _Nullable flutterResult) {
         completion([flutterResult boolValue] ?: NO);
@@ -105,17 +108,13 @@ typedef void (^FrameRenderingCompletionBlock)(BOOL status);
 
 - (void)requestAllRectsFromFlutterWithCompletion:(OcclusionRectCompletionBlock)completion {
     
-    [self.flutterChannel invokeMethod:@"requestAllOcclusionRects"
+    [self.flutterChannel invokeMethod:FlutterChanelCallBackResumeWithData
                             arguments:nil
                                result:^(id _Nullable flutterResult) {
         if ([flutterResult isKindOfClass:[NSArray class]]) {
-            if ([flutterResult isKindOfClass:[NSArray class]]) {
-                NSArray *response = (NSArray *)flutterResult;
-                NSArray *parsedRect = [self getRectsFromJson:response];
-                completion([parsedRect copy]);
-            } else {
-                completion(@[]);
-            }
+            NSArray *response = (NSArray *)flutterResult;
+            NSArray *parsedRect = [self getRectsFromJson:response];
+            completion([parsedRect copy]);
         } else {
             completion(@[]);
         }
