@@ -14,8 +14,8 @@ static const NSString *FlutterOcclusion = @"occlusion";
 static const NSString *FlutterOccludeScreens = @"screens";
 static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
-static const NSString *FlutterChanelCallBackPause = @"pauseRendering";
-static const NSString *FlutterChanelCallBackResumeWithData = @"requestAllOcclusionRects";
+static const NSString *FlutterChanelCallBackMethodPause = @"pauseRendering";
+static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllOcclusionRects";
 
 typedef void (^OcclusionRectCompletionBlock)(NSArray* _Nonnull rects);
 typedef void (^FrameRenderingCompletionBlock)(BOOL status);
@@ -99,7 +99,7 @@ typedef void (^FrameRenderingCompletionBlock)(BOOL status);
 
 - (void)pauseUIRenderingWithCompletion:(FrameRenderingCompletionBlock)completion
 {
-    [self.flutterChannel invokeMethod:FlutterChanelCallBackPause
+    [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodPause
                             arguments:nil
                                result:^(id _Nullable flutterResult) {
         completion([flutterResult boolValue] ?: NO);
@@ -108,7 +108,7 @@ typedef void (^FrameRenderingCompletionBlock)(BOOL status);
 
 - (void)requestAllRectsFromFlutterWithCompletion:(OcclusionRectCompletionBlock)completion {
     
-    [self.flutterChannel invokeMethod:FlutterChanelCallBackResumeWithData
+    [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodResumeWithData
                             arguments:nil
                                result:^(id _Nullable flutterResult) {
         if ([flutterResult isKindOfClass:[NSArray class]]) {
