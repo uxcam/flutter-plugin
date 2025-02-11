@@ -6,6 +6,11 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
+class FlutterChannelCallBackName {
+  static const pause = "pauseRendering";
+  static const resumeWithData = "requestAllOcclusionRects";
+}
+
 class ChannelCallback {
   static bool _isRenderingPaused = false;
   static bool _preventRender = false;
@@ -17,11 +22,11 @@ class ChannelCallback {
     VisibilityDetectorController.instance.updateInterval = Duration(seconds: 1);
     channel.setMethodCallHandler((MethodCall call) async {
       try {
-        if (call.method == "requestAllOcclusionRects") {
+        if (call.method == FlutterChannelCallBackName.resumeWithData) {
           var json = _cachedData;
           await _resumeRendering();
           return json;
-        } else if (call.method == "pauseRendering") {
+        } else if (call.method == FlutterChannelCallBackName.pause) {
           var status = await _pauseRendering();
           return status;
         }
