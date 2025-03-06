@@ -8,7 +8,6 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
@@ -34,7 +33,7 @@ import androidx.annotation.NonNull;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.5.8";
+    private static final String TYPE_VERSION = "2.5.9";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
@@ -58,51 +57,55 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     /**
      * Plugin registration.
      */
-    private static Activity activity;
-
-    public static void registerWith(Registrar registrar) {
-        activity = registrar.activity();
-        register(registrar.messenger());
-    }
+    private MethodChannel channel;
+    private Activity activity;
+    private ActivityPluginBinding activityBinding;
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
-        register(binding.getBinaryMessenger());
+        channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
+        channel.setMethodCallHandler(this);
     }
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+        if (channel != null) {
+            channel.setMethodCallHandler(null);
+            channel = null;
+        }
     }
-
-    public static void register(BinaryMessenger messenger) {
-        final MethodChannel channel = new MethodChannel(messenger, "flutter_uxcam");
-        channel.setMethodCallHandler(new FlutterUxcamPlugin());
-    }
-
 
     @Override
-    public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
+    public void onAttachedToActivity(@NonNull ActivityPluginBinding activityPluginBinding) {
         activity = activityPluginBinding.getActivity();
+        activityBinding = activityPluginBinding;
     }
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
+        onDetachedFromActivity();
     }
 
     @Override
-    public void onReattachedToActivityForConfigChanges(ActivityPluginBinding activityPluginBinding) {
-        activity = activityPluginBinding.getActivity();
+    public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding activityPluginBinding) {
+        onAttachedToActivity(activityPluginBinding);
     }
 
     @Override
     public void onDetachedFromActivity() {
+        activity = null;
+        activityBinding = null;
     }
 
     @Override
-    public void onMethodCall(MethodCall call, Result result) {
+    public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
         if (call.method.equals("getPlatformVersion")) {
             result.success("Android " + Build.VERSION.RELEASE);
         } else if (call.method.equals("startWithKey")) {
+            if (activity == null) {
+                result.error("Activity not attached", "Cannot start UXCam without an activity", null);
+                return;
+            }
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
             addListener(result);
