@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_uxcam/src/flutter_occlusion.dart';
+import 'package:flutter_uxcam/src/models/flutter_occlusion.dart';
 import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
 import 'package:stack_trace/stack_trace.dart';
 
@@ -20,23 +20,23 @@ class FlutterUxConfigKeys {
 }
 
 /// Configuration Model for specifying flags to be sent to server
-/// 
+///
 /// For values that are not set, sdk defaults will be added.
-/// 
+///
 /// [userAppKey] is String. Required. Should be present to start SDK
-/// 
+///
 /// [enableIntegrationLogging] is boolean and default set to false.
-/// 
+///
 /// [enableMultiSessionRecord] is boolean
-/// 
+///
 /// [enableCrashHandling] is boolean
-/// 
+///
 /// [enableAutomaticScreenNameTagging] is boolean
-/// 
+///
 /// * See: [Flutter Tagging Approach](https://developer.uxcam.com/docs/flutter-tagging-approach)
-/// 
+///
 /// [enableAdvancedGestureRecognition] is boolean
-/// 
+///
 /// [occlusions] is FlutterOcclusion Object for occlusion or blurring
 class FlutterUxConfig {
   String userAppKey;
@@ -63,7 +63,7 @@ class FlutterUxConfig {
   factory FlutterUxConfig.fromJson(Map<String, dynamic> json) {
     var userAppKey = json[FlutterUxConfigKeys.userAppKey];
     var config = FlutterUxConfig(userAppKey: userAppKey);
-    config.enableIntegrationLogging = 
+    config.enableIntegrationLogging =
         json[FlutterUxConfigKeys.enableIntegrationLogging];
     config.enableMultiSessionRecord =
         json[FlutterUxConfigKeys.enableMultiSessionRecord];
@@ -111,7 +111,6 @@ class FlutterUxcam {
   ///
   /// * [FlutterUxConfig](https://pub.dev/documentation/flutter_uxcam/latest/uxcam/FlutterUxConfig-class.html)
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
-    
     ChannelCallback.handleChannelCallBacks(_channel);
 
     final bool? status = await _channel.invokeMethod<bool>(
@@ -119,7 +118,7 @@ class FlutterUxcam {
 
     return status!;
   }
-  
+
   /// This call is available only for IOS portion of the SDK so not sure will work on Android.
   static Future<FlutterUxConfig> configurationForUXCam() async {
     final Map<String, dynamic>? json =

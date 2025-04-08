@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_uxcam/src/flutter_occlusion.dart';
+import 'package:flutter_uxcam/src/models/flutter_occlusion.dart';
 
 class FlutterUxOverlayKeys {
   static const color = "color";
