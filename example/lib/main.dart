@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
     // and better management.
 
     // Confirm that you have user permission for screen recording
-    FlutterUxcam.optIntoSchematicRecordings();
+    UxCamChannelInterface.optIntoSchematicRecordings();
 
     // Configuration
     FlutterUxConfig config = FlutterUxConfig(
@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
       enableAutomaticScreenNameTagging: false,
     );
 
-    FlutterUxcam.startWithConfiguration(config);
+    UxCamChannelInterface.startWithConfiguration(config);
 
     return const MaterialApp(home: UXCamPage());
   }
@@ -44,29 +44,31 @@ class UXCamPage extends StatelessWidget {
           /// 1. Tagging Screen Manually
           FeatureSection(
             title: 'Screen Tagging',
-            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+            onPressed: () =>
+                UxCamChannelInterface.tagScreenName('Example Screen'),
             buttonTitle: 'Tag Screen',
           ),
           FeatureSection(
             title: 'Setting User Identity',
-            onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
+            onPressed: () =>
+                UxCamChannelInterface.setUserIdentity('Guest User'),
             buttonTitle: 'Set User Identity',
           ),
           FeatureSection(
             title: 'Setting User Property',
-            onPressed: () => FlutterUxcam.setUserProperty(
+            onPressed: () => UxCamChannelInterface.setUserProperty(
                 'userPropKeyString', 'valueString'),
             buttonTitle: 'Set User Property',
           ),
           FeatureSection(
             title: 'Custom Event',
-            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+            onPressed: () => UxCamChannelInterface.logEvent('Custom Event'),
             buttonTitle: 'Custom Event',
           ),
           FeatureSection(
             title: 'Custom Event With Properties',
             onPressed: () =>
-                FlutterUxcam.logEventWithProperties('Custom Event', {
+                UxCamChannelInterface.logEventWithProperties('Custom Event', {
               'Property 1': 12345,
             }),
             buttonTitle: 'Custom Event with Property',

@@ -1,5 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_uxcam/src/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/uxcam_channel_interface.dart';
 
 /// Here using NavigatorObserver instead of [RouteObserver] because
 /// [RouteObserver] only works for Navigator 1.0 and will log nothing
@@ -8,10 +9,11 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
   /// Using this approach as we need to keep track of screens
   /// before this one and keep track of screens previous to the
   /// current one.
-  List<String> screenNames = [];
+  final List<String> _screenNames = [];
+  List<String> get screenNames => _screenNames;
 
-  /// Using this to chech for and store latest Screen Name
-  String taggingScreen = '';
+  Animation<double>? _transitionAnimation;
+  Animation<double>? get transitionAnimation => _transitionAnimation;
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
@@ -20,29 +22,40 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
     /// This line of code is required as there are scenarios where we have
     /// routing like in popup menu but it is not handled by routing in
     /// [onGenerateRoute].
-    if (route.settings.name != null) {
-      screenNames.add(route.settings.name!);
-      setAndTaggingScreenName();
+    if (route is PageRoute) {
+      _transitionAnimation = route.animation;
     }
+    if (route.settings.name != null) {
+      _screenNames.add(route.settings.name!);
+    } else if (route is DialogRoute) {
+      _screenNames.add(":popup");
+    }
+    setAndTaggingScreenName();
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
-    screenNames.remove(newRoute?.settings.name);
+    _screenNames.remove(newRoute?.settings.name);
     setAndTaggingScreenName();
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    screenNames.remove(route.settings.name);
+    print("stack: pop ${route.runtimeType}");
+    if (route is PageRoute) {
+      _transitionAnimation = route.animation;
+      _screenNames.remove(route.settings.name);
+    } else {
+      _screenNames.removeWhere((e) => e == ":popup");
+    }
     setAndTaggingScreenName();
     super.didPop(route, previousRoute);
   }
 
   @override
   void didRemove(Route route, Route? previousRoute) {
-    screenNames.remove(route.settings.name);
+    _screenNames.remove(route.settings.name);
     setAndTaggingScreenName();
     super.didRemove(route, previousRoute);
   }
@@ -51,9 +64,20 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
   /// depeding on the value of  [taggingScreen] will either discard or perform
   /// [FlutterUxcam.tagScreenName] operation.
   void setAndTaggingScreenName() {
-    taggingScreen = screenNames.isNotEmpty ? screenNames.last : '';
-    if (taggingScreen.isNotEmpty) {
-      FlutterUxcam.tagScreenName(taggingScreen);
+    String taggingScreen = '';
+    List<String> currentStackNames = List.from(_screenNames);
+    if (currentStackNames.isNotEmpty) {
+      currentStackNames.removeWhere((e) => e.startsWith(":"));
+      if (currentStackNames.isNotEmpty) {
+        taggingScreen = currentStackNames.last;
+      }
     }
+    if (taggingScreen.isNotEmpty) {
+      UxCamChannelInterface.tagScreenName(taggingScreen);
+    }
+  }
+
+  bool containsPopupElement() {
+    return false;
   }
 }
