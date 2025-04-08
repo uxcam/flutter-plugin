@@ -3,17 +3,27 @@ package com.uxcam.flutteruxcam;
 import android.app.Activity;
 import android.os.Build;
 import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
+import io.flutter.plugin.common.StandardMessageCodec;
+import io.flutter.plugin.common.BasicMessageChannel.MessageHandler;
+import io.flutter.plugin.common.BasicMessageChannel;
+import io.flutter.plugin.common.BasicMessageChannel.Reply;
+// import io.flutter.plugin.common.PluginRegistry.Registrar;
+import io.flutter.plugin.common.StringCodec;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
+import com.uxcam.screenshot.screenshotTaker.FlutterDelegate;
+import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
 import com.uxcam.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
@@ -27,16 +37,16 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import androidx.annotation.NonNull;
 
 /**
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.5.9";
+    private static final String TYPE_VERSION = "2.5.7";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
-    public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
     public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
     public static final String ENABLE_CRASH_HANDLING = "enableCrashHandling";
     public static final String ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING = "enableAutomaticScreenNameTagging";
@@ -57,55 +67,85 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     /**
      * Plugin registration.
      */
-    private MethodChannel channel;
-    private Activity activity;
-    private ActivityPluginBinding activityBinding;
+    private static Activity activity;
+
+    private FlutterDelegate delegate;
+
+    // public static void registerWith(Registrar registrar) {
+    //     activity = registrar.activity();
+    //     register(registrar.messenger());
+    // }
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
-        channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
+                final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
+        final BasicMessageChannel<String> occlusionRectsChannel = new BasicMessageChannel<String>(
+                binding.getBinaryMessenger(),
+                "occlusion_rects_coordinates",
+                StringCodec.INSTANCE);
+        delegate = UXCam.getFlutterDelegate();
+        delegate.setListener(new OcclusionRectRequestListener() {
+            @Override
+            public void processOcclusionRectsForCurrentFrame() {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                        occlusionRectsChannel.send("open_request", points -> {
+                        try {
+                            JSONArray coordinates = new JSONArray();
+                            if(points!=null && !points.isEmpty()) {
+                                JSONArray data = new JSONArray(points);
+                                coordinates.put(data);
+                            }
+                            Log.d("occlude","native : "+coordinates.toString());
+                            delegate.createScreenshotFromCollectedRects(coordinates);
+                        }
+                        catch(JSONException exception) {
+                            delegate.createScreenshotFromCollectedRects(new JSONArray());
+                        }
+                });
+                });
+            }
+        });
         channel.setMethodCallHandler(this);
     }
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-        if (channel != null) {
-            channel.setMethodCallHandler(null);
-            channel = null;
-        }
     }
 
+    // public static void register(BinaryMessenger messenger) {
+    //     final MethodChannel channel = new MethodChannel(messenger, "flutter_uxcam");
+    //     final BasicMessageChannel<String> occlusionRectsChannel = new BasicMessageChannel<String>(
+    //             messenger,
+    //             "your_channel_name",
+    //             StringCodec.INSTANCE);
+    //     channel.setMethodCallHandler(new FlutterUxcamPlugin());
+    //     occlusionRectsChannel.setMessageHandler(this);
+    // }
+
+
     @Override
-    public void onAttachedToActivity(@NonNull ActivityPluginBinding activityPluginBinding) {
+    public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
         activity = activityPluginBinding.getActivity();
-        activityBinding = activityPluginBinding;
     }
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
-        onDetachedFromActivity();
     }
 
     @Override
-    public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding activityPluginBinding) {
-        onAttachedToActivity(activityPluginBinding);
+    public void onReattachedToActivityForConfigChanges(ActivityPluginBinding activityPluginBinding) {
+        activity = activityPluginBinding.getActivity();
     }
 
     @Override
     public void onDetachedFromActivity() {
-        activity = null;
-        activityBinding = null;
     }
 
     @Override
-    public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
+    public void onMethodCall(MethodCall call, Result result) {
         if (call.method.equals("getPlatformVersion")) {
             result.success("Android " + Build.VERSION.RELEASE);
         } else if (call.method.equals("startWithKey")) {
-            if (activity == null) {
-                result.error("Activity not attached", "Cannot start UXCam without an activity", null);
-                return;
-            }
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
             addListener(result);
@@ -306,7 +346,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private boolean startWithConfig(Map<String, Object> configMap) {
         try {
             String appKey = (String) configMap.get(USER_APP_KEY);
-            Boolean enableIntegrationLogging = (Boolean) configMap.get(ENABLE_INTEGRATION_LOGGING);
             Boolean enableMultiSessionRecord = (Boolean) configMap.get(ENABLE_MUTLI_SESSION_RECORD);
             Boolean enableCrashHandling = (Boolean) configMap.get(ENABLE_CRASH_HANDLING);
             Boolean enableAutomaticScreenNameTagging = (Boolean) configMap.get(ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING);
@@ -319,8 +358,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
 
             UXConfig.Builder uxConfigBuilder = new UXConfig.Builder(appKey);
-            if (enableIntegrationLogging != null)
-                uxConfigBuilder.enableIntegrationLogging(enableIntegrationLogging);
             if (enableMultiSessionRecord != null)
                 uxConfigBuilder.enableMultiSessionRecord(enableMultiSessionRecord);
             if (enableCrashHandling != null)
@@ -444,3 +481,4 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     }
 }
+
