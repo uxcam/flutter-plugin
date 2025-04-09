@@ -1,9 +1,9 @@
-
 import 'package:flutter/widgets.dart';
+import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper.dart';
 
 class OcclusionWrapperItem {
-  final UniqueKey id; 
+  final UniqueKey id;
   final GlobalKey key;
 
   OcclusionWrapperItem({required this.id, required this.key});
@@ -20,10 +20,10 @@ class OcclusionWrapperItem {
 }
 
 class OcclusionWrapperManager {
-
   OcclusionWrapperManager._privateConstructor();
 
-  static final OcclusionWrapperManager _instance = OcclusionWrapperManager._privateConstructor();
+  static final OcclusionWrapperManager _instance =
+      OcclusionWrapperManager._privateConstructor();
 
   factory OcclusionWrapperManager() => _instance;
 
@@ -31,7 +31,7 @@ class OcclusionWrapperManager {
 
   final occlusionRects = <OccludePoint>[];
 
-/// Register Flutter Widget for occlusion
+  /// Register Flutter Widget for occlusion
   void registerOcclusionWrapper(OcclusionWrapperItem item) {
     if (!items.contains(item)) {
       items.add(item);
@@ -54,7 +54,7 @@ class OcclusionWrapperManager {
   }
 
   List<OccludePoint> getOccludePoints() {
-    return items.map((wrapper) =>  getOccludePoint(wrapper.key)).toList();
+    return items.map((wrapper) => getOccludePoint(wrapper.key)).toList();
   }
 
   OccludePoint getOccludePoint(GlobalKey<State<StatefulWidget>> key) {
@@ -73,5 +73,4 @@ class OcclusionWrapperManager {
 
     return occludePoint;
   }
-
 }
