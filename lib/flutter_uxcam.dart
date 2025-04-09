@@ -1,7 +1,7 @@
 library uxcam;
 
 export 'src/models/flutter_occlusion.dart';
-export './src/uxcam_channel_interface.dart';
+export './src/flutter_uxcam.dart';
 export './src/flutter_uxcam_observer.dart';
 export './src/helpers/screen_lifecycle.dart';
 export 'src/models/uxblur.dart';

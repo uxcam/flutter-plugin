@@ -10,7 +10,6 @@ class UxCam {
   static String sdkVersion = "";
 
   UxCam({required this.navigationObserver}) {
-    _getSdkVerion();
     const BasicMessageChannel<String> occlusionRectsChannel =
         BasicMessageChannel<String>(
             "occlusion_rects_coordinates", StringCodec());
@@ -39,10 +38,5 @@ class UxCam {
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       await SchedulerBinding.instance.endOfFrame;
     });
-  }
-
-  Future<void> _getSdkVerion() async {
-    final version = await UxCamChannelInterface.getSdkVersionInfo();
-    sdkVersion = version;
   }
 }
