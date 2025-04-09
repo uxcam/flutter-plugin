@@ -7,8 +7,10 @@ import 'package:flutter_uxcam/src/models/occlude_data.dart';
 class UxCam {
   FlutterUxcamNavigatorObserver navigationObserver;
   final OcclusionEventCollector _collector = OcclusionEventCollector();
+  static String sdkVersion = "";
 
   UxCam({required this.navigationObserver}) {
+    _getSdkVerion();
     const BasicMessageChannel<String> occlusionRectsChannel =
         BasicMessageChannel<String>(
             "occlusion_rects_coordinates", StringCodec());
@@ -37,5 +39,10 @@ class UxCam {
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       await SchedulerBinding.instance.endOfFrame;
     });
+  }
+
+  Future<void> _getSdkVerion() async {
+    final version = await UxCamChannelInterface.getSdkVersionInfo();
+    sdkVersion = version;
   }
 }

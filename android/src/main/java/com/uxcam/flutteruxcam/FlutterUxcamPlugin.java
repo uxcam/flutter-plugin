@@ -338,7 +338,11 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             UXCamOcclusion occlusion = getOcclusion(occlusionMap);
             UXCam.removeOcclusion(occlusion);
             result.success(true);
-        } else {
+        } else if("getSdkVersionInfo".equals(call.method)) {
+            String sdkVersion = UXCam.getSdkVersionInfo();
+            result.success(sdkVersion);
+        } 
+        else {
             result.notImplemented();
         }
     }

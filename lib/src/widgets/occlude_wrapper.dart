@@ -4,8 +4,11 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/occlusion_event_collector.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class OccludeWrapper extends StatefulWidget {
   final Widget child;
@@ -21,6 +24,7 @@ class OccludeWrapper extends StatefulWidget {
 
 class _OccludeWrapperState extends State<OccludeWrapper>
     with WidgetsBindingObserver {
+  late OccludePoint occludePoint;
   final GlobalKey _widgetKey = GlobalKey();
   late final UniqueKey _uniqueId;
 
@@ -30,6 +34,8 @@ class _OccludeWrapperState extends State<OccludeWrapper>
     _uniqueId = UniqueKey();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      registerOcclusionWidget();
+      getOccludePoints();
       OcclusionEventCollector().streamNotifier.addListener(_sendRectData);
     });
   }
@@ -42,7 +48,7 @@ class _OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void _sendRectData() {
-    final point = getOccludePoints();
+    final point = getOccludePointsForStream();
     if (point != null) {
       final _data = OccludeData(
         ModalRoute.of(context)?.runtimeType.toString(),
@@ -55,13 +61,94 @@ class _OccludeWrapperState extends State<OccludeWrapper>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: _widgetKey,
-      child: widget.child,
+    return VisibilityDetector(
+      key: _uniqueId,
+      onVisibilityChanged: (VisibilityInfo visibilityInfo) {
+        final visibilityFraction = visibilityInfo.visibleFraction;
+        if (visibilityFraction == 0) {
+          unRegisterOcclusionWidget();
+        } else {
+          registerOcclusionWidget();
+        }
+      },
+      child: Container(
+        key: _widgetKey,
+        child: widget.child,
+      ),
     );
   }
 
-  OccludePoint? getOccludePoints() {
+  @override
+  Future<bool> didPopRoute() {
+    var didPop = super.didPopRoute();
+    registerOcclusionWidget();
+    return didPop;
+  }
+
+  @override
+  Future<bool> didPushRouteInformation(RouteInformation routeInformation) {
+    unRegisterOcclusionWidget();
+    return super.didPushRouteInformation(routeInformation);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+  }
+
+  void registerOcclusionWidget() {
+    var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
+    OcclusionWrapperManager().registerOcclusionWrapper(item);
+  }
+
+  void unRegisterOcclusionWidget() {
+    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+  }
+
+  void getOccludePoint(Function(OccludePoint) rect) {
+    var occludePoint = OccludePoint(0, 0, 0, 0);
+
+    Rect? bound = _widgetKey.globalPaintBounds;
+
+    if (bound == null) {
+      rect(occludePoint);
+      return;
+    }
+
+    occludePoint = OccludePoint(
+      bound.left.ratioToInt,
+      bound.top.ratioToInt,
+      bound.right.ratioToInt,
+      bound.bottom.ratioToInt,
+    );
+
+    rect(occludePoint);
+  }
+
+  void getOccludePoints() {
+    // Preventing Extra Operation
+    if (!mounted) return;
+
+    Rect? bound = _widgetKey.globalPaintBounds;
+
+    if (bound == null) return;
+
+    occludePoint = OccludePoint(
+      bound.left.ratioToInt,
+      bound.top.ratioToInt,
+      bound.right.ratioToInt,
+      bound.bottom.ratioToInt,
+    );
+
+    FlutterUxcam.occludeRectWithCoordinates(
+      occludePoint.topLeftX,
+      occludePoint.topLeftY,
+      occludePoint.bottomRightX,
+      occludePoint.bottomRightY,
+    );
+  }
+
+  OccludePoint? getOccludePointsForStream() {
     // Preventing Extra Operation
     if (!mounted) return null;
 

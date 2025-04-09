@@ -423,6 +423,13 @@ class UxCamChannelInterface {
     return status!;
   }
 
+  /// This method is used for remove occlusion (or Blur) with specified settings
+  static Future<String> getSdkVersionInfo() async {
+    final String? version =
+        await _channel.invokeMethod<String>('getSdkVersionInfo');
+    return version!;
+  }
+
   /// Here the coordinates are the location of the view/enclosing box
   /// x0 - topLeft, y0 - topLeft
   /// x1 - bottomRight, y1 - bottomRight
