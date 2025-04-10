@@ -7,7 +7,6 @@ import 'package:flutter_uxcam/src/models/occlude_data.dart';
 class UxCam {
   FlutterUxcamNavigatorObserver navigationObserver;
   final OcclusionEventCollector _collector = OcclusionEventCollector();
-  static String sdkVersion = "";
 
   UxCam({required this.navigationObserver}) {
     const BasicMessageChannel<String> occlusionRectsChannel =
@@ -27,10 +26,6 @@ class UxCam {
     if (currentStack.length == 1) {
       return collectedData.map((e) => e.point.toJson()).toList();
     }
-    if (currentStack.isNotEmpty && navigationObserver.isPopupOnTop()) {
-      return [];
-    } else {
-      return collectedData.map((e) => e.point.toJson()).toList();
-    }
+    return collectedData.map((e) => e.point.toJson()).toList();
   }
 }

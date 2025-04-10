@@ -7,6 +7,7 @@ import 'package:flutter_uxcam/flutter_uxcam.dart';
 /// or perform no calls in case of Navigator 2.0.
 class FlutterUxcamNavigatorObserver extends NavigatorObserver {
   Route? _topRoute;
+  Route? get topRoute => _topRoute;
 
   /// Using this approach as we need to keep track of screens
   /// before this one and keep track of screens previous to the
@@ -31,7 +32,7 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
     /// [onGenerateRoute].
     if (route.settings.name != null) {
       _screenNames.add(route.settings.name!);
-    } else if (route is DialogRoute) {
+    } else if (route is DialogRoute || route is ModalBottomSheetRoute) {
       _screenNames.add(":popup");
     }
     setAndTaggingScreenName();
@@ -83,7 +84,7 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
 
   bool isPopupOnTop() {
     if (_topRoute != null) {
-      return _topRoute is DialogRoute &&
+      return (_topRoute is DialogRoute || _topRoute is ModalBottomSheetRoute) &&
           _topRoute!.isActive &&
           _topRoute!.isCurrent;
     }
