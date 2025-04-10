@@ -14,7 +14,7 @@ class UxCam {
         BasicMessageChannel<String>(
             "occlusion_rects_coordinates", StringCodec());
     occlusionRectsChannel.setMessageHandler((event) async {
-      await _deferToEndOfEveryFrame();
+      await SchedulerBinding.instance.endOfFrame;
       final collectedData = await _collector.collectOcclusionRectsFor();
       final points = _convertOccludeDataToRects(collectedData);
       return points.toString();
@@ -27,16 +27,10 @@ class UxCam {
     if (currentStack.length == 1) {
       return collectedData.map((e) => e.point.toJson()).toList();
     }
-    if (currentStack.isNotEmpty && currentStack.last == ":popup") {
+    if (currentStack.isNotEmpty && navigationObserver.isPopupOnTop()) {
       return [];
     } else {
       return collectedData.map((e) => e.point.toJson()).toList();
     }
-  }
-
-  Future<void> _deferToEndOfEveryFrame() async {
-    SchedulerBinding.instance.addPostFrameCallback((_) async {
-      await SchedulerBinding.instance.endOfFrame;
-    });
   }
 }
