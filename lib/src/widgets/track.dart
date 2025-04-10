@@ -17,6 +17,7 @@ class Track extends StatelessWidget {
       key = GlobalKey();
     return ElementCapture(
       uiId: key.toString(),
+      uiClass: child.runtimeType.toString(),
       ignoreGesture: ignoreGesture,
       child: KeyedSubtree(
         key: key,
