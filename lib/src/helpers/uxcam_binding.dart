@@ -1,7 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_uxcam/src/widgets/element_capture.dart';
 
 class UxCamBinding extends WidgetsFlutterBinding {
   @override
@@ -30,11 +29,11 @@ class UxCamBinding extends WidgetsFlutterBinding {
           uiName = span.toPlainText();
         }
       }
-      if (target is ElementCaptureRenderBox) {
-        uiID = target.uiId;
-        isIgnoreGesture = target.ignoreGesture;
-        uiClass = target.uiClass;
-      }
+      // if (target is ElementCaptureRenderBox) {
+      //   uiID = target.uiId;
+      //   isIgnoreGesture = target.ignoreGesture;
+      //   uiClass = target.uiClass;
+      // }
       print(
           "Captured information: id: $uiID, name: $uiName, uiType: $uiType, uiClass: $uiClass");
     }
