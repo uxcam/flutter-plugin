@@ -5,10 +5,10 @@ import 'package:flutter_uxcam/src/helpers/occlusion_event_collector.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
 
 class UxCam {
-  FlutterUxcamNavigatorObserver navigationObserver;
+  static FlutterUxcamNavigatorObserver? navigationObserver;
   final OcclusionEventCollector _collector = OcclusionEventCollector();
 
-  UxCam({required this.navigationObserver}) {
+  UxCam() {
     const BasicMessageChannel<String> occlusionRectsChannel =
         BasicMessageChannel<String>(
             "occlusion_rects_coordinates", StringCodec());
@@ -22,7 +22,7 @@ class UxCam {
 
   List<Map<String, dynamic>> _convertOccludeDataToRects(
       List<OccludeData> collectedData) {
-    final currentStack = navigationObserver.screenNames;
+    final currentStack = navigationObserver?.screenNames ?? [];
     if (currentStack.length == 1) {
       return collectedData.map((e) => e.point.toJson()).toList();
     }
