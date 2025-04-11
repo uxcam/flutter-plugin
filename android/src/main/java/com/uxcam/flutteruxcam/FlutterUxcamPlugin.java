@@ -24,10 +24,6 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
-import com.uxcam.screenaction.internal.DefaultInternalApiFacade;
-import com.uxcam.screenaction.internal.ElementDataRequestListener;
-import com.uxcam.screenaction.internal.ElementDataResponseListener;
-import com.uxcam.screenaction.models.ScreenActionContentCrossPlatform;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
@@ -95,15 +91,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static Activity activity;
 
     private CrossPlatformDelegate delegate;
-    private DefaultInternalApiFacade flutterFacade;
-
-    private int leftPadding;
-    private int cutoutTop = 0;
-    private int cutoutBottom = 0;
-    private Insets systemBars = Insets.NONE;
-    private boolean hasNotch = false;
-    private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
-    private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
     // public static void registerWith(Registrar registrar) {
     //     activity = registrar.activity();
@@ -115,11 +102,21 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
         final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
                 binding.getBinaryMessenger(),
-                "uxcam_message_channel",
-                StandardMessageCodec.INSTANCE);
-
+                "occlusion_rects_coordinates",
+                StringCodec.INSTANCE);
         delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
+
+            @Override
+            public void collectOccludedViewForCurrentFrame() {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                        occlusionRectsChannel.send("collect_key", points -> {
+                            Log.d("framedata", "test");
+                            delegate.setAppReadyForScreenshot();
+                });
+                });
+            }
+
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
                 int offset = 50;  

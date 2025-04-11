@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 
 void main() {
-  UxCamBinding();
   runApp(const MyApp());
 }
 
@@ -21,6 +20,7 @@ class MyApp extends StatelessWidget {
 
     // Configuration
     FlutterUxConfig config = FlutterUxConfig(
+        //userAppKey: 'key',
         userAppKey: 'vwaxl2b5nx8i10z',
         // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
         enableAutomaticScreenNameTagging: false,
@@ -32,7 +32,9 @@ class MyApp extends StatelessWidget {
       initialRoute: "/",
       onGenerateRoute: onGenerateRoute,
       builder: (context, child) {
-        return child!;
+        return WidgetCapture(
+          child: child!,
+        );
       },
     );
   }
@@ -97,7 +99,11 @@ class UXCamPage extends StatelessWidget {
             onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
             buttonTitle: 'Login',
           ),
-          TextButton(onPressed: () {}, child: Text("Signup")),
+          FeatureSection(
+            title: 'Navigate',
+            onPressed: () => Navigator.of(context).pushNamed("detail"),
+            buttonTitle: 'Navigate to details',
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -159,7 +165,7 @@ class FeatureSection extends StatelessWidget {
         ElevatedButton(
           onPressed: onPressed,
           child: Text(buttonTitle),
-        ).track(),
+        ),
         const Divider(),
       ],
     );
