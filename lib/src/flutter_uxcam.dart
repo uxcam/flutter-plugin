@@ -9,6 +9,8 @@ import 'package:stack_trace/stack_trace.dart';
 class FlutterUxcam {
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
 
+  static UxCam? uxCam;
+
   /// For getting platformVersion from Native Side.
   static Future<String> get platformVersion async {
     final String? version =
@@ -23,6 +25,7 @@ class FlutterUxcam {
   ///
   /// * [FlutterUxConfig](https://pub.dev/documentation/flutter_uxcam/latest/uxcam/FlutterUxConfig-class.html)
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
+    uxCam = UxCam();
     ChannelCallback.handleChannelCallBacks(_channel);
 
     final bool? status = await _channel.invokeMethod<bool>(
