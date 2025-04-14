@@ -2,32 +2,31 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/src/helpers/occulsion_event_stream_notifier.dart';
-import 'package:flutter_uxcam/src/models/occlude_data.dart';
 
 class OcclusionEventCollector {
-  static const EVENT_WINDOW_DURATION = 100; //100ms
+  static const EVENT_WINDOW_DURATION = 5; //5ms
   static final OcclusionEventCollector _instance =
       OcclusionEventCollector._internal();
   factory OcclusionEventCollector() => _instance;
   OcclusionEventCollector._internal();
 
-  final _controller = StreamController<OccludeData>.broadcast();
-  StreamController<OccludeData> get controller => _controller;
+  final _controller = StreamController<GlobalKey>.broadcast();
+  StreamController<GlobalKey> get controller => _controller;
 
   final OcculsionEventStreamNotifier _streamNotifier =
       OcculsionEventStreamNotifier();
   OcculsionEventStreamNotifier get streamNotifier => _streamNotifier;
 
-  void emit(OccludeData value) => _controller.add(value);
+  void emit(GlobalKey value) => _controller.add(value);
 
-  Future<List<OccludeData>> collectOcclusionRectsFor(
+  Future<List<GlobalKey>> collectOcclusionRectsFor(
       {Duration duration =
           const Duration(milliseconds: EVENT_WINDOW_DURATION)}) async {
-    final events = <OccludeData>[];
-    final completer = Completer<List<OccludeData>>();
+    final events = <GlobalKey>[];
+    final completer = Completer<List<GlobalKey>>();
     print(
         "occlude : The stream is now open ${DateTime.now().millisecondsSinceEpoch}");
-    StreamSubscription<OccludeData> subscription =
+    StreamSubscription<GlobalKey> subscription =
         _controller.stream.listen((data) {
       events.add(data);
     });
