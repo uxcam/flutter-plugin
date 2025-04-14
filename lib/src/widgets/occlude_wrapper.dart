@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
@@ -34,7 +35,9 @@ class OccludeWrapperState extends State<OccludeWrapper>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
-      _updatePositionForTopRouteOnly();
+      getOccludePoints();
+      await SchedulerBinding.instance.endOfFrame;
+      OcclusionEventCollector().streamNotifier.addListener(_sendRectData);
     });
   }
 
