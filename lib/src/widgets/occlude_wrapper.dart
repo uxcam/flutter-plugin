@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/occlusion_event_collector.dart';
@@ -33,9 +34,10 @@ class _OccludeWrapperState extends State<OccludeWrapper>
     super.initState();
     _uniqueId = UniqueKey();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
       getOccludePoints();
+      await SchedulerBinding.instance.endOfFrame;
       OcclusionEventCollector().streamNotifier.addListener(_sendRectData);
     });
   }
