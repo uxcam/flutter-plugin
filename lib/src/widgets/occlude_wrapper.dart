@@ -36,8 +36,7 @@ class _OccludeWrapperState extends State<OccludeWrapper>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
-      getOccludePoints();
-      await SchedulerBinding.instance.endOfFrame;
+      //getOccludePoints();
       OcclusionEventCollector().streamNotifier.addListener(_sendRectData);
     });
   }
@@ -49,7 +48,8 @@ class _OccludeWrapperState extends State<OccludeWrapper>
     super.dispose();
   }
 
-  void _sendRectData() {
+  Future<void> _sendRectData() async {
+    await Future.delayed(Duration(milliseconds: 5));
     final point = getOccludePointsForStream();
     if (point != null) {
       final _data = OccludeData(
