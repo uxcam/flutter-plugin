@@ -21,22 +21,25 @@ class MyApp extends StatelessWidget {
 
     // Configuration
     FlutterUxConfig config = FlutterUxConfig(
-      //userAppKey: 'key',
-      //userAppKey: 'gekzt6bh5299e09',
-      userAppKey: 'vwaxl2b5nx8i10z',
-      // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
-      enableAutomaticScreenNameTagging: true,
-      enableIntegrationLogging: true,
-    );
+        userAppKey: 'key',
+        // userAppKey: 'vwaxl2b5nx8i10z',
+        // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
+        enableAutomaticScreenNameTagging: false,
+        enableIntegrationLogging: true);
 
     FlutterUxcam.startWithConfiguration(config);
 
-    return UXCamGestureHandler(
-      child: MaterialApp(
-        initialRoute: "/",
-        onGenerateRoute: onGenerateRoute,
-        navigatorObservers: [FlutterUxcamNavigatorObserver()],
-      ),
+    return MaterialApp(
+      builder: (_, child) {
+        return ElementCapture(
+          match: (widget) => widget is ElevatedButton || widget is TextButton,
+          wrap: (child) => Track(
+            child: child,
+          ),
+          child: WidgetInterceptor(child: child!),
+        );
+      },
+      home: UXCamPage(),
     );
   }
 }
@@ -354,12 +357,7 @@ class FeatureSection extends StatelessWidget {
         ),
         ElevatedButton(
           onPressed: onPressed,
-          child: Row(
-            children: [
-              const Icon(Icons.abc),
-              Text(buttonTitle),
-            ],
-          ),
+          child: Text(buttonTitle),
         ),
         const Divider(),
       ],
