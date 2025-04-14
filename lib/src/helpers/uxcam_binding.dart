@@ -30,11 +30,11 @@ class UxCamBinding extends WidgetsFlutterBinding {
           uiName = span.toPlainText();
         }
       }
-      if (target is ElementCaptureRenderBox) {
-        uiID = target.uiId;
-        isIgnoreGesture = target.ignoreGesture;
-        uiClass = target.uiClass;
-      }
+      // if (target is ElementCaptureRenderBox) {
+      //   uiID = target.uiId;
+      //   isIgnoreGesture = target.ignoreGesture;
+      //   uiClass = target.uiClass;
+      // }
       print(
           "Captured information: id: $uiID, name: $uiName, uiType: $uiType, uiClass: $uiClass");
     }
