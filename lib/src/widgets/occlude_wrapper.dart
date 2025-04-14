@@ -68,16 +68,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
   }
 
   Future<void> _sendRectData() async {
-    await Future.delayed(Duration(milliseconds: 5));
-    final point = getOccludePointsForStream();
-    if (point != null) {
-      final _data = OccludeData(
-        ModalRoute.of(context)?.runtimeType.toString(),
-        ModalRoute.of(context)?.settings.name,
-        point,
-      );
-      OcclusionEventCollector().emit(_data);
-    }
+    OcclusionEventCollector().emit(_widgetKey);
   }
 
   @override

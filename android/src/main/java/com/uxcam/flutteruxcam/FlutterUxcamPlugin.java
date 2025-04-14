@@ -111,32 +111,29 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             public void collectOccludedViewForCurrentFrame() {
                 new Handler(Looper.getMainLooper()).post(() -> {
                         occlusionRectsChannel.send("collect_key", points -> {
-                            Log.d("framedata", "test");
                             delegate.setAppReadyForScreenshot();
                 });
                 });
             }
 
             @Override
-            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
-                int offset = 50;  
-                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-offset);
-                Long deletebeforeTimestamp = frameDataMap.lowerKey(startTimeStamp-offset - 10);
-                if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
-                    effectiveStartTimestamp = frameDataMap.firstKey();
-                }
-                Long effectiveEndTimestamp;
-                try {
-                    effectiveEndTimestamp = frameDataMap.lastKey();
-                } catch (Exception e) {
-                    effectiveEndTimestamp = null;
-                }
-                if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
-                    ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                    delegate.createScreenshotFromCollectedRects(result);
-                } else {
-                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
-                }
+            public void processOcclusionRectsForCurrentFrame() {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                        occlusionRectsChannel.send("convert_key", points -> {
+                        try {
+                            JSONArray coordinates = new JSONArray();
+                            if(points!=null && !points.isEmpty()) {
+                                JSONArray data = new JSONArray(points);
+                                coordinates.put(data);
+                            }
+                            Log.d("occlude","native : "+coordinates.toString());
+                            delegate.createScreenshotFromCollectedRects(coordinates);
+                        }
+                        catch(JSONException exception) {
+                            delegate.createScreenshotFromCollectedRects(new JSONArray());
+                        }
+                });
+                });
             }
         });
 
