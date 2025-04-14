@@ -90,7 +90,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             public void collectOccludedViewForCurrentFrame() {
                 new Handler(Looper.getMainLooper()).post(() -> {
                         occlusionRectsChannel.send("collect_key", points -> {
-                            Log.d("framedata", "test");
                             delegate.setAppReadyForScreenshot();
                 });
                 });
@@ -99,7 +98,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             @Override
             public void processOcclusionRectsForCurrentFrame() {
                 new Handler(Looper.getMainLooper()).post(() -> {
-                        occlusionRectsChannel.send("open_request", points -> {
+                        occlusionRectsChannel.send("convert_key", points -> {
                         try {
                             JSONArray coordinates = new JSONArray();
                             if(points!=null && !points.isEmpty()) {
