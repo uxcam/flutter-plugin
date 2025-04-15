@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/src/helpers/occulsion_event_stream_notifier.dart';
 
 class OcclusionEventCollector {
-  static const EVENT_WINDOW_DURATION = 5; //5ms
+  static const EVENT_WINDOW_DURATION = 2; //2ms
   static final OcclusionEventCollector _instance =
       OcclusionEventCollector._internal();
   factory OcclusionEventCollector() => _instance;
