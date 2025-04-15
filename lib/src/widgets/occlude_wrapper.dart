@@ -174,13 +174,59 @@ class OccludeWrapperState extends State<OccludeWrapper>
     );
   }
 
-  bool _isWidgetInTopRoute() {
-    if (!mounted) return false;
-    try {
-      ModalRoute? modalRoute = ModalRoute.of(context);
-      return modalRoute != null && modalRoute.isCurrent && modalRoute.isActive;
-    } on FlutterError {
-      return false;
+  OccludePoint? getOccludePointsForStream() {
+    // Preventing Extra Operation
+    if (!mounted) return null;
+
+    Rect? bound = _widgetKey.globalPaintBounds;
+
+    if (bound == null) return null;
+
+    return OccludePoint(
+      bound.left.ratioToInt,
+      bound.top.ratioToInt,
+      bound.right.ratioToInt,
+      bound.bottom.ratioToInt,
+    );
+  }
+}
+
+extension GlobalKeyExtension on GlobalKey {
+  Rect? get globalPaintBounds {
+    var visibilityWidget =
+        currentContext?.findAncestorWidgetOfExactType<Visibility>();
+    if (visibilityWidget != null && !visibilityWidget.visible) {
+      return null;
+    }
+    var opacityWidget =
+        currentContext?.findAncestorWidgetOfExactType<Opacity>();
+    if (opacityWidget != null && opacityWidget.opacity == 0) {
+      return null;
+    }
+    var offstageWidget =
+        currentContext?.findAncestorWidgetOfExactType<Offstage>();
+    if (offstageWidget != null && offstageWidget.offstage) {
+      return null;
+    }
+
+    final renderObject = currentContext?.findRenderObject();
+    final translation = renderObject?.getTransformTo(null).getTranslation();
+    if (translation != null && renderObject?.paintBounds != null) {
+      final offset = Offset(translation.x, translation.y);
+      final bounds = renderObject!.paintBounds.shift(offset);
+      final isLandscape =
+          MediaQuery.of(currentContext!).orientation == Orientation.landscape;
+      if (isLandscape) {
+        final mediaQueryPadding = MediaQuery.of(currentContext!).padding.left;
+        if (mediaQueryPadding != 0) {
+          return bounds.translate(mediaQueryPadding, 0.0);
+        } else {
+          return bounds;
+        }
+      }
+      return bounds;
+    } else {
+      return null;
     }
   }
 }
