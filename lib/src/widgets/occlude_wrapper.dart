@@ -180,7 +180,18 @@ extension GlobalKeyExtension on GlobalKey {
     final translation = renderObject?.getTransformTo(null).getTranslation();
     if (translation != null && renderObject?.paintBounds != null) {
       final offset = Offset(translation.x, translation.y);
-      return renderObject!.paintBounds.shift(offset);
+      final bounds = renderObject!.paintBounds.shift(offset);
+      final isLandscape =
+          MediaQuery.of(currentContext!).orientation == Orientation.landscape;
+      if (isLandscape) {
+        final mediaQueryPadding = MediaQuery.of(currentContext!).padding.left;
+        if (mediaQueryPadding != 0) {
+          return bounds.translate(mediaQueryPadding, 0.0);
+        } else {
+          return bounds;
+        }
+      }
+      return bounds;
     } else {
       return null;
     }
