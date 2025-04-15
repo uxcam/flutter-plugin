@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/occlusion_event_collector.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
@@ -10,33 +10,42 @@ class UxCam {
   static FlutterUxcamNavigatorObserver? navigationObserver;
   final OcclusionEventCollector _collector = OcclusionEventCollector();
   Completer<bool>? completer;
+  List<GlobalKey> collectedKeys = [];
 
   UxCam() {
     const BasicMessageChannel<String> occlusionRectsChannel =
         BasicMessageChannel<String>(
             "occlusion_rects_coordinates", StringCodec());
     occlusionRectsChannel.setMessageHandler((event) async {
-      completer = Completer<bool>();
-      await _deferFirstFrame();
-      final collectedData = await _collector.collectOcclusionRectsFor();
-      final points = _convertOccludeDataToRects(collectedData);
-      return points.toString();
+      if (event == "collect_key") {
+        collectedKeys = await _collector.collectOcclusionRectsFor();
+        print("found widgets : ${collectedKeys.length}");
+      } else if (event == "convert_key") {
+        final points = _convertWidgetKeysToOccludeRects(collectedKeys);
+        print("covnverted widgets : ${points.toString()}");
+        collectedKeys = [];
+        return points.toString();
+      }
+      return "";
     });
   }
 
-  List<Map<String, dynamic>> _convertOccludeDataToRects(
-      List<OccludeData> collectedData) {
-    final currentStack = navigationObserver?.screenNames ?? [];
-    if (currentStack.length == 1) {
-      return collectedData.map((e) => e.point.toJson()).toList();
-    }
-    return collectedData.map((e) => e.point.toJson()).toList();
+  List<Map<String, dynamic>> _convertWidgetKeysToOccludeRects(
+      List<GlobalKey> collectedData) {
+    List<OccludePoint> _points = [];
+    _points = collectedData.map((key) {
+      return _convertKeyToOccRect(key)!;
+    }).toList();
+    return _points.map((e) => e.toJson()).toList();
   }
 
-  Future<bool> _deferFirstFrame() async {
-    SchedulerBinding.instance.addPostFrameCallback((_) async {
-      completer!.complete(true);
-    });
-    return completer!.future;
+  OccludePoint? _convertKeyToOccRect(GlobalKey key) {
+    final rect = key.globalPaintBounds;
+    return OccludePoint(
+      rect!.left.ratioToInt,
+      rect.top.ratioToInt,
+      rect.right.ratioToInt,
+      rect.bottom.ratioToInt,
+    );
   }
 }
