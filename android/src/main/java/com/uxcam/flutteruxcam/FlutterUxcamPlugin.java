@@ -112,6 +112,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                         occlusionRectsChannel.send("collect_key", points -> {
                             delegate.setAppReadyForScreenshot();
                 });
+                Log.d("occlude","rendering paused ");
+                occlusionRectsChannel.send("pause_render",res -> {});
                 });
             }
 
@@ -127,6 +129,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                             }
                             Log.d("occlude","native : "+coordinates.toString());
                             delegate.createScreenshotFromCollectedRects(coordinates);
+                            occlusionRectsChannel.send("resume_render",res -> {});
                         }
                         catch(JSONException exception) {
                             delegate.createScreenshotFromCollectedRects(new JSONArray());

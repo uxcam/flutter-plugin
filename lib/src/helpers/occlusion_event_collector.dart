@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter_uxcam/src/helpers/occulsion_event_stream_notifier.dart';
+import 'package:flutter_uxcam/src/models/occlude_data.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 
 class OcclusionEventCollector {
   static final OcclusionEventCollector _instance =
@@ -7,32 +8,25 @@ class OcclusionEventCollector {
   factory OcclusionEventCollector() => _instance;
   OcclusionEventCollector._internal();
 
-  final _controller = StreamController<GlobalKey>.broadcast();
-  StreamController<GlobalKey> get controller => _controller;
+  final keyRectMap = <GlobalKey, OccludePoint>{};
 
   void updateKeyMapping(GlobalKey key, OccludePoint occludePoint) {
     keyRectMap[key] = occludePoint;
   }
 
-  void emit(GlobalKey value) => _controller.add(value);
+  void clearKeyMapping() {
+    keyRectMap.clear();
+  }
 
-  Future<List<GlobalKey>> collectOcclusionRectsFor(
-      {Duration duration = const Duration(milliseconds: 1)}) async {
-    final events = <GlobalKey>[];
-    final completer = Completer<List<GlobalKey>>();
-    print(
-        "occlude : The stream is now open ${DateTime.now().millisecondsSinceEpoch}");
-    StreamSubscription<GlobalKey> subscription =
-        _controller.stream.listen((data) {
-      events.add(data);
-    });
-    _streamNotifier.open();
-    Future.delayed(duration, () async {
-      await subscription.cancel();
-      print(
-          "occlude : The stream is now closed ${DateTime.now().millisecondsSinceEpoch}");
-      completer.complete(events);
-    });
-    return completer.future;
+  List<GlobalKey> collectOcclusionKeys() {
+    return OcclusionWrapperManager().getWrappers().map((e) => e.key).toList();
+  }
+
+  List<OccludePoint> collectOcclusionRects() {
+    return OcclusionWrapperManager().occlusionRects.values.toList();
+  }
+
+  void clearOcclusionRects() {
+    OcclusionWrapperManager().clearOcclusionRects();
   }
 }

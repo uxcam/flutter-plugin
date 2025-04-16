@@ -36,40 +36,34 @@ class OccludeWrapperState extends State<OccludeWrapper>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
-      //getOccludePoints();
-      OcclusionEventCollector().streamNotifier.addListener(_sendRectData);
+      _checkPosition();
     });
   }
 
-  void _updatePosition() {
-    if (!mounted) return;
-    Rect rect = Rect.zero;
-    if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
-      rect = _widgetKey.globalPaintBounds!;
+  void _checkPosition() {
+    if (mounted) {
+      final renderObject = context.findRenderObject();
+      if (renderObject is RenderBox) {
+        final position = renderObject.localToGlobal(Offset.zero);
+        Future.delayed(
+          const Duration(milliseconds: 1),
+          () {
+            OcclusionWrapperManager()
+                .addNewBound(_uniqueId, _widgetKey.globalPaintBounds!);
+          },
+        );
+
+        lastPosition = position;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkPosition());
     }
-    OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updatePositionForTopRouteOnly();
-    });
-  }
-
-  void _updatePositionForTopRouteOnly() {
-    if (!mounted) return;
-    _updatePosition();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
+    unRegisterOcclusionWidget();
     super.dispose();
-  }
-
-  Future<void> _sendRectData() async {
-    OcclusionEventCollector().emit(_widgetKey);
   }
 
   @override
@@ -117,19 +111,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void unRegisterOcclusionWidget() {
-    // if (!_isWidgetInTopRoute()) {
-    //   OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    //   OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-    //       _widgetKey, _widgetKey.globalPaintBounds!, _isWidgetInTopRoute());
-    // }
-  }
-
-  void hideOcclusionWidget() {
-    if (!_isWidgetInTopRoute()) {
-      //OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-          _widgetKey, _widgetKey.globalPaintBounds!);
-    }
+    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
@@ -200,7 +182,7 @@ extension GlobalKeyExtension on GlobalKey {
     }
     // var offstageWidget =
     //     currentContext?.findAncestorWidgetOfExactType<Offstage>();
-    // if (offstageWidget != null && offstageWidget.offstage) {
+    // if (offstageWidget != null) {
     //   return null;
     // }
 
@@ -212,11 +194,17 @@ extension GlobalKeyExtension on GlobalKey {
       final isLandscape =
           MediaQuery.of(currentContext!).orientation == Orientation.landscape;
       if (isLandscape) {
-        final mediaQueryPadding = MediaQuery.of(currentContext!).padding.left;
-        if (mediaQueryPadding != 0) {
-          return bounds.translate(mediaQueryPadding, 0.0);
+        final padding = MediaQuery.of(currentContext!).padding;
+        //some devices (tested on samsung a5), have a top system overlay for gesture detection. This effects the screenshot taken from native
+        //Android. As a consequence, we need to add the systemGestureInsets to the top of the bounds, to offset the occlusion rects when in landscape.
+        final systemGestureInsets =
+            MediaQuery.of(currentContext!).systemGestureInsets;
+        if (padding.left != 0) {
+          return bounds.translate(padding.left, 0.0);
         } else {
-          return bounds;
+          if (systemGestureInsets.top != 0.0) {
+            return bounds.translate(systemGestureInsets.top, 0.0);
+          }
         }
       }
       return bounds;
