@@ -4,7 +4,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/src/helpers/occulsion_event_stream_notifier.dart';
 
 class OcclusionEventCollector {
-  static const EVENT_WINDOW_DURATION = 2; //2ms
   static final OcclusionEventCollector _instance =
       OcclusionEventCollector._internal();
   factory OcclusionEventCollector() => _instance;
@@ -20,8 +19,7 @@ class OcclusionEventCollector {
   void emit(GlobalKey value) => _controller.add(value);
 
   Future<List<GlobalKey>> collectOcclusionRectsFor(
-      {Duration duration =
-          const Duration(milliseconds: EVENT_WINDOW_DURATION)}) async {
+      {Duration duration = const Duration(milliseconds: 1)}) async {
     final events = <GlobalKey>[];
     final completer = Completer<List<GlobalKey>>();
     print(
