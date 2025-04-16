@@ -35,40 +35,34 @@ class OccludeWrapperState extends State<OccludeWrapper>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
-      //getOccludePoints();
-      OcclusionEventCollector().streamNotifier.addListener(_sendRectData);
+      _checkPosition();
     });
   }
 
-  void _updatePosition() {
-    if (!mounted) return;
-    Rect rect = Rect.zero;
-    if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
-      rect = _widgetKey.globalPaintBounds!;
+  void _checkPosition() {
+    if (mounted) {
+      final renderObject = context.findRenderObject();
+      if (renderObject is RenderBox) {
+        final position = renderObject.localToGlobal(Offset.zero);
+        Future.delayed(
+          const Duration(milliseconds: 1),
+          () {
+            OcclusionWrapperManager()
+                .addNewBound(_uniqueId, _widgetKey.globalPaintBounds!);
+          },
+        );
+
+        lastPosition = position;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkPosition());
     }
-    OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updatePositionForTopRouteOnly();
-    });
-  }
-
-  void _updatePositionForTopRouteOnly() {
-    if (!mounted) return;
-    _updatePosition();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
+    unRegisterOcclusionWidget();
     super.dispose();
-  }
-
-  Future<void> _sendRectData() async {
-    OcclusionEventCollector().emit(_widgetKey);
   }
 
   @override
@@ -116,19 +110,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void unRegisterOcclusionWidget() {
-    // if (!_isWidgetInTopRoute()) {
-    //   OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    //   OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-    //       _widgetKey, _widgetKey.globalPaintBounds!, _isWidgetInTopRoute());
-    // }
-  }
-
-  void hideOcclusionWidget() {
-    if (!_isWidgetInTopRoute()) {
-      //OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-          _widgetKey, _widgetKey.globalPaintBounds!);
-    }
+    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
@@ -203,11 +185,11 @@ extension GlobalKeyExtension on GlobalKey {
     if (opacityWidget != null && opacityWidget.opacity == 0) {
       return null;
     }
-    var offstageWidget =
-        currentContext?.findAncestorWidgetOfExactType<Offstage>();
-    if (offstageWidget != null && offstageWidget.offstage) {
-      return null;
-    }
+    // var offstageWidget =
+    //     currentContext?.findAncestorWidgetOfExactType<Offstage>();
+    // if (offstageWidget != null) {
+    //   return null;
+    // }
 
     final renderObject = currentContext?.findRenderObject();
     final translation = renderObject?.getTransformTo(null).getTranslation();
