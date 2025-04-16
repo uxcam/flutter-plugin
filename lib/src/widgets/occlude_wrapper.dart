@@ -20,14 +20,15 @@ class OccludeWrapper extends StatefulWidget {
   });
 
   @override
-  State<OccludeWrapper> createState() => _OccludeWrapperState();
+  State<OccludeWrapper> createState() => OccludeWrapperState();
 }
 
-class _OccludeWrapperState extends State<OccludeWrapper>
+class OccludeWrapperState extends State<OccludeWrapper>
     with WidgetsBindingObserver {
   late OccludePoint occludePoint;
   final GlobalKey _widgetKey = GlobalKey();
   late final UniqueKey _uniqueId;
+  Offset? lastPosition;
 
   @override
   void initState() {
@@ -36,20 +37,31 @@ class _OccludeWrapperState extends State<OccludeWrapper>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
-      //getOccludePoints();
-      OcclusionEventCollector().streamNotifier.addListener(_sendRectData);
+      _checkPosition();
     });
+  }
+
+  void _checkPosition() {
+    if (mounted) {
+      final renderObject = context.findRenderObject();
+      if (renderObject is RenderBox) {
+        final position = renderObject.localToGlobal(Offset.zero);
+
+        if (lastPosition != null && lastPosition != position) {
+          OcclusionWrapperManager().updateBound(_widgetKey.globalPaintBounds!);
+        }
+
+        lastPosition = position;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkPosition());
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    OcclusionEventCollector().streamNotifier.removeListener(_sendRectData);
+    unRegisterOcclusionWidget();
     super.dispose();
-  }
-
-  Future<void> _sendRectData() async {
-    OcclusionEventCollector().emit(_widgetKey);
   }
 
   @override
@@ -95,7 +107,7 @@ class _OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void unRegisterOcclusionWidget() {
-    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    //OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
