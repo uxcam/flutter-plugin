@@ -33,39 +33,18 @@ class OcclusionWrapperManager {
   final items = <OcclusionWrapperItem>[];
 
   final occlusionRects = <UniqueKey, OccludePoint>{};
-  final rects = <GlobalKey, OccludePoint>{};
 
-  void add(int timeStamp, GlobalKey key, Rect rect) {
-    rects.remove(key);
-    rects[key] = OccludePoint(
-      rect.left.toNative,
-      rect.top.toNative,
-      rect.right.toNative,
-      rect.bottom.toNative,
+  void addNewBound(UniqueKey key, Rect bound) {
+    occlusionRects[key] = OccludePoint(
+      bound.left.ratioToInt,
+      bound.top.ratioToInt,
+      bound.right.ratioToInt,
+      bound.bottom.ratioToInt,
     );
-
-    List<Map<String, dynamic>> rectList = [];
-    rects.forEach((key, value) {
-      Map<String, dynamic> rectData = {
-        "key": key.toString(),
-        "point": value.toJson(),
-        "isVisible": key.isWidgetVisible(),
-      };
-      rectList.add(rectData);
-    });
-    print("visibility: $rectList");
-
-    FlutterUxcam.addFrameData(timeStamp, jsonEncode(rectList));
   }
 
   void clearOcclusionRects() {
     occlusionRects.clear();
-  }
-
-  bool containsWidgetByKey(GlobalKey key) {
-    return items.any((item) {
-      return item.key == key;
-    });
   }
 
   /// Register Flutter Widget for occlusion
