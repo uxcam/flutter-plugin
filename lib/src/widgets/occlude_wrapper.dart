@@ -44,10 +44,13 @@ class OccludeWrapperState extends State<OccludeWrapper>
       final renderObject = context.findRenderObject();
       if (renderObject is RenderBox) {
         final position = renderObject.localToGlobal(Offset.zero);
-
-        if (lastPosition != null && lastPosition != position) {
-          OcclusionWrapperManager().updateBound(_widgetKey.globalPaintBounds!);
-        }
+        Future.delayed(
+          const Duration(milliseconds: 1),
+          () {
+            OcclusionWrapperManager()
+                .addNewBound(_uniqueId, _widgetKey.globalPaintBounds!);
+          },
+        );
 
         lastPosition = position;
       }
@@ -107,7 +110,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void unRegisterOcclusionWidget() {
-    //OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
@@ -182,11 +185,11 @@ extension GlobalKeyExtension on GlobalKey {
     if (opacityWidget != null && opacityWidget.opacity == 0) {
       return null;
     }
-    var offstageWidget =
-        currentContext?.findAncestorWidgetOfExactType<Offstage>();
-    if (offstageWidget != null && offstageWidget.offstage) {
-      return null;
-    }
+    // var offstageWidget =
+    //     currentContext?.findAncestorWidgetOfExactType<Offstage>();
+    // if (offstageWidget != null) {
+    //   return null;
+    // }
 
     final renderObject = currentContext?.findRenderObject();
     final translation = renderObject?.getTransformTo(null).getTranslation();

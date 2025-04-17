@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/animation.dart';
 
 class OccludeData {
   OccludePoint point;
