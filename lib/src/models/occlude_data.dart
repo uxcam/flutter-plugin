@@ -1,3 +1,5 @@
+import 'package:flutter/animation.dart';
+
 class OccludeData {
   OccludePoint point;
   String? routeName;
@@ -39,5 +41,14 @@ class OccludePoint {
       "x1": bottomRightX,
       "y1": bottomRightY,
     };
+  }
+
+  Rect toRect() {
+    return Rect.fromLTRB(
+      topLeftX.toDouble(),
+      topLeftY.toDouble(),
+      bottomRightX.toDouble(),
+      bottomRightY.toDouble(),
+    );
   }
 }
