@@ -1,6 +1,5 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
-import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
 
 class OcclusionManager {
@@ -15,10 +14,10 @@ class OcclusionManager {
 
   void add(int timeStamp, GlobalKey key, Rect rect) {
     final data = OccludePoint(
-      rect.left.toNative,
-      rect.top.toNative,
-      rect.right.toNative,
-      rect.bottom.toNative,
+      rect.left.ratioToInt,
+      rect.top.ratioToInt,
+      rect.right.ratioToInt,
+      rect.bottom.ratioToInt,
     );
     FlutterUxcam.addFrameData(timeStamp, data.toJson().toString());
   }

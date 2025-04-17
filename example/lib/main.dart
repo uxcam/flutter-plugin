@@ -48,78 +48,59 @@ class UXCamPage extends StatelessWidget {
     return Scaffold(
       body: ListView(
         children: [
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: true ? Colors.grey : Colors.blue,
-                child: Icon(Icons.abc, color: Colors.white),
-              ),
-              title: Text(
-                "Test",
-                style: TextStyle(
-                  fontWeight: true ? FontWeight.normal : FontWeight.bold,
-                ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("message"),
-                  const SizedBox(height: 4),
-                  Text(
-                    "time",
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-              trailing: false
-                  ? null
-                  : const CircleAvatar(
-                      radius: 8,
-                      backgroundColor: Colors.blue,
-                    ),
-              onTap: () {
-                // FlutterUxcam.logEventWithProperties('Notification Tapped',
-                //     {
-                //   'title': title,
-                //   'isRead': isRead,
-                // }
-                // );
-                // Handle notification tap
-              },
-            ),
-          ),
-          Text(
-            "This is a smart events demo",
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          Image.asset(
-            "assets/images/testimage.jpg",
-            //semanticLabel: "this is a test image",
-          ),
-          Container(
-            height: 300,
-            decoration: BoxDecoration(
-                image: DecorationImage(
-                    image: AssetImage("assets/images/testimage.jpg"))),
-          ),
-          TextField(
-            decoration: InputDecoration(hintText: "this is a hint"),
-          ),
-          TextFormField(),
+          /// 1. Tagging Screen Manually
+          // Occlude(
+          //   child: Text(
+          //     "this text will be occluded",
+          //     style: Theme.of(context).textTheme.headlineSmall,
+          //   ),
+          // ),
           FeatureSection(
             title: 'Screen Tagging',
             onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
             buttonTitle: 'Login',
           ),
-          FeatureSection(
-            title: 'Navigate',
-            onPressed: () => Navigator.of(context).pushNamed("detail"),
-            buttonTitle: 'Navigate to details',
+          Occlude(
+            child: Text(
+              "this text will be occluded",
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
           ),
+          FeatureSection(
+            title: 'Custom Occlude',
+            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+            buttonTitle: 'Custom Event',
+          ),
+          FeatureSection(
+            title: 'Setting User Identity',
+            onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
+            buttonTitle: 'Set User Identity',
+          ),
+          FeatureSection(
+            title: 'Setting User Property',
+            onPressed: () => FlutterUxcam.setUserProperty(
+                'userPropKeyString', 'valueString'),
+            buttonTitle: 'Set User Property',
+          ),
+          FeatureSection(
+            title: 'Custom Event',
+            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+            buttonTitle: 'Custom Event',
+          ),
+          FeatureSection(
+            title: 'Custom Event With Properties',
+            onPressed: () =>
+                FlutterUxcam.logEventWithProperties('Custom Event', {
+              'Property 1': 12345,
+            }),
+            buttonTitle: 'Custom Event with Property',
+          ),
+          // Occlude(
+          //   child: Text(
+          //     "this text will be occluded",
+          //     style: Theme.of(context).textTheme.headlineSmall,
+          //   ),
+          // ),
         ],
       ),
       // body: IndexedStack(
