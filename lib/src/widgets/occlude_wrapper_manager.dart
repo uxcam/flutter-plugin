@@ -33,14 +33,28 @@ class OcclusionWrapperManager {
   final items = <OcclusionWrapperItem>[];
 
   final occlusionRects = <UniqueKey, OccludePoint>{};
+  final rects = <GlobalKey, OccludePoint>{};
 
-  void addNewBound(UniqueKey key, Rect bound) {
-    occlusionRects[key] = OccludePoint(
-      bound.left.ratioToInt,
-      bound.top.ratioToInt,
-      bound.right.ratioToInt,
-      bound.bottom.ratioToInt,
+  void add(int timeStamp, GlobalKey key, Rect rect) {
+    final data = OccludePoint(
+      rect.left.ratioToInt,
+      rect.top.ratioToInt,
+      rect.right.ratioToInt,
+      rect.bottom.ratioToInt,
     );
+
+    rects.remove(key);
+    rects[key] = data;
+
+    List<Map<String, dynamic>> rectList = [];
+    rects.forEach((key, value) {
+      Map<String, dynamic> rectData = {
+        "key": key.toString(),
+        "point": value.toJson(),
+      };
+      rectList.add(rectData);
+    });
+    FlutterUxcam.addFrameData(timeStamp, jsonEncode(rectList));
   }
 
   void clearOcclusionRects() {

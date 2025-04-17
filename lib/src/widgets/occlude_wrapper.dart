@@ -34,29 +34,19 @@ class OccludeWrapperState extends State<OccludeWrapper>
     _uniqueId = UniqueKey();
     _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
-      _checkPosition();
+      _updatePosition();
     });
   }
 
-  void _checkPosition() {
-    if (mounted) {
-      final renderObject = context.findRenderObject();
-      if (renderObject is RenderBox) {
-        final position = renderObject.localToGlobal(Offset.zero);
-        Future.delayed(
-          const Duration(milliseconds: 1),
-          () {
-            OcclusionWrapperManager()
-                .addNewBound(_uniqueId, _widgetKey.globalPaintBounds!);
-          },
-        );
-
-        lastPosition = position;
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) => _checkPosition());
-    }
+  void _updatePosition() {
+    if (!mounted) return;
+    OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+        _widgetKey, _widgetKey.globalPaintBounds!);
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _updatePosition();
+    });
   }
 
   @override
@@ -112,6 +102,8 @@ class OccludeWrapperState extends State<OccludeWrapper>
 
   void unRegisterOcclusionWidget() {
     OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    OcclusionWrapperManager()
+        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
@@ -156,16 +148,6 @@ class OccludeWrapperState extends State<OccludeWrapper>
       occludePoint.bottomRightY,
     );
   }
-
-  bool _isWidgetInTopRoute() {
-    if (!mounted) return false;
-    try {
-      ModalRoute? modalRoute = ModalRoute.of(context);
-      return modalRoute != null && modalRoute.isCurrent && modalRoute.isActive;
-    } on FlutterError {
-      return false;
-    }
-  }
 }
 
 extension GlobalKeyExtension on GlobalKey {
@@ -203,7 +185,11 @@ extension GlobalKeyExtension on GlobalKey {
           return bounds.translate(padding.left, 0.0);
         } else {
           if (systemGestureInsets.top != 0.0) {
-            return bounds.translate(systemGestureInsets.top, 0.0);
+            final _scale = MediaQuery.of(currentContext!).textScaler !=
+                    TextScaler.noScaling
+                ? MediaQuery.of(currentContext!).devicePixelRatio.toInt()
+                : 0;
+            return bounds.translate(systemGestureInsets.top * _scale, 0.0);
           }
         }
       }
