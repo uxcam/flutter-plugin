@@ -29,7 +29,20 @@ class OcclusionWrapperManager {
 
   final items = <OcclusionWrapperItem>[];
 
-  final occlusionRects = <OccludePoint>[];
+  final occlusionRects = <UniqueKey, OccludePoint>{};
+
+  void addNewBound(UniqueKey key, Rect bound) {
+    occlusionRects[key] = OccludePoint(
+      bound.left.ratioToInt,
+      bound.top.ratioToInt,
+      bound.right.ratioToInt,
+      bound.bottom.ratioToInt,
+    );
+  }
+
+  void clearOcclusionRects() {
+    occlusionRects.clear();
+  }
 
   /// Register Flutter Widget for occlusion
   void registerOcclusionWrapper(OcclusionWrapperItem item) {
@@ -42,6 +55,9 @@ class OcclusionWrapperManager {
   void unRegisterOcclusionWrapper(UniqueKey id) {
     if (items.isNotEmpty) {
       items.removeWhere((wrapper) => wrapper.id == id);
+      if (occlusionRects.containsKey(id)) {
+        occlusionRects.removeWhere((key, _) => key == id);
+      }
     }
   }
 

@@ -46,10 +46,13 @@ class OccludeWrapperState extends State<OccludeWrapper>
       final renderObject = context.findRenderObject();
       if (renderObject is RenderBox) {
         final position = renderObject.localToGlobal(Offset.zero);
-
-        if (lastPosition != null && lastPosition != position) {
-          OcclusionWrapperManager().updateBound(_widgetKey.globalPaintBounds!);
-        }
+        Future.delayed(
+          const Duration(milliseconds: 1),
+          () {
+            OcclusionWrapperManager()
+                .addNewBound(_uniqueId, _widgetKey.globalPaintBounds!);
+          },
+        );
 
         lastPosition = position;
       }
@@ -107,7 +110,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void unRegisterOcclusionWidget() {
-    //OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
@@ -182,11 +185,11 @@ extension GlobalKeyExtension on GlobalKey {
     if (opacityWidget != null && opacityWidget.opacity == 0) {
       return null;
     }
-    var offstageWidget =
-        currentContext?.findAncestorWidgetOfExactType<Offstage>();
-    if (offstageWidget != null && offstageWidget.offstage) {
-      return null;
-    }
+    // var offstageWidget =
+    //     currentContext?.findAncestorWidgetOfExactType<Offstage>();
+    // if (offstageWidget != null) {
+    //   return null;
+    // }
 
     final renderObject = currentContext?.findRenderObject();
     final translation = renderObject?.getTransformTo(null).getTranslation();
@@ -196,11 +199,17 @@ extension GlobalKeyExtension on GlobalKey {
       final isLandscape =
           MediaQuery.of(currentContext!).orientation == Orientation.landscape;
       if (isLandscape) {
-        final mediaQueryPadding = MediaQuery.of(currentContext!).padding.left;
-        if (mediaQueryPadding != 0) {
-          return bounds.translate(mediaQueryPadding, 0.0);
+        final padding = MediaQuery.of(currentContext!).padding;
+        //some devices (tested on samsung a5), have a top system overlay for gesture detection. This effects the screenshot taken from native
+        //Android. As a consequence, we need to add the systemGestureInsets to the top of the bounds, to offset the occlusion rects when in landscape.
+        final systemGestureInsets =
+            MediaQuery.of(currentContext!).systemGestureInsets;
+        if (padding.left != 0) {
+          return bounds.translate(padding.left, 0.0);
         } else {
-          return bounds;
+          if (systemGestureInsets.top != 0.0) {
+            return bounds.translate(systemGestureInsets.top, 0.0);
+          }
         }
       }
       return bounds;
