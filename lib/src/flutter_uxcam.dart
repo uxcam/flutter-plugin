@@ -27,6 +27,7 @@ class FlutterUxcam {
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     uxCam = UxCam();
     ChannelCallback.handleChannelCallBacks(_channel);
+    final int timeForOffsetCorrection = DateTime.now().millisecondsSinceEpoch;
 
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
@@ -61,6 +62,11 @@ class FlutterUxcam {
   /// This method is used for starting new session
   static Future<void> startNewSession() async {
     await _channel.invokeMethod('startNewSession');
+  }
+
+  /// This method is used add a new rect that needs to be tracked
+  static Future<void> addNewRect() async {
+    await _channel.invokeMethod('addNewRect');
   }
 
   /// This method is used for stopping the current session
@@ -435,6 +441,13 @@ class FlutterUxcam {
       "y0": y0,
       "x1": x1,
       "y1": y1,
+    });
+  }
+
+  static Future<void> addFrameData(int timestamp, String frameData) async {
+    await _channel.invokeMethod<void>("addFrameData", {
+      "timestamp": timestamp,
+      "frameData": frameData,
     });
   }
 }

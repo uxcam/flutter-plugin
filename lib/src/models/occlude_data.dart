@@ -1,16 +1,19 @@
-import 'package:flutter/animation.dart';
+import 'package:flutter/widgets.dart';
 
 class OccludeData {
   OccludePoint point;
-  String? routeName;
-  String? type;
+  GlobalKey key;
 
-  OccludeData(this.type, this.routeName, this.point);
+  OccludeData(this.key, this.point);
+
+  @override
+  String toString() {
+    return 'OccludeData( point: $point)';
+  }
 
   Map<String, dynamic> toJson() {
     return {
-      "name": routeName,
-      "type": type,
+      "key": key,
       "point": point.toJson(),
     };
   }

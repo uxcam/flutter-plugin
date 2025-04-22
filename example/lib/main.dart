@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
 
     // Configuration
     FlutterUxConfig config = FlutterUxConfig(
-      userAppKey: 'USER_APP_KEY',
+      userAppKey: 'vwaxl2b5nx8i10z',
       // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
       enableAutomaticScreenNameTagging: false,
     );
@@ -42,6 +42,12 @@ class UXCamPage extends StatelessWidget {
         padding: const EdgeInsets.all(8.0),
         children: [
           /// 1. Tagging Screen Manually
+          // Occlude(
+          //   child: Text(
+          //     "this text will be occluded",
+          //     style: Theme.of(context).textTheme.headlineSmall,
+          //   ),
+          // ),
           FeatureSection(
             title: 'Screen Tagging',
             onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
@@ -71,6 +77,47 @@ class UXCamPage extends StatelessWidget {
             }),
             buttonTitle: 'Custom Event with Property',
           ),
+          Occlude(
+            child: Text(
+              "this text will be occluded",
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
+          FeatureSection(
+            title: 'Custom Occlude',
+            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+            buttonTitle: 'Custom Event',
+          ),
+          FeatureSection(
+            title: 'Setting User Identity',
+            onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
+            buttonTitle: 'Set User Identity',
+          ),
+          FeatureSection(
+            title: 'Setting User Property',
+            onPressed: () => FlutterUxcam.setUserProperty(
+                'userPropKeyString', 'valueString'),
+            buttonTitle: 'Set User Property',
+          ),
+          FeatureSection(
+            title: 'Custom Event',
+            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+            buttonTitle: 'Custom Event',
+          ),
+          FeatureSection(
+            title: 'Custom Event With Properties',
+            onPressed: () =>
+                FlutterUxcam.logEventWithProperties('Custom Event', {
+              'Property 1': 12345,
+            }),
+            buttonTitle: 'Custom Event with Property',
+          ),
+          // Occlude(
+          //   child: Text(
+          //     "this text will be occluded",
+          //     style: Theme.of(context).textTheme.headlineSmall,
+          //   ),
+          // ),
         ],
       ),
     );
