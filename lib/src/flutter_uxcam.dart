@@ -32,6 +32,7 @@ class FlutterUxcam {
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     uxCam = UxCam();
     ChannelCallback.handleChannelCallBacks(_channel);
+    final int timeForOffsetCorrection = DateTime.now().millisecondsSinceEpoch;
 
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
@@ -453,41 +454,6 @@ class FlutterUxcam {
       "timestamp": timestamp,
       "frameData": frameData,
     });
-  }
-
-  /// Methods declared to handle smart events.
-  static Future<void> appendGestureContent(
-      Offset position, TrackData trackData) async {
-    var instance = OcclusionWrapperManager();
-    var rects = instance.fetchOcclusionRects();
-    final data = trackData.toJson();
-    data['occlusionRects'] = rects;
-    await _channel.invokeMethod<void>("appendGestureContent", {
-      "x": position.dx.toNative.toDouble(),
-      "y": position.dy.toNative.toDouble(),
-      "data": data,
-    });
-  }
-
-  /// Set user defined types for tracing elements.
-  /// This will allow UXCam to recognize custom widgets as traceable elements.
-  /// [types] is a list of Type objects.
-  static void addUserDefinedType(Type type) {
-    UxTraceableElement.addUserDefinedType(type);
-  }
-
-  static void removeUserDefinedType(Type type) {
-    UxTraceableElement.removeUserDefinedType(type);
-  }
-
-  /// Set the entire userDefinedTypes list.
-  /// [types] is a list of Type objects.
-  static void setUserDefinedTypes(List<Type> types) {
-    UxTraceableElement.setUserDefinedTypes(types);
-  }
-
-  static void clearUserDefinedTypes() {
-    UxTraceableElement.clearUserDefinedTypes();
   }
 }
 
