@@ -28,6 +28,7 @@ class FlutterUxcam {
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     uxCam = UxCam();
     ChannelCallback.handleChannelCallBacks(_channel);
+    final int timeForOffsetCorrection = DateTime.now().millisecondsSinceEpoch;
 
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
@@ -448,15 +449,6 @@ class FlutterUxcam {
     await _channel.invokeMethod<void>("addFrameData", {
       "timestamp": timestamp,
       "frameData": frameData,
-    });
-  }
-
-  static Future<void> appendGestureContent(
-      Offset position, TrackData trackData) async {
-    await _channel.invokeMethod<void>("appendGestureContent", {
-      "x": position.dx.toInt(),
-      "y": position.dy.toInt(),
-      "data": trackData.toJson(),
     });
   }
 }

@@ -38,22 +38,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Objects;
-import android.graphics.Rect;
-import android.view.View;
-import android.util.DisplayMetrics;
-import android.view.Display;
-import android.util.Log;
-
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.core.graphics.Insets;
-import androidx.core.view.DisplayCutoutCompat;
-import android.content.res.Configuration;
-import android.view.Surface;
-import android.view.WindowManager;
-import android.content.Context;
-import android.view.WindowInsets;
-import androidx.core.view.DisplayCutoutCompat;
+import android.graphics.RectF;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -92,6 +77,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private CrossPlatformDelegate delegate;
 
+    private long bootTimeOffset;
+    private TreeMap<Long, RectF> frameDataMap = new TreeMap<Long, RectF>();
+
     // public static void registerWith(Registrar registrar) {
     //     activity = registrar.activity();
     //     register(registrar.messenger());
@@ -100,43 +88,47 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
                 final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
-        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
+        long wallTimeMs = System.currentTimeMillis();
+        long uptimeMs = SystemClock.elapsedRealtime();
+        bootTimeOffset = wallTimeMs - uptimeMs;
+        final BasicMessageChannel<Object> occlusionRectsChannel = new BasicMessageChannel<>(
                 binding.getBinaryMessenger(),
                 "occlusion_rects_coordinates",
-                StringCodec.INSTANCE);
-        delegate = UXCam.getDelegate();
+                StandardMessageCodec.INSTANCE);
+        delegate = UXCam.getFlutterDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
 
             @Override
             public void collectOccludedViewForCurrentFrame() {
                 new Handler(Looper.getMainLooper()).post(() -> {
                         occlusionRectsChannel.send("collect_key", points -> {
+                            Log.d("framedata", "test");
                             delegate.setAppReadyForScreenshot();
                 });
-                Log.d("occlude","rendering paused ");
-                occlusionRectsChannel.send("pause_render",res -> {});
                 });
             }
 
             @Override
-            public void processOcclusionRectsForCurrentFrame() {
-                new Handler(Looper.getMainLooper()).post(() -> {
-                        occlusionRectsChannel.send("convert_key", points -> {
-                        try {
-                            JSONArray coordinates = new JSONArray();
-                            if(points!=null && !points.isEmpty()) {
-                                JSONArray data = new JSONArray(points);
-                                coordinates.put(data);
-                            }
-                            Log.d("occlude","native : "+coordinates.toString());
-                            delegate.createScreenshotFromCollectedRects(coordinates);
-                            occlusionRectsChannel.send("resume_render",res -> {});
-                        }
-                        catch(JSONException exception) {
-                            delegate.createScreenshotFromCollectedRects(new JSONArray());
-                        }
-                });
-                });
+            public void processOcclusionRectsForCurrentFrame(long timeStamp) { 
+                Long timestamp1 = frameDataMap.lowerKey(timeStamp);
+                RectF previousFrameData = frameDataMap.get(timestamp1);
+                //Long timestamp2 = frameDataMap.lowerKey(timestamp1);
+                //RectF nextFrameData = frameDataMap.get(timestamp2);
+                //RectF output = extrapolateRect(timestamp1, previousFrameData, timestamp2, nextFrameData, timeStamp);
+                RectF output = previousFrameData;
+                JSONObject json = new JSONObject();
+                try {
+                    json.put("x0", output.left);
+                    json.put("y0", output.top);
+                    json.put("x1", output.right);
+                    json.put("y1", output.bottom);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                JSONArray result = new JSONArray();
+                result.put(json); 
+                delegate.createScreenshotFromCollectedRects(result);
+
             }
         });
 
@@ -440,13 +432,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("addFrameData".equals(call.method)) {
             long timestamp = call.argument("timestamp");
             String frameData = call.argument("frameData");
-            frameDataMap.put(timestamp,frameData);
-            result.success(true);
-        } else if ("appendGestureContent".equals(call.method)) {
-            float x = call.argument("x");
-            float y = call.argument("y");
-            String gestureContent = call.argument("gestureContent");
-            //delegate.addGestureContent(x,y, gestureContent);
+            decodeFrameDataToRectList(timestamp, frameData);
             result.success(true);
         }
         else {
@@ -592,75 +578,37 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     }
 
-    private ArrayList<Rect> combineRectDataIfSimilar(Long start, Long end) {
-
-        HashMap<String, JSONArray> widgetDataByKey = new HashMap<>();
-
-        Map<Long, String> effectiveFrameMap = frameDataMap.subMap(start, true, end, true);
-
-        for (Map.Entry<Long, String> entry : effectiveFrameMap.entrySet()) {
-            try {
-                String frameData = entry.getValue();
-                JSONArray list = new JSONArray(frameData);
-                for(int i = 0 ; i < list.length(); i++){
-                    JSONObject obj = list.getJSONObject(i);
-                    String key = obj.optString("key");
-                    JSONArray values;
-                    if(widgetDataByKey.containsKey(key)){
-                        values = widgetDataByKey.get(key);
-                    } else {
-                        values = new JSONArray();
-                    }
-                    values.put(obj);
-                    widgetDataByKey.put(key, values);
-                }
-            } catch (JSONException e) {
-                Log.e(TAG, "Error parsing JSON", e);
-            }
+    private void decodeFrameDataToRectList(Long timestamp, String frameData) {
+        Log.d("framedata", "testing");
+        try {
+            RectF rect = new RectF();
+            JSONObject item = new JSONObject(frameData);
+            rect.left = item.getInt("x0");
+            rect.top = item.getInt("y0");
+            rect.right = item.getInt("x1");
+            rect.bottom = item.getInt("y1");
+            frameDataMap.put(timestamp - bootTimeOffset,rect);
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
-        
-        ArrayList<Rect> result = new ArrayList<Rect>();
-        for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
-            String key = entry.getKey();
-            if (!keyVisibilityMap.containsKey(key)) {
-                keyVisibilityMap.put(key, 0);
-            }
-            JSONArray values = entry.getValue();
-            Rect output = new Rect();
-            boolean isVisible = false;
-            for (int i = 0; i < values.length(); i++) {
-                JSONObject obj = values.optJSONObject(i).optJSONObject("point");
-                if (obj != null) {
-                    Rect rect = new Rect();
-                    if(leftPadding!=0) {
-                        rect.left = obj.optInt("x0") + leftPadding;
-                        rect.right = obj.optInt("x1") + leftPadding;
-                    } else {
-                        rect.left = obj.optInt("x0");
-                        rect.right = obj.optInt("x1");
-                    }
-                    rect.top = obj.optInt("y0");
-                    rect.bottom = obj.optInt("y1");
-                    output.union(rect);
-                    isVisible = isVisible || values.optJSONObject(i).optBoolean("isVisible");
+    }
 
-                    if(isVisible) {
-                        keyVisibilityMap.put(key, 0);
-                    } else {
-                        keyVisibilityMap.put(key, keyVisibilityMap.get(key)+1);
-                    }
+    float extrapolate(long t1, float a1, long t2, float a2,long t3) {
+        return a1 + (float)(t3 - t1) * (a2 - a1) / (float)(t2 - t1);
+    }
 
-                }
-            }
-            if(keyVisibilityMap.get(key) < 2) {
-                output.left = output.left-15;
-                output.right = output.right+15;
-                output.top = output.top-25;
-                output.bottom = output.bottom+25;
-                result.add(output);
-            }
-        }
-        return result;
+    public RectF extrapolateRect(
+            long t1, RectF r1,
+            long t2, RectF r2,
+            long t3
+    ) {
+
+        return new RectF(
+                extrapolate(t1, r1.left, t2, r2.left, t3),
+                extrapolate(t1, r1.top, t2, r2.top, t3),
+                extrapolate(t1, r1.right, t2, r2.right, t3),
+                extrapolate(t1, r1.bottom, t2, r2.bottom, t3)
+        );
     }
 
 }
