@@ -1,7 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_uxcam/src/widgets/element_capture.dart';
 
 class UxCamBinding extends WidgetsFlutterBinding {
   @override

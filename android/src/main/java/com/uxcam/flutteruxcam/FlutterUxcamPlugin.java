@@ -22,7 +22,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
-import com.uxcam.screenshot.screenshotTaker.FlutterDelegate;
+import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
 import com.uxcam.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
@@ -69,7 +69,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
      */
     private static Activity activity;
 
-    private FlutterDelegate delegate;
+    private CrossPlatformDelegate delegate;
 
     // public static void registerWith(Registrar registrar) {
     //     activity = registrar.activity();
@@ -83,8 +83,19 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 binding.getBinaryMessenger(),
                 "occlusion_rects_coordinates",
                 StringCodec.INSTANCE);
-        delegate = UXCam.getFlutterDelegate();
+        delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
+
+            @Override
+            public void collectOccludedViewForCurrentFrame() {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                        occlusionRectsChannel.send("collect_key", points -> {
+                            Log.d("framedata", "test");
+                            delegate.setAppReadyForScreenshot();
+                });
+                });
+            }
+
             @Override
             public void processOcclusionRectsForCurrentFrame() {
                 new Handler(Looper.getMainLooper()).post(() -> {
