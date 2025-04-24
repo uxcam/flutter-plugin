@@ -20,8 +20,8 @@ class MyApp extends StatelessWidget {
 
     // Configuration
     FlutterUxConfig config = FlutterUxConfig(
-        userAppKey: 'key',
-        // userAppKey: 'vwaxl2b5nx8i10z',
+        //userAppKey: 'key',
+        userAppKey: 'vwaxl2b5nx8i10z',
         // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
         enableAutomaticScreenNameTagging: false,
         enableIntegrationLogging: true);
@@ -29,16 +29,13 @@ class MyApp extends StatelessWidget {
     FlutterUxcam.startWithConfiguration(config);
 
     return MaterialApp(
-      builder: (_, child) {
-        return ElementCapture(
-          match: (widget) => widget is ElevatedButton || widget is TextButton,
-          wrap: (child) => Track(
-            child: child,
-          ),
-          child: WidgetInterceptor(child: child!),
+      initialRoute: "/",
+      onGenerateRoute: onGenerateRoute,
+      builder: (context, child) {
+        return WidgetCapture(
+          child: child!,
         );
       },
-      home: UXCamPage(),
     );
   }
 }
@@ -83,6 +80,11 @@ class UXCamPage extends StatelessWidget {
             }),
             buttonTitle: 'Custom Event with Property',
           ),
+          FeatureSection(
+            title: 'Navigate',
+            onPressed: () => Navigator.of(context).pushNamed("detail"),
+            buttonTitle: 'Navigate to details',
+          ),
         ],
       ),
     );
@@ -118,6 +120,51 @@ class FeatureSection extends StatelessWidget {
         ),
         const Divider(),
       ],
+    );
+  }
+}
+
+MaterialPageRoute<dynamic> onGenerateRoute(RouteSettings settings) {
+  switch (settings.name) {
+    case 'detail':
+      return MaterialPageRoute(
+        builder: (_) => const DetailPage(),
+        settings: RouteSettings(
+          arguments: settings.arguments,
+          name: "detail",
+        ),
+      );
+    default:
+      return MaterialPageRoute(
+        builder: (_) => const UXCamPage(),
+        settings: RouteSettings(
+          arguments: settings.arguments,
+          name: "/",
+        ),
+      );
+  }
+}
+
+class DetailPage extends StatelessWidget {
+  const DetailPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: [
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+        ],
+      ),
     );
   }
 }
