@@ -13,6 +13,9 @@ class UxCam {
       StandardMessageCodec(),
     );
     _occlusionRectsChannel.setMessageHandler((event) async {
+      if (event is String) {
+        return DateTime.now().millisecondsSinceEpoch.toString();
+      }
       if (event is int) {
         final rects = _manager.getDataByTimestamp(event);
         final result = rects.map((rect) => rect.toJson()).toList();
