@@ -28,7 +28,6 @@ class FlutterUxcam {
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     uxCam = UxCam();
     ChannelCallback.handleChannelCallBacks(_channel);
-    final int timeForOffsetCorrection = DateTime.now().millisecondsSinceEpoch;
 
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
