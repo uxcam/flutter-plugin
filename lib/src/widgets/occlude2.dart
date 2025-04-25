@@ -24,10 +24,12 @@ class _OccludeState extends State<Occlude> {
 
   void _updatePosition() {
     final timestamp = SchedulerBinding.instance.currentFrameTimeStamp;
+    print("frame screenshot flutter : " +
+        DateTime.now().millisecondsSinceEpoch.toString());
     Key? key = widget.key ?? GlobalKey();
-    (key as GlobalKey).globalPaintBounds;
-    OcclusionManager()
-        .add(timestamp.inMilliseconds, key, (key).globalPaintBounds!);
+    // (key as GlobalKey).globalPaintBounds;
+    // OcclusionManager()
+    //     .add(timestamp.inMilliseconds, key, (key).globalPaintBounds!);
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _updatePosition();
     });
