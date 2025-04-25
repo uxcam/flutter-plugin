@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
@@ -35,7 +36,8 @@ class OccludeWrapperState extends State<OccludeWrapper>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
-      _updatePositionForTopRouteOnly();
+      //getOccludePoints();
+      OcclusionEventCollector().streamNotifier.addListener(_sendRectData);
     });
   }
 
@@ -64,6 +66,19 @@ class OccludeWrapperState extends State<OccludeWrapper>
     OcclusionWrapperManager()
         .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
     super.dispose();
+  }
+
+  Future<void> _sendRectData() async {
+    await Future.delayed(Duration(milliseconds: 5));
+    final point = getOccludePointsForStream();
+    if (point != null) {
+      final _data = OccludeData(
+        ModalRoute.of(context)?.runtimeType.toString(),
+        ModalRoute.of(context)?.settings.name,
+        point,
+      );
+      OcclusionEventCollector().emit(_data);
+    }
   }
 
   @override
