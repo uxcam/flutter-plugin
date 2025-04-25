@@ -5,8 +5,10 @@ import 'package:flutter_uxcam/src/widgets/occlusion_manager.dart';
 class UxCam {
   static FlutterUxcamNavigatorObserver? navigationObserver;
   final OcclusionManager _manager = OcclusionManager();
+  int? dartTimeStamp;
 
   UxCam() {
+    dartTimeStamp = DateTime.now().millisecondsSinceEpoch;
     const BasicMessageChannel<Object?> _occlusionRectsChannel =
         BasicMessageChannel<Object?>(
       'occlusion_rects_coordinates',
@@ -14,10 +16,7 @@ class UxCam {
     );
     _occlusionRectsChannel.setMessageHandler((event) async {
       if (event is int) {
-        final rects = _manager.getDataByTimestamp(event);
-        final result = rects.map((rect) => rect.toJson()).toList();
-        print("result ::" + result.toString());
-        return result;
+        return dartTimeStamp;
       }
       return "[]";
     });

@@ -42,8 +42,8 @@ class _RenderOcclude extends RenderProxyBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    super.paint(context, offset);
     _updateLayout();
+    super.paint(context, offset);
   }
 
   void _updateLayout() {
@@ -51,6 +51,10 @@ class _RenderOcclude extends RenderProxyBox {
     final globalOffset = Offset(translation.x, translation.y);
 
     if (key != null) {
+      // print("frame flutter" +
+      //     DateTime.now().millisecondsSinceEpoch.toString() +
+      //     "->" +
+      //     (globalOffset & size).toString());
       OcclusionManager().add(
           DateTime.now().millisecondsSinceEpoch, key!, globalOffset & size);
     } else {

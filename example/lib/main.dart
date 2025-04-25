@@ -24,6 +24,7 @@ class MyApp extends StatelessWidget {
       userAppKey: 'vwaxl2b5nx8i10z',
       // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
       enableAutomaticScreenNameTagging: false,
+      enableIntegrationLogging: true,
     );
 
     FlutterUxcam.startWithConfiguration(config);
@@ -49,18 +50,18 @@ class UXCamPage extends StatelessWidget {
       body: ListView(
         children: [
           /// 1. Tagging Screen Manually
-          // Occlude(
-          //   child: Text(
-          //     "this text will be occluded",
-          //     style: Theme.of(context).textTheme.headlineSmall,
-          //   ),
-          // ),
+          OccludeWrapper(
+            child: Text(
+              "this text will be occluded",
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
           FeatureSection(
             title: 'Screen Tagging',
             onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
             buttonTitle: 'Login',
           ),
-          Occlude(
+          OccludeWrapper(
             child: Text(
               "this text will be occluded",
               style: Theme.of(context).textTheme.headlineSmall,
