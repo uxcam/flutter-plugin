@@ -23,7 +23,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
-import com.uxcam.screenshot.screenshotTaker.FlutterDelegate;
+import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
 import com.uxcam.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
@@ -73,7 +73,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
      */
     private static Activity activity;
 
-    private FlutterDelegate delegate;
+    private CrossPlatformDelegate delegate;
 
     private long bootTimeOffset;
     private TreeMap<Long, RectF> frameDataMap = new TreeMap<Long, RectF>();
@@ -86,45 +86,44 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
                 final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
-        long wallTimeMs = System.currentTimeMillis();
-        long uptimeMs = SystemClock.elapsedRealtime();
-        bootTimeOffset = wallTimeMs - uptimeMs;
         final BasicMessageChannel<Object> occlusionRectsChannel = new BasicMessageChannel<>(
                 binding.getBinaryMessenger(),
                 "occlusion_rects_coordinates",
                 StandardMessageCodec.INSTANCE);
-        delegate = UXCam.getFlutterDelegate();
+        delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
 
             @Override
             public void collectOccludedViewForCurrentFrame() {
                 new Handler(Looper.getMainLooper()).post(() -> {
-                        occlusionRectsChannel.send("collect_key", points -> {
-                            Log.d("framedata", "test");
-                            delegate.setAppReadyForScreenshot();
+                    long wallTimeMs = System.currentTimeMillis();
+                        occlusionRectsChannel.send("collect_key", time -> {
+                            Log.d("framedata", "android"+wallTimeMs);
+                            Log.d("framedata", "flutter"+time);
+                            Log.d("framedata", "--------------------------------");
                 });
                 });
             }
 
             @Override
-            public void processOcclusionRectsForCurrentFrame(long timeStamp) { 
-                Long timestamp1 = frameDataMap.lowerKey(timeStamp);
-                RectF previousFrameData = frameDataMap.get(timestamp1);
-                //Long timestamp2 = frameDataMap.lowerKey(timestamp1);
-                //RectF nextFrameData = frameDataMap.get(timestamp2);
-                //RectF output = extrapolateRect(timestamp1, previousFrameData, timestamp2, nextFrameData, timeStamp);
-                RectF output = previousFrameData;
-                JSONObject json = new JSONObject();
-                try {
-                    json.put("x0", output.left);
-                    json.put("y0", output.top);
-                    json.put("x1", output.right);
-                    json.put("y1", output.bottom);
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+            public void processOcclusionRectsForCurrentFrame() { 
+                // Long timestamp1 = frameDataMap.lowerKey(timeStamp);
+                // RectF previousFrameData = frameDataMap.get(timestamp1);
+                // //Long timestamp2 = frameDataMap.lowerKey(timestamp1);
+                // //RectF nextFrameData = frameDataMap.get(timestamp2);
+                // //RectF output = extrapolateRect(timestamp1, previousFrameData, timestamp2, nextFrameData, timeStamp);
+                // RectF output = previousFrameData;
+                // JSONObject json = new JSONObject();
+                // try {
+                //     json.put("x0", output.left);
+                //     json.put("y0", output.top);
+                //     json.put("x1", output.right);
+                //     json.put("y1", output.bottom);
+                // } catch (JSONException e) {
+                //     e.printStackTrace();
+                // }
                 JSONArray result = new JSONArray();
-                result.put(json); 
+                // result.put(json); 
                 delegate.createScreenshotFromCollectedRects(result);
 
             }
@@ -365,7 +364,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("addFrameData".equals(call.method)) {
             long timestamp = call.argument("timestamp");
             String frameData = call.argument("frameData");
-            decodeFrameDataToRectList(timestamp, frameData);
+            Log.d("framedata2", timestamp+"--------------------------------"+frameData);
             result.success(true);
         }
         else {
@@ -512,7 +511,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
     private void decodeFrameDataToRectList(Long timestamp, String frameData) {
-        Log.d("framedata", "testing");
         try {
             RectF rect = new RectF();
             JSONObject item = new JSONObject(frameData);

@@ -51,8 +51,13 @@ class _RenderOcclude extends RenderProxyBox {
     final globalOffset = Offset(translation.x, translation.y);
 
     if (key != null) {
-      OcclusionManager().add(
-          DateTime.now().millisecondsSinceEpoch, key!, globalOffset & size);
+      print("frame flutter" +
+          SchedulerBinding.instance.currentFrameTimeStamp.inMilliseconds
+              .toString() +
+          "->" +
+          (globalOffset & size).toString());
+      // OcclusionManager().add(
+      //     , key!, globalOffset & size);
     } else {
       print("The occlude widget requires a key for position tracking");
     }
