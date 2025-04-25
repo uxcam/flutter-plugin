@@ -9,11 +9,11 @@ class TrackData {
   String? uiValue;
   String? uiId;
   String? uiClass;
-  String? uiType;
+  int uiType;
   Key? widgetKey;
 
   TrackData(this.origin, this.size, this.route,
-      {this.uiValue, this.uiClass, this.uiType, this.uiId});
+      {this.uiValue, this.uiClass, this.uiType = -1, this.uiId});
 
   @override
   String toString() {
