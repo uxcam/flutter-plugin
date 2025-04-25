@@ -49,11 +49,24 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       _trackedWidgets.add(TrackData(origin, size, route,
           uiValue: textLabel,
           uiClass: element.widget.runtimeType.toString(),
-          uiId: _uiId));
+          uiId: _uiId,
+          uiType: getUiType(element)));
 
       return;
     }
     element.visitChildElements(_inspectDirectChild);
+  }
+
+  int getUiType(Element element) {
+    if (element.widget is ElevatedButton ||
+        element.widget is InkWell ||
+        element.widget is GestureDetector ||
+        element.widget is FloatingActionButton) {
+      return 1;
+    } else if (element.widget is TextField || element.widget is TextFormField) {
+      return 2;
+    }
+    return -1;
   }
 
   String? getTextLabelIfExists(Element element) {
