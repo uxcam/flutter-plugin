@@ -1,5 +1,6 @@
-import 'dart:convert';
+import 'dart:async';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
@@ -8,13 +9,15 @@ import 'package:flutter_uxcam/src/models/track_data.dart';
 class UxCam {
   static FlutterUxcamNavigatorObserver? navigationObserver;
   final OcclusionEventCollector _collector = OcclusionEventCollector();
+  Completer<bool>? completer;
 
   UxCam() {
     const BasicMessageChannel<String> occlusionRectsChannel =
         BasicMessageChannel<String>(
             "occlusion_rects_coordinates", StringCodec());
     occlusionRectsChannel.setMessageHandler((event) async {
-      await SchedulerBinding.instance.endOfFrame;
+      completer = Completer<bool>();
+      await _deferFirstFrame();
       final collectedData = await _collector.collectOcclusionRectsFor();
       final points = _convertOccludeDataToRects(collectedData);
       return points.toString();
@@ -38,5 +41,12 @@ class UxCam {
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       await SchedulerBinding.instance.endOfFrame;
     });
+  }
+
+  Future<bool> _deferFirstFrame() async {
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      completer!.complete(true);
+    });
+    return completer!.future;
   }
 }
