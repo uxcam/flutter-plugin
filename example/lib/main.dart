@@ -43,12 +43,12 @@ class UXCamPage extends StatelessWidget {
         padding: const EdgeInsets.all(8.0),
         children: [
           /// 1. Tagging Screen Manually
-          // Occlude(
-          //   child: Text(
-          //     "this text will be occluded",
-          //     style: Theme.of(context).textTheme.headlineSmall,
-          //   ),
-          // ),
+          OccludeWrapper(
+            child: Text(
+              "this text will be occluded",
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
           FeatureSection(
             title: 'Screen Tagging',
             onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
@@ -78,7 +78,7 @@ class UXCamPage extends StatelessWidget {
             }),
             buttonTitle: 'Custom Event with Property',
           ),
-          Occlude(
+          OccludeWrapper(
             child: Text(
               "this text will be occluded",
               style: Theme.of(context).textTheme.headlineSmall,

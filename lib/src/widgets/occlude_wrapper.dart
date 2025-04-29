@@ -5,8 +5,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
-import 'package:flutter_uxcam/src/flutter_uxcam.dart';
-import 'package:flutter_uxcam/src/helpers/occlusion_event_collector.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -35,29 +33,19 @@ class OccludeWrapperState extends State<OccludeWrapper>
     super.initState();
     _uniqueId = UniqueKey();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
-      _checkPosition();
+      _updatePosition();
     });
   }
 
-  void _checkPosition() {
-    if (mounted) {
-      final renderObject = context.findRenderObject();
-      if (renderObject is RenderBox) {
-        final position = renderObject.localToGlobal(Offset.zero);
-        Future.delayed(
-          const Duration(milliseconds: 1),
-          () {
-            OcclusionWrapperManager()
-                .addNewBound(_uniqueId, _widgetKey.globalPaintBounds!);
-          },
-        );
-
-        lastPosition = position;
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) => _checkPosition());
-    }
+  void _updatePosition() {
+    if (!mounted) return;
+    OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+        _widgetKey, _widgetKey.globalPaintBounds!);
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _updatePosition();
+    });
   }
 
   @override
@@ -111,6 +99,8 @@ class OccludeWrapperState extends State<OccludeWrapper>
 
   void unRegisterOcclusionWidget() {
     OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    OcclusionWrapperManager()
+        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
@@ -155,22 +145,6 @@ class OccludeWrapperState extends State<OccludeWrapper>
       occludePoint.bottomRightY,
     );
   }
-
-  OccludePoint? getOccludePointsForStream() {
-    // Preventing Extra Operation
-    if (!mounted) return null;
-
-    Rect? bound = _widgetKey.globalPaintBounds;
-
-    if (bound == null) return null;
-
-    return OccludePoint(
-      bound.left.ratioToInt,
-      bound.top.ratioToInt,
-      bound.right.ratioToInt,
-      bound.bottom.ratioToInt,
-    );
-  }
 }
 
 extension GlobalKeyExtension on GlobalKey {
@@ -208,7 +182,11 @@ extension GlobalKeyExtension on GlobalKey {
           return bounds.translate(padding.left, 0.0);
         } else {
           if (systemGestureInsets.top != 0.0) {
-            return bounds.translate(systemGestureInsets.top, 0.0);
+            final _scale = MediaQuery.of(currentContext!).textScaler !=
+                    TextScaler.noScaling
+                ? MediaQuery.of(currentContext!).devicePixelRatio.toInt()
+                : 0;
+            return bounds.translate(systemGestureInsets.top * _scale, 0.0);
           }
         }
       }
