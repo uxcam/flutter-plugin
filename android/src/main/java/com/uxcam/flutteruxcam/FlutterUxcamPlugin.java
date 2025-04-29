@@ -41,9 +41,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Objects;
-import android.graphics.RectF;
+import android.graphics.Rect;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -83,7 +82,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private CrossPlatformDelegate delegate;
 
     private long bootTimeOffset;
-    private TreeMap<Long, RectF> frameDataMap = new TreeMap<Long, RectF>();
+    private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
 
     // public static void registerWith(Registrar registrar) {
     //     activity = registrar.activity();
@@ -99,38 +98,18 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 StandardMessageCodec.INSTANCE);
         delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
-
             @Override
-            public void collectOccludedViewForCurrentFrame() {
-                new Handler(Looper.getMainLooper()).post(() -> {
-                    long wallTimeMs = System.currentTimeMillis();
-                        occlusionRectsChannel.send("collect_key", time -> {
-                            Log.d("framedata", "android"+wallTimeMs);
-                            Log.d("framedata", "flutter"+time);
-                            Log.d("framedata", "--------------------------------");
-                });
-                });
-            }
-
-            @Override
-            public void processOcclusionRectsForCurrentFrame() { 
-                // Long timestamp1 = frameDataMap.lowerKey(timeStamp);
-                // RectF previousFrameData = frameDataMap.get(timestamp1);
-                // //Long timestamp2 = frameDataMap.lowerKey(timestamp1);
-                // //RectF nextFrameData = frameDataMap.get(timestamp2);
-                // //RectF output = extrapolateRect(timestamp1, previousFrameData, timestamp2, nextFrameData, timeStamp);
-                // RectF output = previousFrameData;
-                // JSONObject json = new JSONObject();
-                // try {
-                //     json.put("x0", output.left);
-                //     json.put("y0", output.top);
-                //     json.put("x1", output.right);
-                //     json.put("y1", output.bottom);
-                // } catch (JSONException e) {
-                //     e.printStackTrace();
-                // }
-                JSONArray result = new JSONArray();
-                // result.put(json); 
+            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) { 
+                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-10);
+                if(effectiveStartTimestamp == null) {
+                    effectiveStartTimestamp = frameDataMap.firstKey();
+                }
+                Long effectiveEndTimestamp = frameDataMap.higherKey(stopTimeStamp+10);
+                if(effectiveEndTimestamp == null) {
+                    effectiveEndTimestamp = frameDataMap.lastKey();
+                }
+                ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
+                frameDataMap.headMap(effectiveStartTimestamp, true).clear();
                 delegate.createScreenshotFromCollectedRects(result);
 
             }
@@ -458,7 +437,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("addFrameData".equals(call.method)) {
             long timestamp = call.argument("timestamp");
             String frameData = call.argument("frameData");
-            Log.d("framedata2", timestamp+"--------------------------------"+frameData);
+            frameDataMap.put(timestamp,frameData);
             result.success(true);
         }
         else {
@@ -604,36 +583,62 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     }
 
-    private void decodeFrameDataToRectList(Long timestamp, String frameData) {
-        try {
-            RectF rect = new RectF();
-            JSONObject item = new JSONObject(frameData);
-            rect.left = item.getInt("x0");
-            rect.top = item.getInt("y0");
-            rect.right = item.getInt("x1");
-            rect.bottom = item.getInt("y1");
-            frameDataMap.put(timestamp - bootTimeOffset,rect);
-        } catch (JSONException e) {
-            e.printStackTrace();
+    private ArrayList<Rect> combineRectDataIfSimilar(Long start, Long end) {
+
+        HashMap<String, JSONArray> widgetDataByKey = new HashMap<>();
+
+        Map<Long, String> effectiveFrameMap = frameDataMap.subMap(start, true, end, true);
+
+        Log.d("grouped framedata", effectiveFrameMap.toString());
+
+        for (Map.Entry<Long, String> entry : effectiveFrameMap.entrySet()) {
+            try {
+                String frameData = entry.getValue();
+                JSONArray list = new JSONArray(frameData);
+                for(int i = 0 ; i < list.length(); i++){
+                    JSONObject obj = list.getJSONObject(i);
+                    String key = obj.optString("key");
+                    JSONArray values;
+                    if(widgetDataByKey.containsKey(key)){
+                        values = widgetDataByKey.get(key);
+                    } else {
+                        values = new JSONArray();
+                    }
+                    values.put(obj);
+                    widgetDataByKey.put(key, values);
+                }
+            } catch (JSONException e) {
+                Log.e(TAG, "Error parsing JSON", e);
+            }
         }
-    }
 
-    float extrapolate(long t1, float a1, long t2, float a2,long t3) {
-        return a1 + (float)(t3 - t1) * (a2 - a1) / (float)(t2 - t1);
-    }
+        Log.d("grouped framedata", widgetDataByKey.toString());
 
-    public RectF extrapolateRect(
-            long t1, RectF r1,
-            long t2, RectF r2,
-            long t3
-    ) {
+        //handle the case where the user pops the route so that the widgets are no longer in the tree
+        for (Map.Entry<Long, JSONArray> entry : widgetDataByKey.entrySet()) {
+            JSONArray values = entry.getValue();
+            
+        }
 
-        return new RectF(
-                extrapolate(t1, r1.left, t2, r2.left, t3),
-                extrapolate(t1, r1.top, t2, r2.top, t3),
-                extrapolate(t1, r1.right, t2, r2.right, t3),
-                extrapolate(t1, r1.bottom, t2, r2.bottom, t3)
-        );
+        ArrayList<Rect> result = new ArrayList<Rect>();
+        for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
+            JSONArray values = entry.getValue();
+            Rect output = new Rect();
+            for (int i = 0; i < values.length(); i++) {
+                JSONObject obj = values.optJSONObject(i).optJSONObject("point");
+                if (obj != null) {
+                    Rect rect = new Rect();
+                    rect.left = obj.optInt("x0");
+                    rect.top = obj.optInt("y0");
+                    rect.right = obj.optInt("x1");
+                    rect.bottom = obj.optInt("y1");
+                    output.union(rect);
+                }
+            }
+            result.add(output);
+            Log.d("grouped framedata", result.toString());
+        }
+        return result;
     }
 
 }
