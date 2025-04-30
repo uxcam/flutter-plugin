@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Objects;
 import android.graphics.Rect;
 
@@ -96,16 +97,20 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) { 
                 Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-10);
-                if(effectiveStartTimestamp == null) {
+                if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
                     effectiveStartTimestamp = frameDataMap.firstKey();
                 }
                 Long effectiveEndTimestamp = frameDataMap.higherKey(stopTimeStamp+10);
-                if(effectiveEndTimestamp == null) {
+                if(effectiveEndTimestamp == null && frameDataMap.size() > 0) {
                     effectiveEndTimestamp = frameDataMap.lastKey();
                 }
-                ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                frameDataMap.headMap(effectiveStartTimestamp, true).clear();
-                delegate.createScreenshotFromCollectedRects(result);
+                if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
+                    ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
+                    frameDataMap.headMap(effectiveStartTimestamp, false).clear();
+                    delegate.createScreenshotFromCollectedRects(result);
+                } else {
+                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                }
 
             }
         });
@@ -565,14 +570,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             }
         }
 
-        Log.d("grouped framedata", widgetDataByKey.toString());
-
-        //handle the case where the user pops the route so that the widgets are no longer in the tree
-        for (Map.Entry<Long, JSONArray> entry : widgetDataByKey.entrySet()) {
-            JSONArray values = entry.getValue();
-            
-        }
-
         ArrayList<Rect> result = new ArrayList<Rect>();
         for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
             JSONArray values = entry.getValue();
@@ -589,7 +586,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 }
             }
             result.add(output);
-            Log.d("grouped framedata", result.toString());
         }
         return result;
     }
