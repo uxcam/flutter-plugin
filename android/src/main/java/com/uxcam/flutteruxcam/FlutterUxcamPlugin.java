@@ -567,8 +567,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         Map<Long, String> effectiveFrameMap = frameDataMap.subMap(start, true, end, true);
 
-        Log.d("grouped framedata", effectiveFrameMap.toString());
-
         for (Map.Entry<Long, String> entry : effectiveFrameMap.entrySet()) {
             try {
                 String frameData = entry.getValue();
