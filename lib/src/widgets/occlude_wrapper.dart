@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
@@ -24,7 +23,7 @@ class OccludeWrapper extends StatefulWidget {
 class OccludeWrapperState extends State<OccludeWrapper>
     with WidgetsBindingObserver {
   late OccludePoint occludePoint;
-  final GlobalKey _widgetKey = GlobalKey();
+  late final GlobalKey _widgetKey;
   late final UniqueKey _uniqueId;
   Offset? lastPosition;
 
@@ -32,20 +31,35 @@ class OccludeWrapperState extends State<OccludeWrapper>
   void initState() {
     super.initState();
     _uniqueId = UniqueKey();
+    _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
-    SchedulerBinding.instance.addPostFrameCallback((_) async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
-      _updatePosition();
+      _updatePositionForTopRouteOnly();
     });
   }
 
   void _updatePosition() {
     if (!mounted) return;
-    OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-        _widgetKey, _widgetKey.globalPaintBounds!);
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      _updatePosition();
+    Rect rect = Rect.zero;
+    if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
+      rect = _widgetKey.globalPaintBounds!;
+    }
+    OcclusionWrapperManager()
+        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updatePositionForTopRouteOnly();
     });
+  }
+
+  void _updatePositionForTopRouteOnly() {
+    ModalRoute? modalRoute = ModalRoute.of(context);
+    if (mounted &&
+        modalRoute != null &&
+        modalRoute.isCurrent &&
+        modalRoute.isActive) {
+      _updatePosition();
+    }
   }
 
   @override
@@ -95,6 +109,8 @@ class OccludeWrapperState extends State<OccludeWrapper>
   void registerOcclusionWidget() {
     var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
     OcclusionWrapperManager().registerOcclusionWrapper(item);
+    OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+        _widgetKey, _widgetKey.globalPaintBounds!);
   }
 
   void unRegisterOcclusionWidget() {
