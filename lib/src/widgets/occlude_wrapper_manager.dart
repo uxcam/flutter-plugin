@@ -53,11 +53,18 @@ class OcclusionWrapperManager {
       };
       rectList.add(rectData);
     });
+
     FlutterUxcam.addFrameData(timeStamp, jsonEncode(rectList));
   }
 
   void clearOcclusionRects() {
     occlusionRects.clear();
+  }
+
+  bool containsWidgetByKey(GlobalKey key) {
+    return items.any((item) {
+      return item.key == key;
+    });
   }
 
   /// Register Flutter Widget for occlusion
