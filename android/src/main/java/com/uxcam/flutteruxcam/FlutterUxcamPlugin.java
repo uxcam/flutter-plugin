@@ -107,11 +107,11 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) { 
-                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-10);
+                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-20);
                 if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
                     effectiveStartTimestamp = frameDataMap.firstKey();
                 }
-                Long effectiveEndTimestamp = frameDataMap.higherKey(stopTimeStamp+10);
+                Long effectiveEndTimestamp = frameDataMap.higherKey(stopTimeStamp+20);
                 if(effectiveEndTimestamp == null && frameDataMap.size() > 0) {
                     effectiveEndTimestamp = frameDataMap.lastKey();
                 }
@@ -170,7 +170,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             leftInset = systemBars.left;
             rightInset = systemBars.right;
-            Log.d("frame-data", leftInset + "," + rightInset);
             return ViewCompat.onApplyWindowInsets(v, insets);
         });
     }
@@ -539,6 +538,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         HashMap<String, JSONArray> widgetDataByKey = new HashMap<>();
 
         Map<Long, String> effectiveFrameMap = frameDataMap.subMap(start, true, end, true);
+
+        Log.d("route-change", "route-change" + effectiveFrameMap.toString());
 
         for (Map.Entry<Long, String> entry : effectiveFrameMap.entrySet()) {
             try {
