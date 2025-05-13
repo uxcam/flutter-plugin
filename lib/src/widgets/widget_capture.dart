@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 
 class WidgetCapture extends StatefulWidget {
@@ -12,61 +16,38 @@ class WidgetCapture extends StatefulWidget {
 }
 
 class _WidgetCaptureState extends State<WidgetCapture> {
-  TrackData? _findGestureReceivingWidget(Offset tapCoordinates) {
-    TrackData? trackData;
-    void _inspectDirectChild(Element element, Offset gestureCoordinates) {
+  List<TrackData> _trackList = [];
+
+  void _scanElementTree(Element element) {
+    void _inspectDirectChild(Element element) {
       bool isLeaf = true;
 
-      final renderObject = element.renderObject;
-      Offset origin;
-      Size size;
-
-      if (renderObject is RenderSliver) {
+      if (element.renderObject is RenderSliver) {
         //this is a special case for cases when using ListView, GridView or other Sliver-esque widgets
         element.visitChildElements((child) {
           isLeaf = false;
-          _inspectDirectChild(child, gestureCoordinates);
+          _inspectDirectChild(child);
         });
       }
 
-      if (renderObject is RenderBox) {
-        origin = renderObject.localToGlobal(Offset.zero);
-        size = renderObject.size;
-      } else {
-        origin = Offset.zero;
-        size = Size.zero;
-      }
+      element.visitChildElements((child) {
+        isLeaf = false;
+        _inspectDirectChild(child);
+      });
 
-      final bound = origin & size;
-
-      if (bound.contains(gestureCoordinates)) {
-        element.visitChildElements((child) {
-          isLeaf = false;
-          _inspectDirectChild(child, gestureCoordinates);
-        });
-
-        if (isLeaf) {
-          trackData = _dataForWidget(element);
+      if (isLeaf) {
+        final field = element.findAncestorWidgetOfExactType<TextField>();
+        if (field != null) {
+          //_trackList.add(_dataForWidget(field.ele));
         }
       }
     }
 
-    context.visitChildElements(
-        (child) => _inspectDirectChild(child, tapCoordinates));
-    return trackData;
+    element.visitChildElements((child) => _inspectDirectChild(child));
   }
 
   TrackData _dataForWidget(Element element) {
     final renderObject = element.renderObject;
-    Offset origin;
-    Size size;
-    if (renderObject is RenderBox) {
-      origin = renderObject.localToGlobal(Offset.zero);
-      size = renderObject.size;
-    } else {
-      origin = Offset.zero;
-      size = Size.zero;
-    }
 
     String textLabel = renderObject is RenderParagraph
         ? getTextLabelIfExists(renderObject)
@@ -77,7 +58,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
         ? element.widget.key.toString()
         : "$route#${identityHashCode(element).toRadixString(16)}";
 
-    return TrackData(origin, size, route,
+    return TrackData(_getRectFromBox(renderObject as RenderBox), route,
         uiValue: textLabel,
         uiClass: element.widget.runtimeType.toString(),
         uiId: _uiId,
@@ -106,17 +87,28 @@ class _WidgetCaptureState extends State<WidgetCapture> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPersistentFrameCallback((_) {
+      context.visitChildElements(_scanElementTree);
+      print("tracked widgets" + _trackList.length.toString());
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: (event) {
-        final _tapCoordinates = event.position;
-        final trackData = _findGestureReceivingWidget(_tapCoordinates);
-        if (trackData != null) {
-          trackData.showAnalyticsInfo();
-        }
-      },
+      onPointerDown: (event) {},
       child: widget.child,
     );
+  }
+
+  Rect _getRectFromBox(RenderBox renderObject) {
+    Offset origin;
+    Size size;
+    origin = renderObject.localToGlobal(Offset.zero);
+    size = renderObject.size;
+    return origin & size;
   }
 }
