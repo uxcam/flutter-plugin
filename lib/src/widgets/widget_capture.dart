@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 
 class WidgetCapture extends StatefulWidget {
@@ -12,21 +12,23 @@ class WidgetCapture extends StatefulWidget {
 }
 
 class _WidgetCaptureState extends State<WidgetCapture> {
-  List<TrackData> _trackedWidgets = [];
-  @override
-  void initState() {
-    super.initState();
-    SchedulerBinding.instance.addPersistentFrameCallback((_) {
-      _trackedWidgets.clear();
-      context.visitChildElements(_inspectDirectChild);
-    });
-  }
+  TrackData? _findGestureReceivingWidget(Offset tapCoordinates) {
+    TrackData? trackData;
+    void _inspectDirectChild(Element element, Offset gestureCoordinates) {
+      bool isLeaf = true;
 
-  void _inspectDirectChild(Element element) {
-    if (element.widget is ElevatedButton || element.widget is InkWell) {
       final renderObject = element.renderObject;
       Offset origin;
       Size size;
+
+      if (renderObject is RenderSliver) {
+        //this is a special case for cases when using ListView, GridView or other Sliver-esque widgets
+        element.visitChildElements((child) {
+          isLeaf = false;
+          _inspectDirectChild(child, gestureCoordinates);
+        });
+      }
+
       if (renderObject is RenderBox) {
         origin = renderObject.localToGlobal(Offset.zero);
         size = renderObject.size;
@@ -35,62 +37,72 @@ class _WidgetCaptureState extends State<WidgetCapture> {
         size = Size.zero;
       }
 
-      //elevated button was found. check if it has a text label
-      String? textLabel;
-      element.visitChildElements((element) {
-        textLabel = getTextLabelIfExists(element);
-      });
+      final bound = origin & size;
 
-      final route = ModalRoute.of(element)?.settings.name ?? "";
-      String _uiId = element.widget.key != null
-          ? element.widget.key.toString()
-          : "$route#${identityHashCode(widget)}";
+      if (bound.contains(gestureCoordinates)) {
+        element.visitChildElements((child) {
+          isLeaf = false;
+          _inspectDirectChild(child, gestureCoordinates);
+        });
 
-      _trackedWidgets.add(TrackData(origin, size, route,
-          uiValue: textLabel,
-          uiClass: element.widget.runtimeType.toString(),
-          uiId: _uiId,
-          uiType: getUiType(element)));
-
-      return;
-    }
-    element.visitChildElements(_inspectDirectChild);
-  }
-
-  int getUiType(Element element) {
-    if (element.widget is ElevatedButton ||
-        element.widget is InkWell ||
-        element.widget is GestureDetector ||
-        element.widget is FloatingActionButton) {
-      return 1;
-    } else if (element.widget is TextField || element.widget is TextFormField) {
-      return 2;
-    }
-    return -1;
-  }
-
-  String? getTextLabelIfExists(Element element) {
-    if (element.widget is Text) {
-      final Text textWidget = element.widget as Text;
-      return textWidget.data ?? textWidget.textSpan?.toPlainText();
-    }
-
-    String? result;
-    element.visitChildElements((child) {
-      result ??= getTextLabelIfExists(child);
-    });
-    return result;
-  }
-
-  TrackData? _getWidgetFromCoordinates(Offset position) {
-    TrackData? target;
-    _trackedWidgets.forEach((data) {
-      final bound = data.origin & data.size;
-      if (bound.contains(position)) {
-        target = data;
+        if (isLeaf) {
+          trackData = _dataForWidget(element);
+        }
       }
-    });
-    return target;
+    }
+
+    context.visitChildElements(
+        (child) => _inspectDirectChild(child, tapCoordinates));
+    return trackData;
+  }
+
+  TrackData _dataForWidget(Element element) {
+    final renderObject = element.renderObject;
+    Offset origin;
+    Size size;
+    if (renderObject is RenderBox) {
+      origin = renderObject.localToGlobal(Offset.zero);
+      size = renderObject.size;
+    } else {
+      origin = Offset.zero;
+      size = Size.zero;
+    }
+
+    String textLabel = renderObject is RenderParagraph
+        ? getTextLabelIfExists(renderObject)
+        : "";
+
+    final route = ModalRoute.of(element)?.settings.name ?? "";
+    String _uiId = element.widget.key != null
+        ? element.widget.key.toString()
+        : "$route#${identityHashCode(element).toRadixString(16)}";
+
+    return TrackData(origin, size, route,
+        uiValue: textLabel,
+        uiClass: element.widget.runtimeType.toString(),
+        uiId: _uiId,
+        uiType: 1);
+  }
+
+  String getTextLabelIfExists(RenderParagraph renderObject) {
+    final span = renderObject.text;
+    final buffer = StringBuffer();
+
+    void collect(InlineSpan span) {
+      if (span is TextSpan) {
+        if (span.text != null) {
+          buffer.write(span.text);
+        }
+        if (span.children != null) {
+          for (final child in span.children!) {
+            collect(child);
+          }
+        }
+      }
+    }
+
+    collect(span);
+    return buffer.toString();
   }
 
   @override
@@ -99,8 +111,10 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       behavior: HitTestBehavior.translucent,
       onPointerDown: (event) {
         final _tapCoordinates = event.position;
-        final data = _getWidgetFromCoordinates(_tapCoordinates);
-        data?.showAnalyticsInfo();
+        final trackData = _findGestureReceivingWidget(_tapCoordinates);
+        if (trackData != null) {
+          trackData.showAnalyticsInfo();
+        }
       },
       child: widget.child,
     );
