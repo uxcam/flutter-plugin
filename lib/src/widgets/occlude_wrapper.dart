@@ -14,7 +14,7 @@ class OccludeWrapper extends StatefulWidget {
   const OccludeWrapper({
     Key? key,
     required this.child,
-  });
+  }) : super(key: key);
 
   @override
   State<OccludeWrapper> createState() => OccludeWrapperState();
@@ -53,11 +53,8 @@ class OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void _updatePositionForTopRouteOnly() {
-    ModalRoute? modalRoute = ModalRoute.of(context);
-    if (mounted &&
-        modalRoute != null &&
-        modalRoute.isCurrent &&
-        modalRoute.isActive) {
+    if (!mounted) return;
+    if (_isWidgetInTopRoute()) {
       _updatePosition();
     }
   }
@@ -114,9 +111,11 @@ class OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void unRegisterOcclusionWidget() {
-    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
+    if (!_isWidgetInTopRoute()) {
+      OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+      OcclusionWrapperManager()
+          .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
+    }
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
@@ -161,6 +160,16 @@ class OccludeWrapperState extends State<OccludeWrapper>
       occludePoint.bottomRightY,
     );
   }
+
+  bool _isWidgetInTopRoute() {
+    if (!mounted) return false;
+    try {
+      ModalRoute? modalRoute = ModalRoute.of(context);
+      return modalRoute != null && modalRoute.isCurrent && modalRoute.isActive;
+    } on FlutterError {
+      return false;
+    }
+  }
 }
 
 extension GlobalKeyExtension on GlobalKey {
@@ -177,7 +186,7 @@ extension GlobalKeyExtension on GlobalKey {
     }
     // var offstageWidget =
     //     currentContext?.findAncestorWidgetOfExactType<Offstage>();
-    // if (offstageWidget != null) {
+    // if (offstageWidget != null && offstageWidget.offstage) {
     //   return null;
     // }
 
