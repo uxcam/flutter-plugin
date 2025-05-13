@@ -184,26 +184,6 @@ extension GlobalKeyExtension on GlobalKey {
     if (translation != null && renderObject?.paintBounds != null) {
       final offset = Offset(translation.x, translation.y);
       final bounds = renderObject!.paintBounds.shift(offset);
-      final isLandscape =
-          MediaQuery.of(currentContext!).orientation == Orientation.landscape;
-      if (isLandscape) {
-        final padding = MediaQuery.of(currentContext!).padding;
-        //some devices (tested on samsung a5), have a top system overlay for gesture detection. This effects the screenshot taken from native
-        //Android. As a consequence, we need to add the systemGestureInsets to the top of the bounds, to offset the occlusion rects when in landscape.
-        final systemGestureInsets =
-            MediaQuery.of(currentContext!).systemGestureInsets;
-        if (padding.left != 0) {
-          return bounds.translate(padding.left, 0.0);
-        } else {
-          if (systemGestureInsets.top != 0.0) {
-            final _scale = MediaQuery.of(currentContext!).textScaler !=
-                    TextScaler.noScaling
-                ? MediaQuery.of(currentContext!).devicePixelRatio.toInt()
-                : 0;
-            return bounds.translate(systemGestureInsets.top * _scale, 0.0);
-          }
-        }
-      }
       return bounds;
     } else {
       return null;
