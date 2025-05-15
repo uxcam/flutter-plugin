@@ -3,8 +3,7 @@ import 'dart:ui';
 import 'package:flutter/widgets.dart';
 
 class TrackData {
-  Offset origin;
-  Size size;
+  Rect bound;
   String route;
   String? uiValue;
   String? uiId;
@@ -12,12 +11,12 @@ class TrackData {
   int uiType;
   Key? widgetKey;
 
-  TrackData(this.origin, this.size, this.route,
+  TrackData(this.bound, this.route,
       {this.uiValue, this.uiClass, this.uiType = -1, this.uiId});
 
   @override
   String toString() {
-    return 'TrackData(origin: $origin, size: $size, route: $route, id: $uiId)';
+    return 'TrackData(bound: $bound,  route: $route, id: $uiId)';
   }
 
   void showAnalyticsInfo() {
