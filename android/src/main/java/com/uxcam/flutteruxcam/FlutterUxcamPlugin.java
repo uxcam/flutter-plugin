@@ -106,23 +106,29 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         delegate.setListener(new OcclusionRectRequestListener() {
 
             @Override
-            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) { 
-                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-20);
-                if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
-                    effectiveStartTimestamp = frameDataMap.firstKey();
-                }
-                Long effectiveEndTimestamp = frameDataMap.higherKey(stopTimeStamp+20);
-                if(effectiveEndTimestamp == null && frameDataMap.size() > 0) {
-                    effectiveEndTimestamp = frameDataMap.lastKey();
-                }
-                if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
-                    ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                    frameDataMap.headMap(effectiveStartTimestamp, false).clear();
-                    delegate.createScreenshotFromCollectedRects(result);
-                } else {
-                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
-                }
-
+            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {  
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(80); 
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-20);
+                    if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
+                        effectiveStartTimestamp = frameDataMap.firstKey();
+                    }
+                    Long effectiveEndTimestamp = frameDataMap.higherKey(stopTimeStamp+20);
+                    if(effectiveEndTimestamp == null && frameDataMap.size() > 0) {
+                        effectiveEndTimestamp = frameDataMap.lastKey();
+                    }
+                    if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
+                        ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
+                        frameDataMap.headMap(effectiveStartTimestamp, false).clear();
+                        delegate.createScreenshotFromCollectedRects(result);
+                    } else {
+                        delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                    }
+                }).start();
             }
         });
         channel.setMethodCallHandler(this);
