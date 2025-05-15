@@ -21,7 +21,8 @@ class MyApp extends StatelessWidget {
 
     // Configuration
     FlutterUxConfig config = FlutterUxConfig(
-      userAppKey: 'vwaxl2b5nx8i10z',
+      userAppKey: 'key',
+      // userAppKey: 'vwaxl2b5nx8i10z',
       // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
       enableAutomaticScreenNameTagging: false,
       enableIntegrationLogging: true,
@@ -49,239 +50,108 @@ class UXCamPage extends StatelessWidget {
     return Scaffold(
       body: ListView(
         children: [
-          /// 1. Tagging Screen Manually
-          OccludeWrapper(
-            child: Text(
-              "this text will be occluded",
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-          ),
-          FeatureSection(
-            title: 'Screen Tagging',
-            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
-            buttonTitle: 'Login',
-          ),
-          FeatureSection(
-            title: 'Navigate',
-            onPressed: () => Navigator.of(context).pushNamed("detail"),
-            buttonTitle: 'Navigate to details',
-          ),
-          OccludeWrapper(
-            child: Text(
-              "this text will be occluded",
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-          ),
-          FeatureSection(
-            title: 'Custom Occlude',
-            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
-            buttonTitle: 'Custom Event',
-          ),
-          FeatureSection(
-            title: 'Setting User Identity',
-            onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
-            buttonTitle: 'Set User Identity',
-          ),
-          FeatureSection(
-            title: 'Setting User Property',
-            onPressed: () => FlutterUxcam.setUserProperty(
-                'userPropKeyString', 'valueString'),
-            buttonTitle: 'Set User Property',
-          ),
-          FeatureSection(
-            title: 'Custom Event',
-            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
-            buttonTitle: 'Custom Event',
-          ),
-          FeatureSection(
-            title: 'Custom Event With Properties',
-            onPressed: () =>
-                FlutterUxcam.logEventWithProperties('Custom Event', {
-              'Property 1': 12345,
-            }),
-            buttonTitle: 'Custom Event with Property',
-          ),
-          // Occlude(
-          //   child: Text(
-          //     "this text will be occluded",
-          //     style: Theme.of(context).textTheme.headlineSmall,
-          //   ),
+          // Text(
+          //   "data",
+          //   style: TextStyle(fontSize: 20),
           // ),
+          // Text(
+          //   "data",
+          //   style: TextStyle(fontSize: 20),
+          // ),
+          // Text(
+          //   "data",
+          //   style: TextStyle(fontSize: 20),
+          // ),
+          // Text(
+          //   "data",
+          //   style: TextStyle(fontSize: 20),
+          // ),
+          TextField(
+            obscureText: true,
+          ),
         ],
       ),
-      // body: IndexedStack(
-      //   children: [
-      //     Container(
-      //       child: Text("data1"),
-      //     ),
-      //     Container(
-      //       child: Text("data2"),
-      //     ),
-      //     Container(
-      //       child: Text("data3"),
-      //     ),
-      //     Container(
-      //       child: Text("data4"),
-      //     ),
-      //   ],
-      // ),
-      // body: Column(
-      //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      //   crossAxisAlignment: CrossAxisAlignment.stretch,
-      //   children: [
-      // ElevatedButton(onPressed: () {}, child: Text('data')),
-      // TextField(
-      //   decoration: InputDecoration(hintText: "this is a hint"),
-      // ),
-      // ElevatedButton(
-      //     onPressed: () {
-      //       showDialog(
-      //           context: context,
-      //           builder: (_) {
-      //             return AlertDialog(
-      //               title: const Text('Feature Section'),
-      //               content: Text("data"),
-      //               actions: [
-      //                 TextButton(
-      //                   onPressed: () => Navigator.of(context).pop(),
-      //                   child: const Text('Close'),
-      //                 ),
-      //               ],
-      //             );
-      //           });
-      //     },
-      //     child: Text('data')),
-      // CheckboxListTile(
-      //   title: const Text('Crash Handling'),
-      //   subtitle: const Text(
-      //     '(Enabled By Default)',
-      //     style: TextStyle(fontSize: 12),
-      //   ),
-      //   value: false,
-      //   onChanged: (value) => {},
-      // ),
-      // Row(
-      //   children: [
-      //     Checkbox(value: false, onChanged: (v) {}),
-      //     Text('yes'),
-      //     Checkbox(value: false, onChanged: (v) {}),
-      //     Text('no')
-      //   ],
-      // ),
-      // Row(
-      //   children: [Checkbox(value: false, onChanged: (v) {}), Text('no')],
-      // ),
-      // Row(
-      //   children: [
-      //     Text('maybe'),
-      //     Checkbox(value: false, onChanged: (v) {}),
-      //     Text('yes'),
-      //     Checkbox(value: false, onChanged: (v) {}),
-      //     Text('no'),
-      //     Checkbox(value: false, onChanged: (v) {})
-      //   ],
-      // ),
-      // Row(
-      //   children: [Text('no'), Checkbox(value: false, onChanged: (v) {})],
-      // ),
-      // ElevatedButton(
-      //     onPressed: () {
-      //       Navigator.of(context).pushNamed("detail");
-      //     },
-      //     child: Text('data')),
-      //    ],
-      //),
-      // body: Row(
-      //   children: [
-      //     Text(
-      //       "radio",
-      //       style: Theme.of(context).textTheme.headlineSmall,
-      //     ),
-      //     Radio(value: true, groupValue: false, onChanged: (val) {}),
-      //   ],
-      // ),
       // body: ListView(
       //   padding: const EdgeInsets.all(8.0),
       //   children: [
-      //     Text(
-      //       "This is a smart events demo",
-      //       style: Theme.of(context).textTheme.headlineSmall,
+      //     /// 1. Tagging Screen Manually
+      //     OccludeWrapper(
+      //       child: Text(
+      //         "this text will be occluded",
+      //         style: Theme.of(context).textTheme.headlineSmall,
+      //       ),
       //     ),
-      //     Image.asset(
-      //       "assets/images/testimage.jpg",
-      //       semanticLabel: "this is a test image",
-      //     ),
-      //     TextField(
-      //       decoration: InputDecoration(hintText: "this is a hint"),
-      //     ),
-      //     TextFormField(),
       //     FeatureSection(
       //       title: 'Screen Tagging',
       //       onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
-      //       buttonTitle: 'Login',
+      //       buttonTitle: 'Tag Screen',
       //     ),
-      //     TextButton(onPressed: () {}, child: Text("Signup")),
-      //     Column(
-      //       children: [
-      //         Radio(value: true, groupValue: false, onChanged: (val) {}),
-      //         Text(
-      //           "radio",
-      //           style: Theme.of(context).textTheme.headlineSmall,
-      //         ),
-      //       ],
+      //     FeatureSection(
+      //       title: 'Setting User Identity',
+      //       onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
+      //       buttonTitle: 'Set User Identity',
       //     ),
-      //     Column(
-      //       children: [
-      //         Slider(value: 0, onChanged: (x) {}),
-      //         Text(
-      //           "slider",
-      //           style: Theme.of(context).textTheme.headlineSmall,
-      //         ),
-      //       ],
+      //     FeatureSection(
+      //       title: 'Setting User Property',
+      //       onPressed: () => FlutterUxcam.setUserProperty(
+      //           'userPropKeyString', 'valueString'),
+      //       buttonTitle: 'Set User Property',
       //     ),
+      //     FeatureSection(
+      //       title: 'Custom Event',
+      //       onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+      //       buttonTitle: 'Custom Event',
+      //     ),
+      //     FeatureSection(
+      //       title: 'Custom Event With Properties',
+      //       onPressed: () =>
+      //           FlutterUxcam.logEventWithProperties('Custom Event', {
+      //         'Property 1': 12345,
+      //       }),
+      //       buttonTitle: 'Custom Event with Property',
+      //     ),
+      //     OccludeWrapper(
+      //       child: Text(
+      //         "this text will be occluded",
+      //         style: Theme.of(context).textTheme.headlineSmall,
+      //       ),
+      //     ),
+      //     FeatureSection(
+      //       title: 'Custom Occlude',
+      //       onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+      //       buttonTitle: 'Custom Event',
+      //     ),
+      //     FeatureSection(
+      //       title: 'Setting User Identity',
+      //       onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
+      //       buttonTitle: 'Set User Identity',
+      //     ),
+      //     FeatureSection(
+      //       title: 'Setting User Property',
+      //       onPressed: () => FlutterUxcam.setUserProperty(
+      //           'userPropKeyString', 'valueString'),
+      //       buttonTitle: 'Set User Property',
+      //     ),
+      //     FeatureSection(
+      //       title: 'Custom Event',
+      //       onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+      //       buttonTitle: 'Custom Event',
+      //     ),
+      //     FeatureSection(
+      //       title: 'Custom Event With Properties',
+      //       onPressed: () =>
+      //           FlutterUxcam.logEventWithProperties('Custom Event', {
+      //         'Property 1': 12345,
+      //       }),
+      //       buttonTitle: 'Custom Event with Property',
+      //     ),
+      //     // Occlude(
+      //     //   child: Text(
+      //     //     "this text will be occluded",
+      //     //     style: Theme.of(context).textTheme.headlineSmall,
+      //     //   ),
+      //     // ),
       //   ],
-      // ),
-      // body: Row(
-      //   children: [
-      //     Radio(value: true, groupValue: false, onChanged: (val) {}),
-      // Text(
-      //   "radio",
-      //   style: Theme.of(context).textTheme.headlineSmall,
-      // ),
-      //   ],
-      // ),
-      // bottomNavigationBar: BottomNavigationWidget(
-      //   currentIndex: 0,
-      //   onTap: (i) {},
-      // ),
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: () {
-      //     showDialog(
-      //         context: context,
-      //         builder: (_) {
-      //           return AlertDialog(
-      //             title: const Text('Feature Section'),
-      //             content: Text("data"),
-      //             actions: [
-      //               TextButton(
-      //                 onPressed: () => Navigator.of(context).pop(),
-      //                 child: const Text('Close'),
-      //               ),
-      //             ],
-      //           );
-      //         });
-      //     // showModalBottomSheet(
-      //     //     context: context,
-      //     //     builder: (_) => Container(
-      //     //           color: Colors.amber,
-      //     //           child: Align(
-      //     //             alignment: Alignment.bottomCenter,
-      //     //             child:
-      //     //                 ElevatedButton(onPressed: () {}, child: Text("data")),
-      //     //           ),
-      //     //         ));
-      //   },
-      //   child: const Icon(Icons.add),
       // ),
     );
   }
