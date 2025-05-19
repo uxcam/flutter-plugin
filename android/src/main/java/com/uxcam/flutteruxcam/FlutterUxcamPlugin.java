@@ -109,31 +109,30 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 StandardMessageCodec.INSTANCE);
         delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
-
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {  
-                new Thread(() -> {
-                    try {
-                        Thread.sleep(80); 
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-20);
-                    if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
-                        effectiveStartTimestamp = frameDataMap.firstKey();
-                    }
-                    Long effectiveEndTimestamp = frameDataMap.higherKey(stopTimeStamp+20);
-                    if(effectiveEndTimestamp == null && frameDataMap.size() > 0) {
-                        effectiveEndTimestamp = frameDataMap.lastKey();
-                    }
-                    if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
-                        ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                        frameDataMap.headMap(effectiveStartTimestamp, false).clear();
-                        delegate.createScreenshotFromCollectedRects(result);
-                    } else {
-                        delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
-                    }
-                }).start();
+                    occlusionRectsChannel.send(System.currentTimeMillis(), new Reply<Object>() {
+                        @Override
+                        public void reply(Object reply) {
+                            Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-20);
+                            if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
+                                effectiveStartTimestamp = frameDataMap.firstKey();
+                            }
+                            Long effectiveEndTimestamp;
+                            try {
+                                effectiveEndTimestamp = frameDataMap.lastKey();
+                            } catch (Exception e) {
+                                effectiveEndTimestamp = null;
+                            }
+                            if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
+                                ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
+                                frameDataMap.headMap(effectiveStartTimestamp, false).clear();
+                                delegate.createScreenshotFromCollectedRects(result);
+                            } else {
+                                delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                            }
+                        }
+                    });
             }
 
             @Override
@@ -571,8 +570,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         HashMap<String, JSONArray> widgetDataByKey = new HashMap<>();
 
         Map<Long, String> effectiveFrameMap = frameDataMap.subMap(start, true, end, true);
-
-        Log.d("route-change", "route-change" + effectiveFrameMap.toString());
 
         for (Map.Entry<Long, String> entry : effectiveFrameMap.entrySet()) {
             try {
