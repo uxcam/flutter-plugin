@@ -54,9 +54,10 @@ class OccludeWrapperState extends State<OccludeWrapper>
 
   void _updatePositionForTopRouteOnly() {
     if (!mounted) return;
-    if (_isWidgetInTopRoute()) {
-      _updatePosition();
-    }
+    _updatePosition();
+    // if (_isWidgetInTopRoute()) {
+    //   _updatePosition();
+    // }
   }
 
   @override
@@ -73,7 +74,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
       onVisibilityChanged: (VisibilityInfo visibilityInfo) {
         final visibilityFraction = visibilityInfo.visibleFraction;
         if (visibilityFraction == 0) {
-          unRegisterOcclusionWidget();
+          //hideOcclusionWidget();
         } else {
           registerOcclusionWidget();
         }
@@ -115,6 +116,14 @@ class OccludeWrapperState extends State<OccludeWrapper>
       OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
       OcclusionWrapperManager()
           .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
+    }
+  }
+
+  void hideOcclusionWidget() {
+    if (!_isWidgetInTopRoute()) {
+      //OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+          _widgetKey, _widgetKey.globalPaintBounds!);
     }
   }
 
