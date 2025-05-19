@@ -15,10 +15,8 @@ class UxCam {
       StandardMessageCodec(),
     );
     _occlusionRectsChannel.setMessageHandler((event) async {
-      if (event is int) {
-        return dartTimeStamp;
-      }
-      return "[]";
+      await Future.delayed(Duration(milliseconds: 0));
+      return true;
     });
   }
 }
