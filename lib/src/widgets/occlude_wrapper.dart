@@ -43,8 +43,8 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
       rect = _widgetKey.globalPaintBounds!;
     }
-    OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
+    OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+        _widgetKey, rect, _isWidgetInTopRoute());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updatePositionForTopRouteOnly();
     });
@@ -106,22 +106,22 @@ class OccludeWrapperState extends State<OccludeWrapper>
     var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
     OcclusionWrapperManager().registerOcclusionWrapper(item);
     OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-        _widgetKey, _widgetKey.globalPaintBounds!);
+        _widgetKey, _widgetKey.globalPaintBounds!, _isWidgetInTopRoute());
   }
 
   void unRegisterOcclusionWidget() {
-    if (!_isWidgetInTopRoute()) {
-      OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-      OcclusionWrapperManager()
-          .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
-    }
+    // if (!_isWidgetInTopRoute()) {
+    //   OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    //   OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+    //       _widgetKey, _widgetKey.globalPaintBounds!, _isWidgetInTopRoute());
+    // }
   }
 
   void hideOcclusionWidget() {
     if (!_isWidgetInTopRoute()) {
       //OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
       OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-          _widgetKey, _widgetKey.globalPaintBounds!);
+          _widgetKey, _widgetKey.globalPaintBounds!, _isWidgetInTopRoute());
     }
   }
 

@@ -14,9 +14,5 @@ class UxCam {
       'occlusion_rects_coordinates',
       StandardMessageCodec(),
     );
-    _occlusionRectsChannel.setMessageHandler((event) async {
-      await Future.delayed(Duration(milliseconds: 0));
-      return true;
-    });
   }
 }
