@@ -35,7 +35,7 @@ class OcclusionWrapperManager {
   final occlusionRects = <UniqueKey, OccludePoint>{};
   final rects = <GlobalKey, OccludePoint>{};
 
-  void add(int timeStamp, GlobalKey key, Rect rect) {
+  void add(int timeStamp, GlobalKey key, Rect rect, bool isVisible) {
     final data = OccludePoint(
       rect.left.ratioToInt,
       rect.top.ratioToInt,
@@ -51,6 +51,7 @@ class OcclusionWrapperManager {
       Map<String, dynamic> rectData = {
         "key": key.toString(),
         "point": value.toJson(),
+        "isVisible": {"value": isVisible, "at": timeStamp},
       };
       rectList.add(rectData);
     });
