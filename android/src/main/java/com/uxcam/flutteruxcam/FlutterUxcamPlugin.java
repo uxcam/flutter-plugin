@@ -111,28 +111,23 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {  
-                    occlusionRectsChannel.send(System.currentTimeMillis(), new Reply<Object>() {
-                        @Override
-                        public void reply(Object reply) {
-                            Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-20);
-                            if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
-                                effectiveStartTimestamp = frameDataMap.firstKey();
-                            }
-                            Long effectiveEndTimestamp;
-                            try {
-                                effectiveEndTimestamp = frameDataMap.lastKey();
-                            } catch (Exception e) {
-                                effectiveEndTimestamp = null;
-                            }
-                            if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
-                                ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                                frameDataMap.headMap(effectiveStartTimestamp, false).clear();
-                                delegate.createScreenshotFromCollectedRects(result);
-                            } else {
-                                delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
-                            }
-                        }
-                    });
+                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-30);
+                if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
+                    effectiveStartTimestamp = frameDataMap.firstKey();
+                }
+                Long effectiveEndTimestamp;
+                try {
+                    effectiveEndTimestamp = frameDataMap.lastKey();
+                } catch (Exception e) {
+                    effectiveEndTimestamp = null;
+                }
+                if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
+                    ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
+                    frameDataMap.headMap(effectiveStartTimestamp, false).clear();
+                    delegate.createScreenshotFromCollectedRects(result);
+                } else {
+                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                }
             }
         });
 
@@ -574,6 +569,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
             JSONArray values = entry.getValue();
             Rect output = new Rect();
+            boolean isVisible = true;
+            Long lastTimeStamp = 0L;
             for (int i = 0; i < values.length(); i++) {
                 JSONObject obj = values.optJSONObject(i).optJSONObject("point");
                 if (obj != null) {
@@ -589,9 +586,20 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     rect.top = obj.optInt("y0");
                     rect.bottom = obj.optInt("y1");
                     output.union(rect);
+
+                    if(i == values.length()-1) {
+                        JSONObject visibilityObj =values.optJSONObject(i).optJSONObject("isVisible");
+                        if(lastTimeStamp < visibilityObj.optLong("at")) {
+                            isVisible = visibilityObj.optBoolean("value");
+                            lastTimeStamp = visibilityObj.optLong("at");
+                        }
+                    }
+
                 }
             }
-            result.add(output);
+            if(isVisible) {
+                result.add(output);
+            }
         }
         return result;
     }
