@@ -25,6 +25,8 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
+import com.uxcam.screenaction.internal.FlutterFacade;
+import com.uxcam.screenaction.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
 import com.uxcam.screenshot.model.UXCamOcclusion;
@@ -84,6 +86,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static Activity activity;
 
     private CrossPlatformDelegate delegate;
+    private FlutterFacade flutterFacade;
 
     private int leftInset;
     private int rightInset;
@@ -102,11 +105,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 binding.getBinaryMessenger(),
                 "occlusion_rects_coordinates",
                 StandardMessageCodec.INSTANCE);
+
         delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {  
-                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-30);
+                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-40);
                 if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
                     effectiveStartTimestamp = frameDataMap.firstKey();
                 }
@@ -126,24 +130,13 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             }
         });
 
-        flutterFacade = UXCam.getFacade();
-        flutterFacade.setListener(new ElementDataRequestListener() {
+        flutterFacade = UXCam.getFlutterFacade();
+        flutterFacade.setListener(new ElementDataListener() {
             @Override
-            public void getElementData(GestureData gestureData, ElementDataResponseListener onResult) {
-                try {
-                    JSONObject obj = new JSONObject();
-                    obj.put("x", gestureData.x);
-                    obj.put("y", gestureData.y);
-                    uxcamMessageChannel.send(obj.toString(), data -> {
-                        onResult.onData(data.toString());
-                    });      
-                }catch (JSONException e) {
-                    e.printStackTrace();
-                    onResult.onData("data");
-                }
-            }            
+            public void elementDataForCoordinate(int x, int y) {
+                Log.d("element-data-capture","hello from capture");
+            }
         });
-
         channel.setMethodCallHandler(this);
 
     }
@@ -582,12 +575,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     rect.bottom = obj.optInt("y1");
                     output.union(rect);
 
-                    if(i == values.length()-1) {
-                        JSONObject visibilityObj =values.optJSONObject(i).optJSONObject("isVisible");
-                        if(lastTimeStamp < visibilityObj.optLong("at")) {
-                            isVisible = visibilityObj.optBoolean("value");
+                    JSONObject visibilityObj =values.optJSONObject(i).optJSONObject("isVisible");
+                    if(lastTimeStamp < visibilityObj.optLong("at")) {
+                        isVisible = visibilityObj.optBoolean("value");
                             lastTimeStamp = visibilityObj.optLong("at");
-                        }
                     }
 
                 }
