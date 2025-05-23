@@ -111,7 +111,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {  
-                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-30);
+                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-40);
                 if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
                     effectiveStartTimestamp = frameDataMap.firstKey();
                 }
@@ -609,12 +609,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     rect.bottom = obj.optInt("y1");
                     output.union(rect);
 
-                    if(i == values.length()-1) {
-                        JSONObject visibilityObj =values.optJSONObject(i).optJSONObject("isVisible");
-                        if(lastTimeStamp < visibilityObj.optLong("at")) {
-                            isVisible = visibilityObj.optBoolean("value");
+                    JSONObject visibilityObj =values.optJSONObject(i).optJSONObject("isVisible");
+                    if(lastTimeStamp < visibilityObj.optLong("at")) {
+                        isVisible = visibilityObj.optBoolean("value");
                             lastTimeStamp = visibilityObj.optLong("at");
-                        }
                     }
 
                 }
