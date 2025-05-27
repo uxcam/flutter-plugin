@@ -25,7 +25,8 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
-import com.uxcam.internal.FlutterFacade;
+import com.uxcam.screenaction.internal.FlutterFacade;
+import com.uxcam.screenaction.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
 import com.uxcam.screenshot.model.UXCamOcclusion;
@@ -47,6 +48,11 @@ import android.util.Log;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.graphics.Insets;
+import androidx.core.view.DisplayCutoutCompat;
+import android.content.res.Configuration;
+import android.view.Surface;
+import android.view.WindowManager;
+import android.content.Context;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -84,9 +90,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static Activity activity;
 
     private CrossPlatformDelegate delegate;
+    private FlutterFacade flutterFacade;
 
-    private int leftInset;
-    private int rightInset;
+    private int leftPadding;
+    private int cutoutTop = 0;
     private long bootTimeOffset;
     private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
 
@@ -105,8 +112,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
-            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {  
-                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-40);
+            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
+                int offset = 40;  
+                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-offset);
+                Long deletebeforeTimestamp = frameDataMap.lowerKey(startTimeStamp-offset - 10);
                 if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
                     effectiveStartTimestamp = frameDataMap.firstKey();
                 }
@@ -118,11 +127,19 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 }
                 if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
                     ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                    frameDataMap.headMap(effectiveStartTimestamp, false).clear();
+                    frameDataMap.headMap(deletebeforeTimestamp, false).clear();
                     delegate.createScreenshotFromCollectedRects(result);
                 } else {
                     delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
                 }
+            }
+        });
+
+        flutterFacade = UXCam.getFlutterFacade();
+        flutterFacade.setListener(new ElementDataListener() {
+            @Override
+            public void elementDataForCoordinate(int x, int y) {
+                Log.d("element-data-capture","hello from capture");
             }
         });
         channel.setMethodCallHandler(this);
@@ -147,10 +164,32 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
         activity = activityPluginBinding.getActivity();
-        ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            leftInset = systemBars.left;
-            rightInset = systemBars.right;
+        ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, i) -> {
+            WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(activity.getWindow().getDecorView());
+            Insets systemBars = Insets.NONE;
+
+            if (insets != null) {
+                systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+                DisplayCutoutCompat cutout = insets.getDisplayCutout();
+                if (cutout != null) {
+                    cutoutTop = cutout.getSafeInsetTop();
+                }
+            }         
+            int orientation = activity.getResources().getConfiguration().orientation;
+            if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                Display display = ((WindowManager) activity.getSystemService(Context.WINDOW_SERVICE))
+                      .getDefaultDisplay();
+
+                int rotation = display.getRotation();
+                if(rotation == Surface.ROTATION_90) {
+                    leftPadding = Math.max(systemBars.top, cutoutTop);
+                } else if(rotation == Surface.ROTATION_270) {
+                    leftPadding = systemBars.top;
+                }
+            } else {
+                leftPadding = 0;
+            }
             return ViewCompat.onApplyWindowInsets(v, insets);
         });
     }
@@ -545,16 +584,16 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
             JSONArray values = entry.getValue();
             Rect output = new Rect();
-            boolean isVisible = true;
+            boolean isVisible = false;
             Long lastTimeStamp = 0L;
             for (int i = 0; i < values.length(); i++) {
                 JSONObject obj = values.optJSONObject(i).optJSONObject("point");
                 if (obj != null) {
                     Rect rect = new Rect();
                     int width = obj.optInt("x1") - obj.optInt("x0");
-                    if(leftInset!=0 || rightInset!=0) {
-                        rect.left = obj.optInt("x0") + leftInset + rightInset - width/2;
-                        rect.right = obj.optInt("x1") + leftInset + rightInset + width/2;
+                    if(leftPadding!=0) {
+                        rect.left = obj.optInt("x0") + leftPadding;
+                        rect.right = obj.optInt("x1") + leftPadding;
                     } else {
                         rect.left = obj.optInt("x0");
                         rect.right = obj.optInt("x1");
@@ -564,11 +603,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     output.union(rect);
 
                     JSONObject visibilityObj =values.optJSONObject(i).optJSONObject("isVisible");
-                    if(lastTimeStamp < visibilityObj.optLong("at")) {
-                        isVisible = visibilityObj.optBoolean("value");
-                            lastTimeStamp = visibilityObj.optLong("at");
-                    }
-
+                    isVisible = isVisible || visibilityObj.optBoolean("value");
                 }
             }
             if(isVisible) {
