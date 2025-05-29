@@ -61,7 +61,9 @@ class OccludeWrapperState extends State<OccludeWrapper>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    unRegisterOcclusionWidget();
+    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    OcclusionWrapperManager().add(
+        DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero, false);
     super.dispose();
   }
 
