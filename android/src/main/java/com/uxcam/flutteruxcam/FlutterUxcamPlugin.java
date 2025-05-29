@@ -25,7 +25,8 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
-import com.uxcam.internal.FlutterFacade;
+import com.uxcam.screenaction.internal.FlutterFacade;
+import com.uxcam.screenaction.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
 import com.uxcam.screenshot.model.UXCamOcclusion;
@@ -84,6 +85,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static Activity activity;
 
     private CrossPlatformDelegate delegate;
+    private FlutterFacade flutterFacade;
 
     private int leftInset;
     private int rightInset;
@@ -102,6 +104,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 binding.getBinaryMessenger(),
                 "occlusion_rects_coordinates",
                 StandardMessageCodec.INSTANCE);
+
         delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
@@ -118,11 +121,19 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 }
                 if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
                     ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                    frameDataMap.headMap(effectiveStartTimestamp, false).clear();
+                    //frameDataMap.headMap(effectiveStartTimestamp, false).clear();
                     delegate.createScreenshotFromCollectedRects(result);
                 } else {
                     delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
                 }
+            }
+        });
+
+        flutterFacade = UXCam.getFlutterFacade();
+        flutterFacade.setListener(new ElementDataListener() {
+            @Override
+            public void elementDataForCoordinate(int x, int y) {
+                Log.d("element-data-capture","hello from capture");
             }
         });
         channel.setMethodCallHandler(this);
@@ -545,7 +556,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
             JSONArray values = entry.getValue();
             Rect output = new Rect();
-            boolean isVisible = true;
+            boolean isVisible = false;
             Long lastTimeStamp = 0L;
             for (int i = 0; i < values.length(); i++) {
                 JSONObject obj = values.optJSONObject(i).optJSONObject("point");
@@ -564,11 +575,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     output.union(rect);
 
                     JSONObject visibilityObj =values.optJSONObject(i).optJSONObject("isVisible");
-                    if(lastTimeStamp < visibilityObj.optLong("at")) {
-                        isVisible = visibilityObj.optBoolean("value");
-                            lastTimeStamp = visibilityObj.optLong("at");
-                    }
-
+                    isVisible = isVisible || visibilityObj.optBoolean("value");
                 }
             }
             if(isVisible) {
