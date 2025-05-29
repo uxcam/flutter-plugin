@@ -122,7 +122,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 }
                 if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
                     ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                    frameDataMap.headMap(effectiveStartTimestamp, false).clear();
+                    //frameDataMap.headMap(effectiveStartTimestamp, false).clear();
                     delegate.createScreenshotFromCollectedRects(result);
                 } else {
                     delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
@@ -579,7 +579,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
             JSONArray values = entry.getValue();
             Rect output = new Rect();
-            boolean isVisible = true;
+            boolean isVisible = false;
             Long lastTimeStamp = 0L;
             for (int i = 0; i < values.length(); i++) {
                 JSONObject obj = values.optJSONObject(i).optJSONObject("point");
@@ -598,11 +598,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     output.union(rect);
 
                     JSONObject visibilityObj =values.optJSONObject(i).optJSONObject("isVisible");
-                    if(lastTimeStamp < visibilityObj.optLong("at")) {
-                        isVisible = visibilityObj.optBoolean("value");
-                            lastTimeStamp = visibilityObj.optLong("at");
-                    }
-
+                    isVisible = isVisible || visibilityObj.optBoolean("value");
                 }
             }
             if(isVisible) {
