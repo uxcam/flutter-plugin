@@ -122,7 +122,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 }
                 if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
                     ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                    //frameDataMap.headMap(effectiveStartTimestamp, false).clear();
+                    if(true) {
+                        frameDataMap.headMap(effectiveStartTimestamp, false).clear();
+                    }
                     delegate.createScreenshotFromCollectedRects(result);
                 } else {
                     delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
