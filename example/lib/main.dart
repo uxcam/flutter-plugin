@@ -20,6 +20,7 @@ class MyApp extends StatelessWidget {
 
     // Configuration
     FlutterUxConfig config = FlutterUxConfig(
+      //userAppKey: 'key',
       userAppKey: 'vwaxl2b5nx8i10z',
       // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
       enableAutomaticScreenNameTagging: false,
