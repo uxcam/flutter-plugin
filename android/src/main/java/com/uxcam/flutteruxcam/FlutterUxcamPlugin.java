@@ -94,8 +94,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private int leftPadding;
     private int cutoutTop = 0;
+    private int cutoutBottom = 0;
     private long bootTimeOffset;
     private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
+    private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
     // public static void registerWith(Registrar registrar) {
     //     activity = registrar.activity();
@@ -113,7 +115,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
-                int offset = 40;  
+                int offset = 50;  
                 Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-offset);
                 Long deletebeforeTimestamp = frameDataMap.lowerKey(startTimeStamp-offset - 10);
                 if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
@@ -127,7 +129,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 }
                 if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
                     ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                    frameDataMap.headMap(deletebeforeTimestamp, false).clear();
                     delegate.createScreenshotFromCollectedRects(result);
                 } else {
                     delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
@@ -174,6 +175,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 DisplayCutoutCompat cutout = insets.getDisplayCutout();
                 if (cutout != null) {
                     cutoutTop = cutout.getSafeInsetTop();
+                    cutoutBottom = cutout.getSafeInsetBottom();
                 }
             }         
             int orientation = activity.getResources().getConfiguration().orientation;
@@ -184,8 +186,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 int rotation = display.getRotation();
                 if(rotation == Surface.ROTATION_90) {
                     leftPadding = Math.max(systemBars.top, cutoutTop);
-                } else if(rotation == Surface.ROTATION_270) {
-                    leftPadding = systemBars.top;
+                } else if (rotation == Surface.ROTATION_270) {
+                    leftPadding = Math.max(systemBars.bottom, cutoutBottom);
                 }
             } else {
                 leftPadding = 0;
@@ -582,15 +584,17 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         ArrayList<Rect> result = new ArrayList<Rect>();
         for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
+            String key = entry.getKey();
+            if (!keyVisibilityMap.containsKey(key)) {
+                keyVisibilityMap.put(key, 0);
+            }
             JSONArray values = entry.getValue();
             Rect output = new Rect();
             boolean isVisible = false;
-            Long lastTimeStamp = 0L;
             for (int i = 0; i < values.length(); i++) {
                 JSONObject obj = values.optJSONObject(i).optJSONObject("point");
                 if (obj != null) {
                     Rect rect = new Rect();
-                    int width = obj.optInt("x1") - obj.optInt("x0");
                     if(leftPadding!=0) {
                         rect.left = obj.optInt("x0") + leftPadding;
                         rect.right = obj.optInt("x1") + leftPadding;
@@ -601,12 +605,22 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     rect.top = obj.optInt("y0");
                     rect.bottom = obj.optInt("y1");
                     output.union(rect);
+                    isVisible = isVisible || values.optJSONObject(i).optBoolean("isVisible");
 
-                    JSONObject visibilityObj =values.optJSONObject(i).optJSONObject("isVisible");
-                    isVisible = isVisible || visibilityObj.optBoolean("value");
+                    if(isVisible) {
+                        keyVisibilityMap.put(key, 0);
+                    } else {
+                        keyVisibilityMap.put(key, keyVisibilityMap.get(key)+1);
+                    }
+
                 }
             }
-            if(isVisible) {
+            
+            if(keyVisibilityMap.get(key) != 2) {
+                output.left = output.left-5;
+                output.right = output.right+5;
+                output.top = output.top-5;
+                output.bottom = output.bottom+5;
                 result.add(output);
             }
         }
