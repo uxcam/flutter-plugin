@@ -593,8 +593,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     Rect rect = new Rect();
                     int width = obj.optInt("x1") - obj.optInt("x0");
                     if(leftPadding!=0) {
-                        rect.left = obj.optInt("x0") + leftPadding;
-                        rect.right = obj.optInt("x1") + leftPadding;
+                        rect.left = obj.optInt("x0") + leftPadding - width/3;
+                        rect.right = obj.optInt("x1") + leftPadding + width/3;
                     } else {
                         rect.left = obj.optInt("x0");
                         rect.right = obj.optInt("x1");
