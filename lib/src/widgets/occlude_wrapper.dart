@@ -43,8 +43,8 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
       rect = _widgetKey.globalPaintBounds!;
     }
-    OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-        _widgetKey, rect, _isWidgetInTopRoute());
+    OcclusionWrapperManager()
+        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updatePositionForTopRouteOnly();
     });
@@ -53,17 +53,14 @@ class OccludeWrapperState extends State<OccludeWrapper>
   void _updatePositionForTopRouteOnly() {
     if (!mounted) return;
     _updatePosition();
-    // if (_isWidgetInTopRoute()) {
-    //   _updatePosition();
-    // }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    OcclusionWrapperManager().add(
-        DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero, false);
+    OcclusionWrapperManager()
+        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
     super.dispose();
   }
 
@@ -108,7 +105,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
     var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
     OcclusionWrapperManager().registerOcclusionWrapper(item);
     OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-        _widgetKey, _widgetKey.globalPaintBounds!, _isWidgetInTopRoute());
+        _widgetKey, _widgetKey.globalPaintBounds!);
   }
 
   void unRegisterOcclusionWidget() {
@@ -123,7 +120,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (!_isWidgetInTopRoute()) {
       //OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
       OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-          _widgetKey, _widgetKey.globalPaintBounds!, _isWidgetInTopRoute());
+          _widgetKey, _widgetKey.globalPaintBounds!);
     }
   }
 
@@ -208,5 +205,20 @@ extension GlobalKeyExtension on GlobalKey {
     } else {
       return null;
     }
+  }
+
+  bool isWidgetVisible() {
+    if (currentContext != null) {
+      if (!currentContext!.mounted) return false;
+      try {
+        ModalRoute? modalRoute = ModalRoute.of(currentContext!);
+        return modalRoute != null &&
+            modalRoute.isCurrent &&
+            modalRoute.isActive;
+      } on FlutterError {
+        return false;
+      }
+    }
+    return false;
   }
 }
