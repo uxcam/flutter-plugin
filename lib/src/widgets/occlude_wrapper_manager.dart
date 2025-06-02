@@ -34,26 +34,25 @@ class OcclusionWrapperManager {
   final occlusionRects = <UniqueKey, OccludePoint>{};
   final rects = <GlobalKey, OccludePoint>{};
 
-  void add(int timeStamp, GlobalKey key, Rect rect, bool isVisible) {
-    final data = OccludePoint(
+  void add(int timeStamp, GlobalKey key, Rect rect) {
+    rects.remove(key);
+    rects[key] = OccludePoint(
       rect.left.ratioToInt,
       rect.top.ratioToInt,
       rect.right.ratioToInt,
       rect.bottom.ratioToInt,
     );
 
-    rects.remove(key);
-    rects[key] = data;
-
     List<Map<String, dynamic>> rectList = [];
     rects.forEach((key, value) {
       Map<String, dynamic> rectData = {
         "key": key.toString(),
         "point": value.toJson(),
-        "isVisible": {"value": isVisible, "at": timeStamp},
+        "isVisible": key.isWidgetVisible(),
       };
       rectList.add(rectData);
     });
+    print("visibility: $rectList");
 
     FlutterUxcam.addFrameData(timeStamp, jsonEncode(rectList));
   }
