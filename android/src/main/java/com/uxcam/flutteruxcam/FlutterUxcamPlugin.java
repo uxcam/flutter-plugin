@@ -96,7 +96,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private int leftPadding;
     private int cutoutTop = 0;
     private int cutoutBottom = 0;
-    private long bootTimeOffset;
     private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
     private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
@@ -192,7 +191,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, i) -> {
             WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(activity.getWindow().getDecorView());
             Insets systemBars = Insets.NONE;
-
             if (insets != null) {
                 systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
 
@@ -206,11 +204,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
                 Display display = ((WindowManager) activity.getSystemService(Context.WINDOW_SERVICE))
                       .getDefaultDisplay();
-
                 int rotation = display.getRotation();
                 if(rotation == Surface.ROTATION_90) {
+                    Log.d("bars","landscape_90" + systemBars.toString());
                     leftPadding = Math.max(systemBars.top, cutoutTop);
                 } else if (rotation == Surface.ROTATION_270) {
+                    Log.d("bars","landscape_270" + systemBars.toString());
                     leftPadding = Math.max(systemBars.bottom, cutoutBottom);
                 }
             } else {
