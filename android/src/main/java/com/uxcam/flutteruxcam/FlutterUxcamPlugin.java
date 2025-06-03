@@ -571,7 +571,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 Log.e(TAG, "Error parsing JSON", e);
             }
         }
-
+        
         ArrayList<Rect> result = new ArrayList<Rect>();
         for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
             String key = entry.getKey();
@@ -605,8 +605,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
                 }
             }
-            
-            if(keyVisibilityMap.get(key) != 2) {
+            if(keyVisibilityMap.get(key) < 2) {
                 output.left = output.left-5;
                 output.right = output.right+5;
                 output.top = output.top-5;
