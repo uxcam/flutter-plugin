@@ -52,6 +52,8 @@ import android.content.res.Configuration;
 import android.view.Surface;
 import android.view.WindowManager;
 import android.content.Context;
+import android.view.WindowInsets;
+import androidx.core.view.DisplayCutoutCompat;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -93,6 +95,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private int leftPadding;
     private int cutoutTop = 0;
     private int cutoutBottom = 0;
+    private Insets systemBars = Insets.NONE;
+    private boolean hasNotch = false;
     private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
     private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
@@ -156,10 +160,18 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         activity = activityPluginBinding.getActivity();
         ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, i) -> {
             WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(activity.getWindow().getDecorView());
-            Insets systemBars = Insets.NONE;
             if (insets != null) {
-                systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowInsets insets1 = activity.getWindow()
+                .getDecorView()
+                .getRootWindowInsets();
+            if (insets1 != null) {
+                DisplayCutoutCompat cutout = insets.getDisplayCutout();
+                    if (cutout != null && cutout.getBoundingRects() != null && !cutout.getBoundingRects().isEmpty()) {
+                        hasNotch = true;
+                    }
+            }
+        }
                 DisplayCutoutCompat cutout = insets.getDisplayCutout();
                 if (cutout != null) {
                     cutoutTop = cutout.getSafeInsetTop();
@@ -172,13 +184,21 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                       .getDefaultDisplay();
                 int rotation = display.getRotation();
                 if(rotation == Surface.ROTATION_90) {
+                    int topInset = systemBars.left;
+                    if (hasNotch) {
+                        topInset = systemBars.top;
+                    }
+                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
                     Log.d("bars","landscape_90" + systemBars.toString());
-                    leftPadding = Math.max(systemBars.top, cutoutTop);
+                    leftPadding = Math.max(topInset, cutoutTop);
                 } else if (rotation == Surface.ROTATION_270) {
+                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
                     Log.d("bars","landscape_270" + systemBars.toString());
-                    leftPadding = Math.max(systemBars.bottom, cutoutBottom);
+                    leftPadding = Math.max(systemBars.left, cutoutBottom);
                 }
             } else {
+                systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                Log.d("bars","portrait" + systemBars.toString());
                 leftPadding = 0;
             }
             return ViewCompat.onApplyWindowInsets(v, insets);
@@ -605,9 +625,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 }
             }
             if(keyVisibilityMap.get(key) < 2) {
-                int width = output.right - output.left;
-                output.left = output.left-5 - width/5;
-                output.right = output.right+5 + width/5;
+                output.left = output.left-5;
+                output.right = output.right+5;
                 output.top = output.top-5;
                 output.bottom = output.bottom+5;
                 result.add(output);
