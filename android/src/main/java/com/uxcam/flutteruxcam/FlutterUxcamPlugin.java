@@ -617,8 +617,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 }
             }
             if(keyVisibilityMap.get(key) < 2) {
-                output.left = output.left-5;
-                output.right = output.right+5;
+                int width = output.right - output.left;
+                output.left = output.left-5 - width/5;
+                output.right = output.right+5 + width/5;
                 output.top = output.top-5;
                 output.bottom = output.bottom+5;
                 result.add(output);
