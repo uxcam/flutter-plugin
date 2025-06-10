@@ -25,8 +25,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
-import com.uxcam.screenaction.internal.FlutterFacade;
-import com.uxcam.screenaction.internal.FlutterFacade;
+//import com.uxcam.screenaction.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
 import com.uxcam.screenshot.model.UXCamOcclusion;
@@ -93,7 +92,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static Activity activity;
 
     private CrossPlatformDelegate delegate;
-    private FlutterFacade flutterFacade;
+    //private FlutterFacade flutterFacade;
 
     private int leftPadding;
     private int cutoutTop = 0;
@@ -163,13 +162,13 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             }
         });
 
-        flutterFacade = UXCam.getFlutterFacade();
-        flutterFacade.setListener(new ElementDataListener() {
-            @Override
-            public void elementDataForCoordinate(int x, int y) {
-                Log.d("element-data-capture","hello from capture");
-            }
-        });
+        // flutterFacade = UXCam.getFlutterFacade();
+        // flutterFacade.setListener(new ElementDataListener() {
+        //     @Override
+        //     public void elementDataForCoordinate(int x, int y) {
+        //         Log.d("element-data-capture","hello from capture");
+        //     }
+        // });
         channel.setMethodCallHandler(this);
 
     }
@@ -302,7 +301,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             result.success(null);
         } else if ("tagScreenName".equals(call.method)) {
             String eventName = call.argument("key");
-            FlutterFacade.getInstance().tagScreenName(eventName);
+            //FlutterFacade.getInstance().tagScreenName(eventName);
             result.success(null);
         } else if ("setAutomaticScreenNameTagging".equals(call.method)) {
             boolean enable = call.argument("key");
