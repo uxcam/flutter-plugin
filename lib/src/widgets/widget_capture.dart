@@ -87,7 +87,8 @@ class _WidgetCaptureState extends State<WidgetCapture> {
             return data.bound.contains(event.position);
           });
         } on StateError catch (_) {}
-        print(_trackData?.toString() ?? "No track data found");
+        print("tracked widget:" +
+            (_trackData?.toString() ?? "No track data found"));
       },
       child: widget.child,
     );
