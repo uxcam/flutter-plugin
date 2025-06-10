@@ -1,9 +1,8 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -137,10 +136,10 @@ class OccludeWrapperState extends State<OccludeWrapper>
     }
 
     occludePoint = OccludePoint(
-      bound.left.ratioToInt,
-      bound.top.ratioToInt,
-      bound.right.ratioToInt,
-      bound.bottom.ratioToInt,
+      bound.left.toNative,
+      bound.top.toNative,
+      bound.right.toNative,
+      bound.bottom.toNative,
     );
 
     rect(occludePoint);
@@ -155,10 +154,10 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (bound == null) return;
 
     occludePoint = OccludePoint(
-      bound.left.ratioToInt,
-      bound.top.ratioToInt,
-      bound.right.ratioToInt,
-      bound.bottom.ratioToInt,
+      bound.left.toNative,
+      bound.top.toNative,
+      bound.right.toNative,
+      bound.bottom.toNative,
     );
 
     FlutterUxcam.occludeRectWithCoordinates(
@@ -177,59 +176,5 @@ class OccludeWrapperState extends State<OccludeWrapper>
     } on FlutterError {
       return false;
     }
-  }
-}
-
-extension GlobalKeyExtension on GlobalKey {
-  Rect? get globalPaintBounds {
-    var visibilityWidget =
-        currentContext?.findAncestorWidgetOfExactType<Visibility>();
-    if (visibilityWidget != null && !visibilityWidget.visible) {
-      return null;
-    }
-    var opacityWidget =
-        currentContext?.findAncestorWidgetOfExactType<Opacity>();
-    if (opacityWidget != null && opacityWidget.opacity == 0) {
-      return null;
-    }
-    // var offstageWidget =
-    //     currentContext?.findAncestorWidgetOfExactType<Offstage>();
-    // if (offstageWidget != null && offstageWidget.offstage) {
-    //   return null;
-    // }
-
-    final renderObject = currentContext?.findRenderObject();
-    final translation = renderObject?.getTransformTo(null).getTranslation();
-    if (translation != null && renderObject?.paintBounds != null) {
-      final offset = Offset(translation.x, translation.y);
-      final bounds = renderObject!.paintBounds.shift(offset);
-      return bounds;
-    } else {
-      return null;
-    }
-  }
-
-  bool isWidgetVisible() {
-    if (currentContext != null) {
-      if (!currentContext!.mounted) return false;
-      try {
-        ModalRoute? modalRoute = ModalRoute.of(currentContext!);
-        return modalRoute != null &&
-            modalRoute.isCurrent &&
-            modalRoute.isActive;
-      } on FlutterError {
-        return false;
-      }
-    }
-    return false;
-  }
-}
-
-extension UtilIntExtension on double {
-  int get ratioToInt {
-    final bool isAndroid = Platform.isAndroid;
-    final double pixelRatio =
-        PlatformDispatcher.instance.views.first.devicePixelRatio;
-    return (this * (isAndroid ? pixelRatio : 1.0)).toInt();
   }
 }

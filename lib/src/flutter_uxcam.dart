@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
+import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 class FlutterUxcam {
@@ -447,6 +448,15 @@ class FlutterUxcam {
     await _channel.invokeMethod<void>("addFrameData", {
       "timestamp": timestamp,
       "frameData": frameData,
+    });
+  }
+
+  static Future<void> appendGestureContent(
+      Offset position, TrackData trackData) async {
+    await _channel.invokeMethod<void>("appendGestureContent", {
+      "x": position.dx.toInt(),
+      "y": position.dy.toInt(),
+      "data": trackData.toJson(),
     });
   }
 }
