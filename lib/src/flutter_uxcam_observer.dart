@@ -9,14 +9,6 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
   Route? _topRoute;
   Route? get topRoute => _topRoute;
 
-  FlutterUxcamNavigatorObserver._internal();
-
-  factory FlutterUxcamNavigatorObserver() {
-    final instance = FlutterUxcamNavigatorObserver._internal();
-    UxCam.navigationObserver = instance;
-    return instance;
-  }
-
   /// Using this approach as we need to keep track of screens
   /// before this one and keep track of screens previous to the
   /// current one.
