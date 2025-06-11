@@ -1,6 +1,7 @@
 ## Changelog
 Version | Changes |
 -- | -- |
+2.6.1           | Updated iOS SDK to 3.6.25 and Android SDK to 3.6.42 |
 2.6.0           | Updated iOS SDK to 3.6.24 and Android SDK to 3.6.40 |
 2.5.9           | Updated iOS SDK to 3.6.22 and Android SDK to 3.6.39<br/> Migrated to latest Flutter release 3.29.0<br/>Enhance Memory Usage |
 2.5.8           | Updated iOS SDK to 3.6.21 and Android SDK to 3.6.37 |

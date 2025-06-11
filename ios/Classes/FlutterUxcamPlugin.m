@@ -37,7 +37,7 @@ typedef void (^FrameRenderingCompletionBlock)(BOOL status);
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
     instance.flutterChannel = channel;
     [registrar addMethodCallDelegate:instance channel:channel];
-    [UXCam pluginType:@"flutter" version:@"2.6.0"];
+    [UXCam pluginType:@"flutter" version:@"2.6.1"];
 }
 
 // The handler method - this is the entry point from the Dart code
