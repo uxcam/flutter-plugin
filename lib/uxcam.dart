@@ -1,10 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
-import 'package:flutter_uxcam/src/widgets/occlusion_manager.dart';
 
 class UxCam {
   static FlutterUxcamNavigatorObserver? navigationObserver;
-  final OcclusionManager _manager = OcclusionManager();
   int? dartTimeStamp;
 
   UxCam() {
