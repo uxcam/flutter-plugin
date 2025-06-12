@@ -25,7 +25,6 @@ class OccludeWrapperState extends State<OccludeWrapper>
   late OccludePoint occludePoint;
   late final GlobalKey _widgetKey;
   late final UniqueKey _uniqueId;
-  Offset? lastPosition;
 
   @override
   void initState() {
@@ -111,19 +110,8 @@ class OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void unRegisterOcclusionWidget() {
-    // if (!_isWidgetInTopRoute()) {
-    //   OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    //   OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-    //       _widgetKey, _widgetKey.globalPaintBounds!, _isWidgetInTopRoute());
-    // }
-  }
-
-  void hideOcclusionWidget() {
-    if (!_isWidgetInTopRoute()) {
-      //OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-          _widgetKey, _widgetKey.globalPaintBounds!);
-    }
+    if (Platform.isIOS)
+      OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
