@@ -1,9 +1,12 @@
+import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper.dart';
 
 class OcclusionWrapperItem {
-  final UniqueKey id; 
+  final UniqueKey id;
   final GlobalKey key;
 
   OcclusionWrapperItem({required this.id, required this.key});
@@ -20,18 +23,52 @@ class OcclusionWrapperItem {
 }
 
 class OcclusionWrapperManager {
-
   OcclusionWrapperManager._privateConstructor();
 
-  static final OcclusionWrapperManager _instance = OcclusionWrapperManager._privateConstructor();
+  static final OcclusionWrapperManager _instance =
+      OcclusionWrapperManager._privateConstructor();
 
   factory OcclusionWrapperManager() => _instance;
 
   final items = <OcclusionWrapperItem>[];
 
-  final occlusionRects = <OccludePoint>[];
+  final occlusionRects = <UniqueKey, OccludePoint>{};
+  final rects = <GlobalKey, OccludePoint>{};
 
-/// Register Flutter Widget for occlusion
+  void add(int timeStamp, GlobalKey key, Rect rect) {
+    rects.remove(key);
+    rects[key] = OccludePoint(
+      rect.left.ratioToInt,
+      rect.top.ratioToInt,
+      rect.right.ratioToInt,
+      rect.bottom.ratioToInt,
+    );
+
+    List<Map<String, dynamic>> rectList = [];
+    rects.forEach((key, value) {
+      Map<String, dynamic> rectData = {
+        "key": key.toString(),
+        "point": value.toJson(),
+        "isVisible": key.isWidgetVisible(),
+      };
+      rectList.add(rectData);
+    });
+    print("visibility: $rectList");
+
+    FlutterUxcam.addFrameData(timeStamp, jsonEncode(rectList));
+  }
+
+  void clearOcclusionRects() {
+    occlusionRects.clear();
+  }
+
+  bool containsWidgetByKey(GlobalKey key) {
+    return items.any((item) {
+      return item.key == key;
+    });
+  }
+
+  /// Register Flutter Widget for occlusion
   void registerOcclusionWrapper(OcclusionWrapperItem item) {
     if (!items.contains(item)) {
       items.add(item);
@@ -42,6 +79,9 @@ class OcclusionWrapperManager {
   void unRegisterOcclusionWrapper(UniqueKey id) {
     if (items.isNotEmpty) {
       items.removeWhere((wrapper) => wrapper.id == id);
+      if (occlusionRects.containsKey(id)) {
+        occlusionRects.removeWhere((key, _) => key == id);
+      }
     }
   }
 
@@ -54,7 +94,7 @@ class OcclusionWrapperManager {
   }
 
   List<OccludePoint> getOccludePoints() {
-    return items.map((wrapper) =>  getOccludePoint(wrapper.key)).toList();
+    return items.map((wrapper) => getOccludePoint(wrapper.key)).toList();
   }
 
   OccludePoint getOccludePoint(GlobalKey<State<StatefulWidget>> key) {
@@ -73,5 +113,4 @@ class OcclusionWrapperManager {
 
     return occludePoint;
   }
-
 }

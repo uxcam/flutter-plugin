@@ -3,8 +3,8 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_uxcam/src/flutter_uxcam.dart';
-import 'package:flutter_uxcam/src/helpers/screen_lifecycle.dart';
+import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -14,46 +14,54 @@ class OccludeWrapper extends StatefulWidget {
   const OccludeWrapper({
     Key? key,
     required this.child,
-  });
+  }) : super(key: key);
 
   @override
-  State<OccludeWrapper> createState() => _OccludeWrapperState();
+  State<OccludeWrapper> createState() => OccludeWrapperState();
 }
 
-class _OccludeWrapperState extends State<OccludeWrapper> with WidgetsBindingObserver {
+class OccludeWrapperState extends State<OccludeWrapper>
+    with WidgetsBindingObserver {
   late OccludePoint occludePoint;
-  final GlobalKey _widgetKey = GlobalKey();
+  late final GlobalKey _widgetKey;
   late final UniqueKey _uniqueId;
-  Timer? _timer = null;
-
-  void startTimer() {
-    getOccludePoints();
-    _timer = Timer.periodic(const Duration(milliseconds: 50), (_) {
-      getOccludePoints();
-    });
-  }
-
-  void cancelTimer() {
-    _timer?.cancel();
-    _timer = null;
-    FlutterUxcam.occludeRectWithCoordinates(0, 0, 0, 0);
-  }
 
   @override
   void initState() {
     super.initState();
     _uniqueId = UniqueKey();
+    _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
-      getOccludePoints();
+      _updatePositionForTopRouteOnly();
     });
+  }
+
+  void _updatePosition() {
+    if (!mounted) return;
+    Rect rect = Rect.zero;
+    if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
+      rect = _widgetKey.globalPaintBounds!;
+    }
+    OcclusionWrapperManager()
+        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updatePositionForTopRouteOnly();
+    });
+  }
+
+  void _updatePositionForTopRouteOnly() {
+    if (!mounted) return;
+    _updatePosition();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    unRegisterOcclusionWidget();
+    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    OcclusionWrapperManager()
+        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
     super.dispose();
   }
 
@@ -64,22 +72,14 @@ class _OccludeWrapperState extends State<OccludeWrapper> with WidgetsBindingObse
       onVisibilityChanged: (VisibilityInfo visibilityInfo) {
         final visibilityFraction = visibilityInfo.visibleFraction;
         if (visibilityFraction == 0) {
-          unRegisterOcclusionWidget();
+          //hideOcclusionWidget();
         } else {
           registerOcclusionWidget();
         }
       },
-      child: ScreenLifecycle(
-        onFocusLost: () {
-          cancelTimer();
-        },
-        onFocusGained: () {
-          startTimer();
-        },
-        child: Container(
-          key: _widgetKey,
-          child: widget.child,
-        ),
+      child: Container(
+        key: _widgetKey,
+        child: widget.child,
       ),
     );
   }
@@ -100,7 +100,18 @@ class _OccludeWrapperState extends State<OccludeWrapper> with WidgetsBindingObse
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+  }
 
+  void registerOcclusionWidget() {
+    var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
+    OcclusionWrapperManager().registerOcclusionWrapper(item);
+    OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+        _widgetKey, _widgetKey.globalPaintBounds!);
+  }
+
+  void unRegisterOcclusionWidget() {
+    if (Platform.isIOS)
+      OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
@@ -146,41 +157,59 @@ class _OccludeWrapperState extends State<OccludeWrapper> with WidgetsBindingObse
     );
   }
 
-  void registerOcclusionWidget() {
-      var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
-      OcclusionWrapperManager().registerOcclusionWrapper(item);
-  }
-
-  void unRegisterOcclusionWidget() {
-    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+  bool _isWidgetInTopRoute() {
+    if (!mounted) return false;
+    try {
+      ModalRoute? modalRoute = ModalRoute.of(context);
+      return modalRoute != null && modalRoute.isCurrent && modalRoute.isActive;
+    } on FlutterError {
+      return false;
+    }
   }
 }
 
 extension GlobalKeyExtension on GlobalKey {
   Rect? get globalPaintBounds {
-    
-    var visibilityWidget = currentContext?.findAncestorWidgetOfExactType<Visibility>();
+    var visibilityWidget =
+        currentContext?.findAncestorWidgetOfExactType<Visibility>();
     if (visibilityWidget != null && !visibilityWidget.visible) {
       return null;
     }
-    var opacityWidget = currentContext?.findAncestorWidgetOfExactType<Opacity>();
+    var opacityWidget =
+        currentContext?.findAncestorWidgetOfExactType<Opacity>();
     if (opacityWidget != null && opacityWidget.opacity == 0) {
       return null;
     }
-    var offstageWidget = currentContext?.findAncestorWidgetOfExactType<Offstage>();
-    if (offstageWidget != null && offstageWidget.offstage) {
-      return null;
-    }
+    // var offstageWidget =
+    //     currentContext?.findAncestorWidgetOfExactType<Offstage>();
+    // if (offstageWidget != null && offstageWidget.offstage) {
+    //   return null;
+    // }
 
     final renderObject = currentContext?.findRenderObject();
     final translation = renderObject?.getTransformTo(null).getTranslation();
     if (translation != null && renderObject?.paintBounds != null) {
       final offset = Offset(translation.x, translation.y);
-      return renderObject!.paintBounds.shift(offset);
+      final bounds = renderObject!.paintBounds.shift(offset);
+      return bounds;
     } else {
       return null;
     }
+  }
 
+  bool isWidgetVisible() {
+    if (currentContext != null) {
+      if (!currentContext!.mounted) return false;
+      try {
+        ModalRoute? modalRoute = ModalRoute.of(currentContext!);
+        return modalRoute != null &&
+            modalRoute.isCurrent &&
+            modalRoute.isActive;
+      } on FlutterError {
+        return false;
+      }
+    }
+    return false;
   }
 }
 
@@ -190,33 +219,5 @@ extension UtilIntExtension on double {
     final double pixelRatio =
         PlatformDispatcher.instance.views.first.devicePixelRatio;
     return (this * (isAndroid ? pixelRatio : 1.0)).toInt();
-  }
-}
-
-class OccludePoint {
-  int topLeftX;
-  int topLeftY;
-  int bottomRightX;
-  int bottomRightY;
-
-  OccludePoint(
-    this.topLeftX,
-    this.topLeftY,
-    this.bottomRightX,
-    this.bottomRightY,
-  );
-
-  @override
-  String toString() {
-    return 'OccludePoint(topLeftX: $topLeftX, topLeftY: $topLeftY, bottomRightX: $bottomRightX, bottomRightY: $bottomRightY)';
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      "x0": topLeftX,
-      "y0": topLeftY,
-      "x1": bottomRightX,
-      "y1": bottomRightY,
-    };
   }
 }
