@@ -21,7 +21,6 @@ rootProject.allprojects {
             url 'https://sdk.uxcam.com/android/'
         }
         mavenLocal()
-//        flatDir {dirs 'libs'}
     }
 }
 
