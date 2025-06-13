@@ -114,6 +114,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 StandardMessageCodec.INSTANCE);
         delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
+
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
                 int offset = 50;  
