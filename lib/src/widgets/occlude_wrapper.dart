@@ -106,7 +106,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
     var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
     OcclusionWrapperManager().registerOcclusionWrapper(item);
     OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-        _widgetKey, _widgetKey.globalPaintBounds!);
+        _widgetKey, _widgetKey.globalPaintBounds ?? Rect.zero);
   }
 
   void unRegisterOcclusionWidget() {
