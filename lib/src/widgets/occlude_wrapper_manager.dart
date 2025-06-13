@@ -54,7 +54,6 @@ class OcclusionWrapperManager {
       };
       rectList.add(rectData);
     });
-    print("visibility: $rectList");
 
     if (Platform.isAndroid) {
       FlutterUxcam.addFrameData(timeStamp, jsonEncode(rectList));
