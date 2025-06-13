@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
@@ -55,7 +56,9 @@ class OcclusionWrapperManager {
     });
     print("visibility: $rectList");
 
-    FlutterUxcam.addFrameData(timeStamp, jsonEncode(rectList));
+    if (Platform.isAndroid) {
+      FlutterUxcam.addFrameData(timeStamp, jsonEncode(rectList));
+    }
   }
 
   void clearOcclusionRects() {
