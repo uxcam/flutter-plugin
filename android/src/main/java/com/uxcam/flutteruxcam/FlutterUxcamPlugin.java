@@ -100,11 +100,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
     private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
-    // public static void registerWith(Registrar registrar) {
-    //     activity = registrar.activity();
-    //     register(registrar.messenger());
-    // }
-
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
                 final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
@@ -144,17 +139,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
     }
-
-    // public static void register(BinaryMessenger messenger) {
-    //     final MethodChannel channel = new MethodChannel(messenger, "flutter_uxcam");
-    //     final BasicMessageChannel<String> occlusionRectsChannel = new BasicMessageChannel<String>(
-    //             messenger,
-    //             "your_channel_name",
-    //             StringCodec.INSTANCE);
-    //     channel.setMethodCallHandler(new FlutterUxcamPlugin());
-    //     occlusionRectsChannel.setMessageHandler(this);
-    // }
-
 
     @Override
     public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
