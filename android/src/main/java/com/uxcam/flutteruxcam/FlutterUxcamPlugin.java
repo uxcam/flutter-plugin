@@ -15,7 +15,6 @@ import io.flutter.plugin.common.StandardMessageCodec;
 import io.flutter.plugin.common.BasicMessageChannel.MessageHandler;
 import io.flutter.plugin.common.BasicMessageChannel;
 import io.flutter.plugin.common.BasicMessageChannel.Reply;
-// import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.plugin.common.StringCodec;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.BinaryMessenger;
@@ -65,7 +64,7 @@ import java.util.TreeMap;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.5.7";
+    private static final String TYPE_VERSION = "2.6.0";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
