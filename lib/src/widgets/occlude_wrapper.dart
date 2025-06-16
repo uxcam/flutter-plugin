@@ -156,16 +156,6 @@ class OccludeWrapperState extends State<OccludeWrapper>
       occludePoint.bottomRightY,
     );
   }
-
-  bool _isWidgetInTopRoute() {
-    if (!mounted) return false;
-    try {
-      ModalRoute? modalRoute = ModalRoute.of(context);
-      return modalRoute != null && modalRoute.isCurrent && modalRoute.isActive;
-    } on FlutterError {
-      return false;
-    }
-  }
 }
 
 extension GlobalKeyExtension on GlobalKey {
