@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
-import 'package:flutter_uxcam/src/widgets/occlude_wrapper.dart';
 
 class OcclusionWrapperItem {
   final UniqueKey id;
