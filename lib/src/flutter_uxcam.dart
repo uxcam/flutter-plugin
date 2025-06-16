@@ -450,6 +450,15 @@ class FlutterUxcam {
       "frameData": frameData,
     });
   }
+
+  static Future<void> appendGestureContent(
+      Offset position, TrackData trackData) async {
+    await _channel.invokeMethod<void>("appendGestureContent", {
+      "x": position.dx.toInt(),
+      "y": position.dy.toInt(),
+      "data": trackData.toJson(),
+    });
+  }
 }
 
 List<Map<String, String>> getStackTraceElements(StackTrace stackTrace) {
