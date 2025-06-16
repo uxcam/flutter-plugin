@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 
 class WidgetCapture extends StatefulWidget {
@@ -86,9 +87,8 @@ class _WidgetCaptureState extends State<WidgetCapture> {
           _trackData = _trackList.firstWhere((data) {
             return data.bound.contains(event.position);
           });
+          FlutterUxcam.appendGestureContent(event.position, _trackData);
         } on StateError catch (_) {}
-        print("tracked widget:" +
-            (_trackData?.toString() ?? "No track data found"));
       },
       child: widget.child,
     );

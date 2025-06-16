@@ -24,6 +24,8 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
+import com.uxcam.internal.DefaultInternalApiFacade;
+import com.uxcam.screenaction.models.ScreenActionContentCrossPlatform;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
 //import com.uxcam.screenaction.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
@@ -92,7 +94,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static Activity activity;
 
     private CrossPlatformDelegate delegate;
-    //private FlutterFacade flutterFacade;
+    private DefaultInternalApiFacade flutterFacade;
 
     private int leftPadding;
     private int cutoutTop = 0;
@@ -116,6 +118,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 StandardMessageCodec.INSTANCE);
 
         delegate = UXCam.getDelegate();
+        flutterFacade = UXCam.getFacade();
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
@@ -162,13 +165,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             }
         });
 
-        // flutterFacade = UXCam.getFlutterFacade();
-        // flutterFacade.setListener(new ElementDataListener() {
-        //     @Override
-        //     public void elementDataForCoordinate(int x, int y) {
-        //         Log.d("element-data-capture","hello from capture");
-        //     }
-        // });
         channel.setMethodCallHandler(this);
 
     }
@@ -452,6 +448,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             long timestamp = call.argument("timestamp");
             String frameData = call.argument("frameData");
             frameDataMap.put(timestamp,frameData);
+            result.success(true);
+        } else if ("appendGestureContent".equals(call.method)) {
+            float x = call.argument("x");
+            float y = call.argument("y");
+            String gestureContent = call.argument("gestureContent");
+            delegate.addGestureContent(x,y, gestureContent);
             result.success(true);
         }
         else {
