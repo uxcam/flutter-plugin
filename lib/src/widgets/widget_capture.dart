@@ -59,8 +59,9 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       _inspectButtonChild(_dataForWidget(element), element);
     } else if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
       _inspectNonInteractiveChild(element);
+    } else {
+      element.visitChildElements(_inspectDirectChild);
     }
-    element.visitChildElements(_inspectDirectChild);
   }
 
   void _inspectNonInteractiveChild(Element element) {
@@ -69,6 +70,10 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       Text widget = element.widget as Text;
       trackData = _dataForWidget(element);
       trackData.setLabel(widget.data ?? "");
+    }
+    if (element.widget is Image) {
+      trackData = _dataForWidget(element);
+      trackData.setLabel("");
     }
     if (trackData != null) {
       uxCam.addWidgetDataForTracking(trackData);
@@ -157,10 +162,9 @@ class _WidgetCaptureState extends State<WidgetCapture> {
   }
 
   Rect _getRectFromBox(RenderBox renderObject) {
-    Offset origin;
-    Size size;
-    origin = renderObject.localToGlobal(Offset.zero);
-    size = renderObject.size;
-    return origin & size;
+    final translation = renderObject.getTransformTo(null).getTranslation();
+    final offset = Offset(translation.x, translation.y);
+    final bounds = renderObject.paintBounds.shift(offset);
+    return bounds;
   }
 }
