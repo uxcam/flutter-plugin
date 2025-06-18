@@ -21,6 +21,7 @@ class UxCam {
         (map["x"] as int).toDouble().toFlutter.toDouble(),
         (map["y"] as int).toDouble().toFlutter.toDouble(),
       );
+      print("messagex: $offset");
       TrackData? _trackData;
       try {
         _trackData = _trackList.firstWhere((data) {
@@ -36,6 +37,8 @@ class UxCam {
   }
 
   addWidgetDataForTracking(TrackData data) {
+    final id = data.uiId ?? "";
+    _trackList.removeWhere((item) => item.uiId == id);
     _trackList.add(data);
   }
 }

@@ -52,14 +52,21 @@ class UXCamPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(8.0),
         children: [
-          TextField(),
-          TextFormField(),
-          FeatureSection(
-            title: 'Screen Tagging',
-            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
-            buttonTitle: 'Login',
-          ),
-          TextButton(onPressed: () {}, child: Text("Signup"))
+          // Text(
+          //   "This is a smart events demo",
+          //   style: Theme.of(context).textTheme.headlineSmall,
+          // ),
+          Image.asset("assets/images/testimage.jpg"),
+          // TextField(
+          //   decoration: InputDecoration(hintText: "this is a hint"),
+          // ),
+          // TextFormField(),
+          // FeatureSection(
+          //   title: 'Screen Tagging',
+          //   onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+          //   buttonTitle: 'Login',
+          // ),
+          TextButton(onPressed: () {}, child: Text("Signup")),
         ],
       ),
     );
