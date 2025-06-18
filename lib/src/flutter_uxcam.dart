@@ -455,8 +455,8 @@ class FlutterUxcam {
   static Future<void> appendGestureContent(
       Offset position, TrackData trackData) async {
     await _channel.invokeMethod<void>("appendGestureContent", {
-      "x": position.dx,
-      "y": position.dy,
+      "x": position.dx.toInt(),
+      "y": position.dy.toInt(),
       "data": trackData.toJson(),
     });
   }

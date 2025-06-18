@@ -16,12 +16,13 @@ class WidgetCapture extends StatefulWidget {
 }
 
 class _WidgetCaptureState extends State<WidgetCapture> {
-  List<TrackData> _trackList = [];
+  late UxCam uxCam;
   List<Type> knownButtonTypes = [ElevatedButton, TextButton, OutlinedButton];
 
   @override
   void initState() {
     super.initState();
+    uxCam = UxCam();
     knownButtonTypes.addAll(widget.types);
     SchedulerBinding.instance.addPersistentFrameCallback((_) {
       context.visitChildElements((child) => _inspectDirectChild(child));
@@ -29,26 +30,26 @@ class _WidgetCaptureState extends State<WidgetCapture> {
   }
 
   void _inspectDirectChild(Element element) {
-    if (element.widget.runtimeType is TextField ||
-        element.widget.runtimeType is TextFormField) {
-      _trackList.add(_dataForWidget(element));
+    if (element.widget.runtimeType.toString() == "TextField" ||
+        element.widget.runtimeType.toString() == "TextFormField") {
+      uxCam.addWidgetDataForTracking(_dataForWidget(element));
     } else if (knownButtonTypes.contains(element.widget.runtimeType)) {
-      _inspectButtonChild(element);
+      _inspectButtonChild(_dataForWidget(element), element);
     }
     element.visitChildElements(_inspectDirectChild);
   }
 
-  void _inspectButtonChild(Element element) {
+  void _inspectButtonChild(TrackData containingWidget, Element element) {
     final renderObject = element.renderObject;
     if (renderObject is RenderParagraph) {
       final textSpan = renderObject.text;
       if (textSpan is TextSpan) {
-        TrackData data = _dataForWidget(element);
-        data.setLabel(extractTextFromSpan(textSpan));
-        _trackList.add(data);
+        containingWidget.setLabel(extractTextFromSpan(textSpan));
+        uxCam.addWidgetDataForTracking(containingWidget);
       }
     }
-    element.visitChildElements(_inspectButtonChild);
+    element.visitChildElements(
+        (element) => _inspectButtonChild(containingWidget, element));
   }
 
   String extractTextFromSpan(TextSpan span) {
@@ -73,23 +74,29 @@ class _WidgetCaptureState extends State<WidgetCapture> {
         ? element.widget.key.toString()
         : "$route#${identityHashCode(element).toRadixString(16)}";
 
-    return TrackData(_getRectFromBox(renderObject as RenderBox), route,
-        uiClass: element.widget.runtimeType.toString(), uiId: _uiId, uiType: 1);
+    int _uiType = -1;
+    if (knownButtonTypes.contains(element.widget.runtimeType)) {
+      _uiType = 1;
+    }
+    if (element.widget.runtimeType.toString() == "TextField" ||
+        element.widget.runtimeType.toString() == "TextFormField") {
+      _uiType = 2;
+    }
+
+    return TrackData(
+      _getRectFromBox(renderObject as RenderBox),
+      route,
+      uiClass: element.widget.runtimeType.toString(),
+      uiId: _uiId,
+      uiType: _uiType,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: (event) {
-        TrackData? _trackData;
-        try {
-          _trackData = _trackList.firstWhere((data) {
-            return data.bound.contains(event.position);
-          });
-          FlutterUxcam.appendGestureContent(event.position, _trackData);
-        } on StateError catch (_) {}
-      },
+      onPointerDown: (event) {},
       child: widget.child,
     );
   }

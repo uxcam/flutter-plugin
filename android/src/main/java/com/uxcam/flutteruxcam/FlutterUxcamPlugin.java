@@ -24,10 +24,11 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
-import com.uxcam.internal.DefaultInternalApiFacade;
+import com.uxcam.screenaction.internal.DefaultInternalApiFacade;
+import com.uxcam.screenaction.internal.ElementDataRequestListener;
+import com.uxcam.screenaction.internal.ElementDataResponseListener;
 import com.uxcam.screenaction.models.ScreenActionContentCrossPlatform;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
-//import com.uxcam.screenaction.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
 import com.uxcam.screenshot.model.UXCamOcclusion;
@@ -112,13 +113,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
                 final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
-        final BasicMessageChannel<Object> occlusionRectsChannel = new BasicMessageChannel<>(
+        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
                 binding.getBinaryMessenger(),
-                "occlusion_rects_coordinates",
+                "uxcam_message_channel",
                 StandardMessageCodec.INSTANCE);
 
         delegate = UXCam.getDelegate();
-        flutterFacade = UXCam.getFacade();
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
@@ -163,6 +163,24 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
                 }
             }
+        });
+
+        flutterFacade = UXCam.getFacade();
+        flutterFacade.setListener(new ElementDataRequestListener() {
+            @Override
+            public void getElementData(GestureData gestureData, ElementDataResponseListener onResult) {
+                try {
+                    JSONObject obj = new JSONObject();
+                    obj.put("x", gestureData.x);
+                    obj.put("y", gestureData.y);
+                    uxcamMessageChannel.send(obj.toString(), data -> {
+                        onResult.onData(data.toString());
+                    });      
+                }catch (JSONException e) {
+                    e.printStackTrace();
+                    onResult.onData("data");
+                }
+            }            
         });
 
         channel.setMethodCallHandler(this);
@@ -453,7 +471,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             float x = call.argument("x");
             float y = call.argument("y");
             String gestureContent = call.argument("gestureContent");
-            delegate.addGestureContent(x,y, gestureContent);
+            //delegate.addGestureContent(x,y, gestureContent);
             result.success(true);
         }
         else {

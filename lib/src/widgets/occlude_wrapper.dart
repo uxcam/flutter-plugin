@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -175,50 +176,5 @@ class OccludeWrapperState extends State<OccludeWrapper>
     } on FlutterError {
       return false;
     }
-  }
-}
-
-extension GlobalKeyExtension on GlobalKey {
-  Rect? get globalPaintBounds {
-    var visibilityWidget =
-        currentContext?.findAncestorWidgetOfExactType<Visibility>();
-    if (visibilityWidget != null && !visibilityWidget.visible) {
-      return null;
-    }
-    var opacityWidget =
-        currentContext?.findAncestorWidgetOfExactType<Opacity>();
-    if (opacityWidget != null && opacityWidget.opacity == 0) {
-      return null;
-    }
-    // var offstageWidget =
-    //     currentContext?.findAncestorWidgetOfExactType<Offstage>();
-    // if (offstageWidget != null && offstageWidget.offstage) {
-    //   return null;
-    // }
-
-    final renderObject = currentContext?.findRenderObject();
-    final translation = renderObject?.getTransformTo(null).getTranslation();
-    if (translation != null && renderObject?.paintBounds != null) {
-      final offset = Offset(translation.x, translation.y);
-      final bounds = renderObject!.paintBounds.shift(offset);
-      return bounds;
-    } else {
-      return null;
-    }
-  }
-
-  bool isWidgetVisible() {
-    if (currentContext != null) {
-      if (!currentContext!.mounted) return false;
-      try {
-        ModalRoute? modalRoute = ModalRoute.of(currentContext!);
-        return modalRoute != null &&
-            modalRoute.isCurrent &&
-            modalRoute.isActive;
-      } on FlutterError {
-        return false;
-      }
-    }
-    return false;
   }
 }
