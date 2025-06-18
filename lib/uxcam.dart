@@ -24,7 +24,7 @@ class UxCam {
       print("messagex: $offset");
       TrackData? _trackData;
       try {
-        _trackData = _trackList.firstWhere((data) {
+        _trackData = _trackList.lastWhere((data) {
           return data.bound.contains(offset);
         });
       } catch (e) {}
