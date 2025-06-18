@@ -17,26 +17,73 @@ class WidgetCapture extends StatefulWidget {
 
 class _WidgetCaptureState extends State<WidgetCapture> {
   late UxCam uxCam;
-  List<Type> knownButtonTypes = [ElevatedButton, TextButton, OutlinedButton];
+
+  List<Type> userDefinedTypes = [];
+
+  List<Type> knownButtonTypes = [
+    ElevatedButton,
+    TextButton,
+    OutlinedButton,
+    GestureDetector,
+    InkWell,
+    IconButton,
+    FloatingActionButton,
+  ];
+
+  List<Type> nonInteractiveTypes = [
+    Image,
+    Text,
+    RichText,
+  ];
+
+  List<Type> fieldTypes = [
+    TextField,
+    TextFormField,
+  ];
 
   @override
   void initState() {
     super.initState();
     uxCam = UxCam();
-    knownButtonTypes.addAll(widget.types);
+    userDefinedTypes.addAll(widget.types);
     SchedulerBinding.instance.addPersistentFrameCallback((_) {
       context.visitChildElements((child) => _inspectDirectChild(child));
     });
   }
 
   void _inspectDirectChild(Element element) {
-    if (element.widget.runtimeType.toString() == "TextField" ||
-        element.widget.runtimeType.toString() == "TextFormField") {
-      uxCam.addWidgetDataForTracking(_dataForWidget(element));
+    if (userDefinedTypes.contains(element.widget.runtimeType)) {
+    } else if (fieldTypes.contains(element.widget.runtimeType)) {
+      _inspectTextFieldChild(element);
     } else if (knownButtonTypes.contains(element.widget.runtimeType)) {
       _inspectButtonChild(_dataForWidget(element), element);
+    } else if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
+      _inspectNonInteractiveChild(element);
     }
     element.visitChildElements(_inspectDirectChild);
+  }
+
+  void _inspectNonInteractiveChild(Element element) {
+    TrackData? trackData;
+    if (element.widget is Text) {
+      Text widget = element.widget as Text;
+      trackData = _dataForWidget(element);
+      trackData.setLabel(widget.data ?? "");
+    }
+    if (trackData != null) {
+      uxCam.addWidgetDataForTracking(trackData);
+    }
+  }
+
+  void _inspectTextFieldChild(Element element) {
+    String hint = "";
+    if (element.widget is TextField) {
+      final textField = element.widget as TextField;
+      hint = textField.decoration?.hintText ?? "";
+    }
+    TrackData trackData = _dataForWidget(element);
+    trackData.setLabel(hint);
+    uxCam.addWidgetDataForTracking(trackData);
   }
 
   void _inspectButtonChild(TrackData containingWidget, Element element) {
@@ -72,15 +119,23 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     final route = ModalRoute.of(element)?.settings.name ?? "";
     String _uiId = element.widget.key != null
         ? element.widget.key.toString()
-        : "$route#${identityHashCode(element).toRadixString(16)}";
+        : "${route}_${element.widget.runtimeType}_${identityHashCode(element).toRadixString(16)}";
 
     int _uiType = -1;
     if (knownButtonTypes.contains(element.widget.runtimeType)) {
       _uiType = 1;
     }
-    if (element.widget.runtimeType.toString() == "TextField" ||
-        element.widget.runtimeType.toString() == "TextFormField") {
+    if (fieldTypes.contains(element.widget.runtimeType)) {
       _uiType = 2;
+    }
+    if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
+      if (element.widget.runtimeType.toString() == "Text" ||
+          element.widget.runtimeType.toString() == "RichText") {
+        _uiType = 7;
+      }
+      if (element.widget.runtimeType.toString() == "Image") {
+        _uiType = 12;
+      }
     }
 
     return TrackData(
