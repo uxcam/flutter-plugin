@@ -43,6 +43,11 @@ class _WidgetCaptureState extends State<WidgetCapture> {
 
   List<Type> containerTypes = [Scaffold];
 
+  List<Type> overlayTypes = [
+    BottomSheet,
+    Dialog,
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +64,13 @@ class _WidgetCaptureState extends State<WidgetCapture> {
 
       uxCam.addWidgetDataForTracking(trackData);
     }
+
+    // if (overlayTypes.contains(element.widget.runtimeType)) {
+    //   // Handle overlays like BottomSheet or Dialog
+    //   final trackData = _dataForWidget(element);
+    //   uxCam.addWidgetDataForTracking(trackData);
+    //   uxCam.updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
+    // }
 
     if (userDefinedTypes.contains(element.widget.runtimeType)) {
     } else if (fieldTypes.contains(element.widget.runtimeType)) {
