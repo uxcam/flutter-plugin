@@ -41,6 +41,8 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     TextFormField,
   ];
 
+  List<Type> containerTypes = [Scaffold];
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +54,12 @@ class _WidgetCaptureState extends State<WidgetCapture> {
   }
 
   void _inspectDirectChild(Element element) {
+    if (containerTypes.contains(element.widget.runtimeType)) {
+      final trackData = _dataForWidget(element);
+
+      uxCam.addWidgetDataForTracking(trackData);
+    }
+
     if (userDefinedTypes.contains(element.widget.runtimeType)) {
     } else if (fieldTypes.contains(element.widget.runtimeType)) {
       _inspectTextFieldChild(element);
@@ -77,6 +85,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     }
     if (trackData != null) {
       uxCam.addWidgetDataForTracking(trackData);
+      uxCam.updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
     }
   }
 
@@ -89,6 +98,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     TrackData trackData = _dataForWidget(element);
     trackData.setLabel(hint);
     uxCam.addWidgetDataForTracking(trackData);
+    uxCam.updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
   }
 
   void _inspectButtonChild(TrackData containingWidget, Element element) {
@@ -98,6 +108,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       if (textSpan is TextSpan) {
         containingWidget.setLabel(extractTextFromSpan(textSpan));
         uxCam.addWidgetDataForTracking(containingWidget);
+        uxCam.updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
       }
     }
     element.visitChildElements(
@@ -121,7 +132,8 @@ class _WidgetCaptureState extends State<WidgetCapture> {
   TrackData _dataForWidget(Element element) {
     final renderObject = element.renderObject;
 
-    final route = ModalRoute.of(element)?.settings.name ?? "";
+    String route = ModalRoute.of(element)?.settings.name ?? "";
+    if (route == "") route = "/";
     String _uiId = element.widget.key != null
         ? element.widget.key.toString()
         : "${route}_${element.widget.runtimeType}_${identityHashCode(element).toRadixString(16)}";
@@ -142,6 +154,9 @@ class _WidgetCaptureState extends State<WidgetCapture> {
         _uiType = 12;
       }
     }
+    if (containerTypes.contains(element.widget.runtimeType)) {
+      _uiType = 5;
+    }
 
     return TrackData(
       _getRectFromBox(renderObject as RenderBox),
@@ -156,7 +171,9 @@ class _WidgetCaptureState extends State<WidgetCapture> {
   Widget build(BuildContext context) {
     return Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: (event) {},
+      onPointerDown: (event) {
+        // uxCam.updateTopRoute(ModalRoute.of(context)?.settings.name ?? "/");
+      },
       child: widget.child,
     );
   }
