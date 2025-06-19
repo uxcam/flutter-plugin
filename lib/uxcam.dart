@@ -7,8 +7,7 @@ import 'package:flutter_uxcam/src/models/track_data.dart';
 
 class UxCam {
   static FlutterUxcamNavigatorObserver? navigationObserver;
-  List<TrackData> _trackList = [];
-  String _topRoute = "/";
+  final List<TrackData> _trackList = [];
 
   UxCam() {
     const BasicMessageChannel<Object?> uxCamMessageChannel =
@@ -22,32 +21,18 @@ class UxCam {
         (map["x"] as num).toDouble().toFlutter.toDouble(),
         (map["y"] as num).toDouble().toFlutter.toDouble(),
       );
-
+      print("messagex: $offset");
       TrackData? _trackData;
       try {
-        _trackData = _trackList.lastWhere((data) {
+        trackData = _trackList.firstWhere((data) {
           return data.bound.contains(offset);
         });
-      } catch (e) {}
-      print("messagex:" + offset.toString());
-      print("messagex:" + _trackList.toString());
-      if (_trackData != null) {
-        if (_trackData.route != _topRoute) {
-          return "";
-        }
-
-        if (_trackData.route == "/") {
-          _trackData.route = "root";
-          if (_trackData.uiId != null) {
-            _trackData.uiId =
-                "root" + _trackData.uiId!.substring(1, _trackData.uiId!.length);
-          }
-        }
-        if (_trackData.uiId != null && _trackData.uiId!.startsWith("/")) {
-          _trackData.uiId =
-              _trackData.uiId!.substring(1, _trackData.uiId!.length);
-        }
-        return jsonEncode(_trackData.toJson());
+      } catch (e) {
+        print("No track data found for offset: $offset");
+      }
+      if (trackData != null) {
+        print("messagex: ${trackData.toString()}");
+        return jsonEncode(trackData.toJson());
       }
       return "";
     });
