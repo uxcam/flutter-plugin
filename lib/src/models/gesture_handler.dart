@@ -1,13 +1,22 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 
 class GestureHandler {
   List<TrackData> _trackList = [];
   String _topRoute = "/";
+  String get topRoute => _topRoute;
 
   List<Type> userDefinedTypes = [];
+
+  int userDefinedCounter = 0;
+  int buttonCounter = 0;
+  int nonInteractiveCounter = 0;
+  int fieldCounter = 0;
 
   List<Type> knownButtonTypes = [
     ElevatedButton,
@@ -38,18 +47,22 @@ class GestureHandler {
     Dialog,
   ];
 
-  void inspectDirectChild(Element element) {
+  void inspectElement(Element element) {
+    buttonCounter = 0;
+    nonInteractiveCounter = 0;
+    removeTrackData();
+    _inspectDirectChild(element);
+  }
+
+  void _inspectDirectChild(Element element) {
+    //first capture route information
     if (containerTypes.contains(element.widget.runtimeType)) {
-      final trackData = _dataForWidget(element);
-
-      addWidgetDataForTracking(trackData);
-    }
-
-    if (overlayTypes.contains(element.widget.runtimeType)) {
-      // Handle overlays like BottomSheet or Dialog
-      final trackData = _dataForWidget(element);
-      addWidgetDataForTracking(trackData);
       updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
+      addWidgetDataForTracking(_dataForWidget(element));
+    }
+    if (overlayTypes.contains(element.widget.runtimeType)) {
+      updateTopRoute("/overlay");
+      addWidgetDataForTracking(_dataForWidget(element));
     }
 
     if (userDefinedTypes.contains(element.widget.runtimeType)) {
@@ -60,7 +73,7 @@ class GestureHandler {
     } else if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
       _inspectNonInteractiveChild(element);
     } else {
-      element.visitChildElements(inspectDirectChild);
+      element.visitChildElements(_inspectDirectChild);
     }
   }
 
@@ -77,7 +90,6 @@ class GestureHandler {
     }
     if (trackData != null) {
       addWidgetDataForTracking(trackData);
-      updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
     }
   }
 
@@ -90,7 +102,6 @@ class GestureHandler {
     TrackData trackData = _dataForWidget(element);
     trackData.setLabel(hint);
     addWidgetDataForTracking(trackData);
-    updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
   }
 
   void _inspectButtonChild(TrackData containingWidget, Element element) {
@@ -100,7 +111,6 @@ class GestureHandler {
       if (textSpan is TextSpan) {
         containingWidget.setLabel(extractTextFromSpan(textSpan));
         addWidgetDataForTracking(containingWidget);
-        updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
       }
     }
     element.visitChildElements(
@@ -124,18 +134,20 @@ class GestureHandler {
   TrackData _dataForWidget(Element element) {
     final renderObject = element.renderObject;
 
-    String route = ModalRoute.of(element)?.settings.name ?? "";
-    if (route == "") route = "/";
-    String _uiId = element.widget.key != null
-        ? element.widget.key.toString()
-        : "${route}_${element.widget.runtimeType}_${identityHashCode(element).toRadixString(16)}";
+    String route = topRoute;
+    String _uiId =
+        element.widget.key != null ? element.widget.key.toString() : "";
 
     int _uiType = -1;
     if (knownButtonTypes.contains(element.widget.runtimeType)) {
       _uiType = 1;
+      _uiId = "${route}_${element.widget.runtimeType}_${buttonCounter}";
+      buttonCounter++;
     }
     if (fieldTypes.contains(element.widget.runtimeType)) {
       _uiType = 2;
+      _uiId = "${route}_${element.widget.runtimeType}_${fieldCounter}";
+      fieldCounter++;
     }
     if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
       if (element.widget.runtimeType.toString() == "Text" ||
@@ -146,13 +158,22 @@ class GestureHandler {
           element.widget.runtimeType.toString() == "Icon") {
         _uiType = 12;
       }
+      _uiId = "${route}_${element.widget.runtimeType}_${nonInteractiveCounter}";
+      nonInteractiveCounter++;
     }
     if (containerTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
+      _uiId = "${route}_${element.widget.runtimeType}_00";
+    }
+    if (overlayTypes.contains(element.widget.runtimeType)) {
+      _uiType = 5;
+      _uiId = "${route}_${element.widget.runtimeType}_10";
     }
 
     return TrackData(
-      _getRectFromBox(renderObject as RenderBox),
+      element.isRendered()
+          ? _getRectFromBox(renderObject as RenderBox)
+          : Rect.zero,
       route,
       uiClass: element.widget.runtimeType.toString(),
       uiId: _uiId,
@@ -176,6 +197,10 @@ class GestureHandler {
   void updateTopRoute(String route) {
     _topRoute = route;
     if (_topRoute == "") _topRoute = "/";
+  }
+
+  void removeTrackData() {
+    _trackList.clear();
   }
 
   void notifyTrackDataAt(Offset offset) {

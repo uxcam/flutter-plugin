@@ -26,6 +26,7 @@ class UxCam {
         (map["x"] as num).toDouble().toFlutter.toDouble(),
         (map["y"] as num).toDouble().toFlutter.toDouble(),
       );
+
       TrackData? _trackData;
       try {
         _trackData = _trackList.firstWhere((data) {
