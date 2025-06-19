@@ -26,10 +26,10 @@ class UxCam {
         (map["x"] as num).toDouble().toFlutter.toDouble(),
         (map["y"] as num).toDouble().toFlutter.toDouble(),
       );
-
+      print("messagex: $offset");
       TrackData? _trackData;
       try {
-        _trackData = _trackList.lastWhere((data) {
+        trackData = _trackList.firstWhere((data) {
           return data.bound.contains(offset);
         }).copy();
       } catch (e) {}
