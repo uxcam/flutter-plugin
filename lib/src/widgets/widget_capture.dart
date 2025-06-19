@@ -34,6 +34,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     Image,
     Text,
     RichText,
+    Icon,
   ];
 
   List<Type> fieldTypes = [
@@ -65,12 +66,12 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       uxCam.addWidgetDataForTracking(trackData);
     }
 
-    // if (overlayTypes.contains(element.widget.runtimeType)) {
-    //   // Handle overlays like BottomSheet or Dialog
-    //   final trackData = _dataForWidget(element);
-    //   uxCam.addWidgetDataForTracking(trackData);
-    //   uxCam.updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
-    // }
+    if (overlayTypes.contains(element.widget.runtimeType)) {
+      // Handle overlays like BottomSheet or Dialog
+      final trackData = _dataForWidget(element);
+      uxCam.addWidgetDataForTracking(trackData);
+      uxCam.updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
+    }
 
     if (userDefinedTypes.contains(element.widget.runtimeType)) {
     } else if (fieldTypes.contains(element.widget.runtimeType)) {
@@ -91,7 +92,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       trackData = _dataForWidget(element);
       trackData.setLabel(widget.data ?? "");
     }
-    if (element.widget is Image) {
+    if (element.widget is Image || element.widget is Icon) {
       trackData = _dataForWidget(element);
       trackData.setLabel("");
     }
@@ -162,7 +163,8 @@ class _WidgetCaptureState extends State<WidgetCapture> {
           element.widget.runtimeType.toString() == "RichText") {
         _uiType = 7;
       }
-      if (element.widget.runtimeType.toString() == "Image") {
+      if (element.widget.runtimeType.toString() == "Image" ||
+          element.widget.runtimeType.toString() == "Icon") {
         _uiType = 12;
       }
     }
