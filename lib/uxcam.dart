@@ -8,6 +8,7 @@ import 'package:flutter_uxcam/src/models/track_data.dart';
 class UxCam {
   static FlutterUxcamNavigatorObserver? navigationObserver;
   List<TrackData> _trackList = [];
+  String _topRoute = "/";
 
   UxCam() {
     const BasicMessageChannel<Object?> uxCamMessageChannel =
@@ -21,15 +22,31 @@ class UxCam {
         (map["x"] as int).toDouble().toFlutter.toDouble(),
         (map["y"] as int).toDouble().toFlutter.toDouble(),
       );
-      print("messagex: $offset");
+
       TrackData? _trackData;
       try {
         _trackData = _trackList.lastWhere((data) {
           return data.bound.contains(offset);
         });
       } catch (e) {}
+      print("messagex:" + offset.toString());
+      print("messagex:" + _trackList.toString());
       if (_trackData != null) {
-        print("messagex: ${_trackData.toString()}");
+        if (_trackData.route != _topRoute) {
+          return "";
+        }
+
+        if (_trackData.route == "/") {
+          _trackData.route = "root";
+          if (_trackData.uiId != null) {
+            _trackData.uiId =
+                "root" + _trackData.uiId!.substring(1, _trackData.uiId!.length);
+          }
+        }
+        if (_trackData.uiId != null && _trackData.uiId!.startsWith("/")) {
+          _trackData.uiId =
+              _trackData.uiId!.substring(1, _trackData.uiId!.length);
+        }
         return jsonEncode(_trackData.toJson());
       }
       return "";
@@ -40,5 +57,10 @@ class UxCam {
     final id = data.uiId ?? "";
     _trackList.removeWhere((item) => item.uiId == id);
     _trackList.add(data);
+  }
+
+  updateTopRoute(String route) {
+    _topRoute = route;
+    if (_topRoute == "") _topRoute = "/";
   }
 }
