@@ -19,8 +19,8 @@ class UxCam {
     uxCamMessageChannel.setMessageHandler((message) async {
       final map = jsonDecode(message as String);
       final offset = Offset(
-        (map["x"] as int).toDouble().toFlutter.toDouble(),
-        (map["y"] as int).toDouble().toFlutter.toDouble(),
+        (map["x"] as num).toDouble().toFlutter.toDouble(),
+        (map["y"] as num).toDouble().toFlutter.toDouble(),
       );
 
       TrackData? _trackData;
