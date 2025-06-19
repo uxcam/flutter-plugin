@@ -111,7 +111,7 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
         [weakSelf capturGestureEvent:position completion:completion];
     };
     
-    // [UXCam captureGestureEventFor: self.gestureInfoHandler];
+    [UXCam captureGestureEventFor: self.gestureInfoHandler];
     
     [UXCam pauseForOcclusionNextFrameRequestHandler: self.pauseForOcclusionNextFrameRequestHandler];
     [UXCam setOccludeRectsRequestHandler: self.occludeRectsRequestHandler];
@@ -129,28 +129,6 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
         NSString *stringValue = [NSString stringWithFormat:@"%@", reply];
         completion(stringValue);
     }];
-}
-
-
-- (void)appendGestureContent:(FlutterMethodCall*)call result:(FlutterResult)result
-{
-    NSNumber *positionX = call.arguments[@"x"];
-    NSNumber *positionY = call.arguments[@"y"];
-    NSDictionary *elementResult = call.arguments[@"data"];
-    
-    NSString *pointString = [NSString stringWithFormat:@"{%@,%@}", positionX, positionY];
-
-    if (positionX && positionY && elementResult) {
-        
-        CGPoint position = CGPointFromString(pointString);
-        
-        if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
-            [UXCam handleGestureContent:position event:elementResult];
-        }
-    } else {
-        result(nil);
-    }
-
 }
 
 - (void)pauseUIRenderingWithCompletion:(FrameRenderingCompletionBlock)completion
