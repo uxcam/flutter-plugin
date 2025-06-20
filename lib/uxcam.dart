@@ -8,7 +8,9 @@ import 'package:flutter_uxcam/src/models/track_data.dart';
 class UxCam {
   static FlutterUxcamNavigatorObserver? navigationObserver;
   List<TrackData> _trackList = [];
+
   String _topRoute = "/";
+  String get topRoute => _topRoute;
 
   UxCam() {
     const BasicMessageChannel<Object?> uxCamMessageChannel =
@@ -17,6 +19,8 @@ class UxCam {
       StandardMessageCodec(),
     );
     uxCamMessageChannel.setMessageHandler((message) async {
+      print("flat tree:" + _trackList.toString());
+      print("flat tree:" + _topRoute);
       final map = jsonDecode(message as String);
       final offset = Offset(
         (map["x"] as num).toDouble().toFlutter.toDouble(),
@@ -27,10 +31,8 @@ class UxCam {
       try {
         _trackData = _trackList.lastWhere((data) {
           return data.bound.contains(offset);
-        });
+        }).copy();
       } catch (e) {}
-      print("messagex:" + offset.toString());
-      print("messagex:" + _trackList.toString());
       if (_trackData != null) {
         if (_trackData.route != _topRoute) {
           return "";
@@ -47,6 +49,7 @@ class UxCam {
           _trackData.uiId =
               _trackData.uiId!.substring(1, _trackData.uiId!.length);
         }
+
         return jsonEncode(_trackData.toJson());
       }
       return "";
@@ -55,8 +58,9 @@ class UxCam {
 
   addWidgetDataForTracking(TrackData data) {
     final id = data.uiId ?? "";
-    _trackList.removeWhere((item) => item.uiId == id);
-    _trackList.add(data);
+    if (_trackList.indexWhere((item) => item.uiId == id) == -1) {
+      _trackList.add(data);
+    }
   }
 
   updateTopRoute(String route) {

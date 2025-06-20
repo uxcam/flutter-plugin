@@ -20,6 +20,11 @@ class _WidgetCaptureState extends State<WidgetCapture> {
 
   List<Type> userDefinedTypes = [];
 
+  int userDefinedCounter = 0;
+  int buttonCounter = 0;
+  int nonInteractiveCounter = 0;
+  int fieldCounter = 0;
+
   List<Type> knownButtonTypes = [
     ElevatedButton,
     TextButton,
@@ -46,7 +51,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
 
   List<Type> overlayTypes = [
     BottomSheet,
-    Dialog,
+    AlertDialog,
   ];
 
   @override
@@ -55,22 +60,21 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     uxCam = UxCam();
     userDefinedTypes.addAll(widget.types);
     SchedulerBinding.instance.addPersistentFrameCallback((_) {
+      buttonCounter = 0;
+      nonInteractiveCounter = 0;
       context.visitChildElements((child) => _inspectDirectChild(child));
     });
   }
 
   void _inspectDirectChild(Element element) {
+    //first capture route information
     if (containerTypes.contains(element.widget.runtimeType)) {
-      final trackData = _dataForWidget(element);
-
-      uxCam.addWidgetDataForTracking(trackData);
-    }
-
-    if (overlayTypes.contains(element.widget.runtimeType)) {
-      // Handle overlays like BottomSheet or Dialog
-      final trackData = _dataForWidget(element);
-      uxCam.addWidgetDataForTracking(trackData);
       uxCam.updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
+      uxCam.addWidgetDataForTracking(_dataForWidget(element));
+    }
+    if (overlayTypes.contains(element.widget.runtimeType)) {
+      uxCam.updateTopRoute("/overlay");
+      uxCam.addWidgetDataForTracking(_dataForWidget(element));
     }
 
     if (userDefinedTypes.contains(element.widget.runtimeType)) {
@@ -98,7 +102,6 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     }
     if (trackData != null) {
       uxCam.addWidgetDataForTracking(trackData);
-      uxCam.updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
     }
   }
 
@@ -111,7 +114,6 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     TrackData trackData = _dataForWidget(element);
     trackData.setLabel(hint);
     uxCam.addWidgetDataForTracking(trackData);
-    uxCam.updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
   }
 
   void _inspectButtonChild(TrackData containingWidget, Element element) {
@@ -121,7 +123,6 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       if (textSpan is TextSpan) {
         containingWidget.setLabel(extractTextFromSpan(textSpan));
         uxCam.addWidgetDataForTracking(containingWidget);
-        uxCam.updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
       }
     }
     element.visitChildElements(
@@ -145,18 +146,20 @@ class _WidgetCaptureState extends State<WidgetCapture> {
   TrackData _dataForWidget(Element element) {
     final renderObject = element.renderObject;
 
-    String route = ModalRoute.of(element)?.settings.name ?? "";
-    if (route == "") route = "/";
-    String _uiId = element.widget.key != null
-        ? element.widget.key.toString()
-        : "${route}_${element.widget.runtimeType}_${identityHashCode(element).toRadixString(16)}";
+    String route = uxCam.topRoute;
+    String _uiId =
+        element.widget.key != null ? element.widget.key.toString() : "";
 
     int _uiType = -1;
     if (knownButtonTypes.contains(element.widget.runtimeType)) {
       _uiType = 1;
+      _uiId = "${route}_${element.widget.runtimeType}_${buttonCounter}";
+      buttonCounter++;
     }
     if (fieldTypes.contains(element.widget.runtimeType)) {
       _uiType = 2;
+      _uiId = "${route}_${element.widget.runtimeType}_${fieldCounter}";
+      fieldCounter++;
     }
     if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
       if (element.widget.runtimeType.toString() == "Text" ||
@@ -167,9 +170,16 @@ class _WidgetCaptureState extends State<WidgetCapture> {
           element.widget.runtimeType.toString() == "Icon") {
         _uiType = 12;
       }
+      _uiId = "${route}_${element.widget.runtimeType}_${nonInteractiveCounter}";
+      nonInteractiveCounter++;
     }
     if (containerTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
+      _uiId = "${route}_${element.widget.runtimeType}_00";
+    }
+    if (overlayTypes.contains(element.widget.runtimeType)) {
+      _uiType = 5;
+      _uiId = "${route}_${element.widget.runtimeType}_10";
     }
 
     return TrackData(
