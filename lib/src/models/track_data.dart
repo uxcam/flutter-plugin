@@ -18,6 +18,9 @@ class TrackData {
     this.uiValue = label;
   }
 
+  TrackData copy() => TrackData(bound, route,
+      uiValue: uiValue, uiClass: uiClass, uiType: uiType, uiId: uiId);
+
   @override
   String toString() {
     return 'TrackData(bound: $bound,  route: $route, id: $uiId, value: $uiValue)';
