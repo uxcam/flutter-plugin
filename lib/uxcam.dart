@@ -20,7 +20,7 @@ class UxCam {
     );
     uxCamMessageChannel.setMessageHandler((message) async {
       print("flat tree:" + _trackList.toString());
-      print("flat tree:" + _topRoute);
+
       final map = jsonDecode(message as String);
       final offset = Offset(
         (map["x"] as num).toDouble().toFlutter.toDouble(),
@@ -49,7 +49,7 @@ class UxCam {
           _trackData.uiId =
               _trackData.uiId!.substring(1, _trackData.uiId!.length);
         }
-
+        print("messagey:" + _trackData.toString());
         return jsonEncode(_trackData.toJson());
       }
       return "";
@@ -66,5 +66,9 @@ class UxCam {
   updateTopRoute(String route) {
     _topRoute = route;
     if (_topRoute == "") _topRoute = "/";
+  }
+
+  void removeTrackData() {
+    _trackList.clear();
   }
 }

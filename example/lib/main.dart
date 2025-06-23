@@ -49,6 +49,22 @@ class UXCamPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
+      body: IndexedStack(
+        children: [
+          Container(
+            child: Text("data1"),
+          ),
+          Container(
+            child: Text("data2"),
+          ),
+          Container(
+            child: Text("data3"),
+          ),
+          Container(
+            child: Text("data4"),
+          ),
+        ],
+      ),
       // body: Column(
       //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
       //   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -94,7 +110,8 @@ class UXCamPage extends StatelessWidget {
               context: context,
               builder: (_) {
                 return AlertDialog(
-                  //title: const Text('Feature Section'),
+                  title: const Text('Feature Section'),
+                  content: Text("data"),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
