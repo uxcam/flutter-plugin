@@ -32,11 +32,12 @@ class TrackData {
       'id': uiId,
       'value': uiValue,
       'type': uiType,
+      'bound': bound,
     };
   }
 
   void showAnalyticsInfo() {
-    print("Element class : $uiClass");
+    print("Element bound : $bound");
     print("Element id : $uiId");
     print("Element value : $uiValue");
     print("Element type : $uiType");

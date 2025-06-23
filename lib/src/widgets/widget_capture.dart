@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 
 class WidgetCapture extends StatefulWidget {
@@ -62,6 +63,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     SchedulerBinding.instance.addPersistentFrameCallback((_) {
       buttonCounter = 0;
       nonInteractiveCounter = 0;
+      uxCam.removeTrackData();
       context.visitChildElements((child) => _inspectDirectChild(child));
     });
   }
@@ -183,7 +185,9 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     }
 
     return TrackData(
-      _getRectFromBox(renderObject as RenderBox),
+      element.isRendered()
+          ? _getRectFromBox(renderObject as RenderBox)
+          : Rect.zero,
       route,
       uiClass: element.widget.runtimeType.toString(),
       uiId: _uiId,
