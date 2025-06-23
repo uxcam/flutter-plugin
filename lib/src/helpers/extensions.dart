@@ -63,3 +63,23 @@ extension UtilIntExtension on double {
     return (this / (isAndroid ? pixelRatio : 1.0)).toInt();
   }
 }
+
+extension ElementX on Element {
+  bool isRendered() {
+    final visibility = findAncestorWidgetOfExactType<Visibility>();
+    if (visibility != null && !visibility.visible) {
+      return false;
+    }
+    print("object");
+    final offstage = findAncestorWidgetOfExactType<Offstage>();
+    if (offstage != null && offstage.offstage) {
+      return false;
+    }
+    print("object");
+    final opacity = findAncestorWidgetOfExactType<Opacity>();
+    if (opacity != null && opacity.opacity == 0.0) {
+      return false;
+    }
+    return true;
+  }
+}
