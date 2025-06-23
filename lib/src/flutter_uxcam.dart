@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -454,9 +455,9 @@ class FlutterUxcam {
   static Future<void> appendGestureContent(
       Offset position, TrackData trackData) async {
     await _channel.invokeMethod<void>("appendGestureContent", {
-      "x": position.dx.toInt(),
-      "y": position.dy.toInt(),
-      "data": trackData.toJson(),
+      "x": position.dx.toDouble(),
+      "y": position.dy.toDouble(),
+      "data": jsonEncode(trackData.toJson()),
     });
   }
 }
