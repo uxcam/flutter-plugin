@@ -131,6 +131,26 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     }];
 }
 
+
+- (void)appendGestureContent:(FlutterMethodCall*)call result:(FlutterResult)result
+{
+    NSNumber *positionX = call.arguments[@"x"];
+    NSNumber *positionY = call.arguments[@"y"];
+    NSDictionary *elementResult = call.arguments[@"data"];
+    
+    NSString *pointString = [NSString stringWithFormat:@"{%@,%@}", positionX, positionY];
+
+    if (positionX && positionY && elementResult) {
+        
+        CGPoint position = CGPointFromString(pointString);
+        
+        [UXCam handleGestureContent:position event:elementResult];
+    } else {
+        result(nil);
+    }
+
+}
+
 - (void)pauseUIRenderingWithCompletion:(FrameRenderingCompletionBlock)completion
 {
     [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodPause
