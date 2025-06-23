@@ -1,34 +1,11 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_uxcam/src/models/gesture_handler.dart';
-import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/models/track_data.dart';
 
-/// UXCamGestureHandler is a widget that enables gesture tracking and element inspection
-/// for UXCam analytics within its widget subtree.
-///
-/// Place this widget high in your widget tree (e.g., above MaterialApp or at the root of a screen)
-/// to capture and analyze user gestures and UI interactions for all descendant widgets.
-///
-/// - [child]: The subtree to be tracked for gestures and UI element structure.
-/// - [types]: Optionally provide custom widget types to be treated as trackable elements.
-///
-/// Example usage:
-/// ```dart
-/// UXCamGestureHandler(
-///   child: MaterialApp(
-///     home: MyHomePage(),
-///   ),
-/// )
-/// ```
-///
-/// This widget is intended for use in apps that integrate with UXCam for advanced gesture analytics.
-/// It should wrap the part of your app where you want gesture and UI element tracking to occur.
-///
-/// Note: Only one instance should be used per widget tree scope to avoid duplicate tracking.
-/// The widget uses a [Listener] to capture pointer events.
-///
-/// This is mandatory if want to use smart event feature.
+double _tapDeltaArea = 32.0 * 32.0; // 32 pixels squared
+Element? _clickTrackerElement;
 
 class UXCamGestureHandler extends StatefulWidget {
   const UXCamGestureHandler(
@@ -39,41 +16,194 @@ class UXCamGestureHandler extends StatefulWidget {
   final List<Type> types;
 
   @override
+  StatefulElement createElement() {
+    final element = super.createElement();
+    _clickTrackerElement = element;
+    return element;
+  }
+
+  @override
   State<UXCamGestureHandler> createState() => _UXCamGestureHandlerState();
 }
 
 class _UXCamGestureHandlerState extends State<UXCamGestureHandler> {
-  late GestureHandler gestureHandler;
+  int? _lastPointerId;
+  Offset? _lastPointerDownLocation;
+  TrackData? _lastTrackData;
 
-  @override
-  void initState() {
-    super.initState();
-    gestureHandler = GestureHandler();
-    UxTraceableElement.setUserDefinedTypes(widget.types);
-  }
+  List<Type> userDefinedTypes = [];
+
+  List<Type> knownButtonTypes = [
+    ElevatedButton,
+    TextButton,
+    OutlinedButton,
+    GestureDetector,
+    InkWell,
+    IconButton,
+    FloatingActionButton,
+  ];
+
+  List<Type> nonInteractiveTypes = [
+    Image,
+    Text,
+    RichText,
+    Icon,
+  ];
+
+  List<Type> fieldTypes = [
+    TextField,
+    TextFormField,
+  ];
+
+  List<Type> containerTypes = [Scaffold];
+
+  List<Type> overlayTypes = [
+    BottomSheet,
+    Dialog,
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: (details) => _onTappedAt(context, details.localPosition),
+      onPointerDown: _onPointerDown,
+      onPointerUp: _onPointerUp,
       child: widget.child,
     );
   }
 
-  void _onTappedAt(BuildContext context, Offset position) {
-    final result = HitTestResult();
-    RendererBinding.instance.hitTest(result, position);
+  void _onPointerDown(PointerDownEvent event) {
+    try {
+      _lastPointerId = event.pointer;
+      _lastPointerDownLocation = event.localPosition;
+    } catch (exception, stacktrace) {
+      print("Error in pointer up: $exception");
+      print("Stacktrace: $stacktrace");
+    }
+  }
 
-    final targetList = result.path
-        .where((item) => item is BoxHitTestEntry)
-        .map((item) => (item.target as RenderObject).hashCode)
-        .toList();
+  void _onPointerUp(PointerUpEvent event) {
+    try {
+      // Figure out if something was tapped
+      final location = _lastPointerDownLocation;
+      if (location == null || event.pointer != _lastPointerId) {
+        return;
+      }
+      final delta = Offset(
+        location.dx - event.localPosition.dx,
+        location.dy - event.localPosition.dy,
+      );
 
-    context.visitChildElements((element) {
-      gestureHandler.intialize(position, targetList);
-      gestureHandler.inspectElement(element);
-      gestureHandler.sendTrackDataFromSummaryTree();
-    });
+      if (delta.distanceSquared < _tapDeltaArea) {
+        _onTappedAt(event.localPosition);
+      }
+    } catch (exception, stacktrace) {
+      print("Error in pointer up: $exception");
+      print("Stacktrace: $stacktrace");
+    }
+  }
+
+  void _onTappedAt(Offset position) {
+    TrackData? data = _getElementDataAt(position);
+    if (data != null) {
+      _lastTrackData = data;
+      FlutterUxcam.appendGestureContent(position, _lastTrackData!);
+      _lastTrackData = null;
+    } else {
+      _lastTrackData = null;
+    }
+  }
+
+  TrackData? _getElementDataAt(Offset position) {
+    final rootElement = _clickTrackerElement;
+    if (rootElement == null || rootElement.widget != widget) {
+      return null;
+    }
+
+    TrackData? trackData;
+
+    void elementFinder(Element element) {
+      if (trackData != null) return; // Stop searching if we found a match
+
+      final renderObject = element.renderObject;
+      if (renderObject == null) return;
+
+      final elementBounds = _getRectFromBox(renderObject as RenderBox);
+
+      if (!elementBounds.contains(position)) {
+        return;
+      }
+      if (widget.types.isNotEmpty &&
+          !widget.types.contains(element.widget.runtimeType)) {
+        return;
+      }
+
+      var hitFound = true;
+      if (renderObject is RenderPointerListener) {
+        final hitResult = BoxHitTestResult();
+        // Returns false if the hit can continue to other objects below this one.
+        hitFound = renderObject.hitTest(hitResult, position: position);
+      }
+
+      trackData = _dataForWidget(element, elementBounds);
+
+      if (trackData == null || !hitFound) {
+        element.visitChildElements(elementFinder);
+      }
+    }
+
+    rootElement.visitChildElements(elementFinder);
+    return trackData;
+  }
+
+  TrackData? _dataForWidget(Element element, Rect bound) {
+    String route = ModalRoute.of(element)?.settings.name ?? "";
+    if (route == "") route = "/";
+
+    if (element.widget.key == null) {
+      return null; // Skip for non-keyed widgets
+    }
+
+    String uiId = element.widget.key.toString();
+
+    int uiType = -1;
+    if (knownButtonTypes.contains(element.widget.runtimeType)) {
+      uiType = 1;
+    }
+    if (fieldTypes.contains(element.widget.runtimeType)) {
+      uiType = 2;
+    }
+    if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
+      if (element.widget.runtimeType.toString() == "Text" ||
+          element.widget.runtimeType.toString() == "RichText") {
+        uiType = 7;
+      }
+      if (element.widget.runtimeType.toString() == "Image" ||
+          element.widget.runtimeType.toString() == "Icon") {
+        uiType = 12;
+      }
+    }
+    if (containerTypes.contains(element.widget.runtimeType)) {
+      uiType = 5;
+    }
+
+    if (uiType == -1 && widget.types.isNotEmpty) {
+      return null; // Skip if the widget type is not in the user-defined types
+    }
+
+    return TrackData(
+      bound,
+      route,
+      uiClass: element.widget.runtimeType.toString(),
+      uiId: uiId,
+      uiType: uiType,
+    );
+  }
+
+  Rect _getRectFromBox(RenderBox renderObject) {
+    final translation = renderObject.getTransformTo(null).getTranslation();
+    final offset = Offset(translation.x, translation.y);
+    final bounds = renderObject.paintBounds.shift(offset);
+    return bounds;
   }
 }
