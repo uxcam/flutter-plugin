@@ -51,20 +51,6 @@ class UXCamPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
-      body: ListView(
-        children: [
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-        ],
-      ),
       // body: IndexedStack(
       //   children: [
       //     Container(
@@ -100,26 +86,26 @@ class UXCamPage extends StatelessWidget {
       //     ElevatedButton(onPressed: () {}, child: Text('data')),
       //   ],
       // ),
-      // body: ListView(
-      //   padding: const EdgeInsets.all(8.0),
-      //   children: [
-      //     Text(
-      //       "This is a smart events demo",
-      //       style: Theme.of(context).textTheme.headlineSmall,
-      //     ),
-      //     Image.asset("assets/images/testimage.jpg"),
-      //     TextField(
-      //       decoration: InputDecoration(hintText: "this is a hint"),
-      //     ),
-      //     TextFormField(),
-      //     FeatureSection(
-      //       title: 'Screen Tagging',
-      //       onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
-      //       buttonTitle: 'Login',
-      //     ),
-      //     TextButton(onPressed: () {}, child: Text("Signup")),
-      //   ],
-      // ),
+      body: ListView(
+        padding: const EdgeInsets.all(8.0),
+        children: [
+          Text(
+            "This is a smart events demo",
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          Image.asset("assets/images/testimage.jpg"),
+          TextField(
+            decoration: InputDecoration(hintText: "this is a hint"),
+          ),
+          TextFormField(),
+          FeatureSection(
+            title: 'Screen Tagging',
+            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+            buttonTitle: 'Login',
+          ),
+          TextButton(onPressed: () {}, child: Text("Signup")),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showDialog(
