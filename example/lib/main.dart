@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
     // Configuration
     FlutterUxConfig config = FlutterUxConfig(
       //userAppKey: 'key',
-      //userAppKey: 'tnurbgdyxi67a0l',
+      //userAppKey: 'gekzt6bh5299e09',
       userAppKey: 'vwaxl2b5nx8i10z',
       // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
       enableAutomaticScreenNameTagging: true,
@@ -48,39 +48,70 @@ class UXCamPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
-      body: ListView(
-        children: [
-          Text(
-            "This is a smart events demo",
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          Image.asset("assets/images/testimage.jpg"),
-          TextField(
-            decoration: InputDecoration(hintText: "this is a hint"),
-          ),
-          TextFormField(),
-          FeatureSection(
-            title: 'Screen Tagging',
-            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
-            buttonTitle: 'Login',
-          ),
-          TextButton(onPressed: () {}, child: Text("Signup")),
-        ],
-      ),
+      // body: Column(
+      //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      //   crossAxisAlignment: CrossAxisAlignment.stretch,
+      //   children: [
+      //     ElevatedButton(
+      //         onPressed: () {
+      //           showDialog(
+      //               context: context,
+      //               builder: (_) {
+      //                 return AlertDialog(
+      //                   actions: [Text('data')],
+      //                 );
+      //               });
+      //         },
+      //         child: Text('data')),
+      //     ElevatedButton(onPressed: () {}, child: Text('data')),
+      //     ElevatedButton(onPressed: () {}, child: Text('data')),
+      //   ],
+      // ),
+      // body: ListView(
+      //   padding: const EdgeInsets.all(8.0),
+      //   children: [
+      //     Text(
+      //       "This is a smart events demo",
+      //       style: Theme.of(context).textTheme.headlineSmall,
+      //     ),
+      //     Image.asset("assets/images/testimage.jpg"),
+      //     TextField(
+      //       decoration: InputDecoration(hintText: "this is a hint"),
+      //     ),
+      //     TextFormField(),
+      //     FeatureSection(
+      //       title: 'Screen Tagging',
+      //       onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+      //       buttonTitle: 'Login',
+      //     ),
+      //     TextButton(onPressed: () {}, child: Text("Signup")),
+      //   ],
+      // ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          showModalBottomSheet(
+          showDialog(
               context: context,
-              builder: (_) => Container(
-                    color: Colors.amber,
-                    child: Align(
-                      alignment: Alignment.bottomRight,
-                      child: ElevatedButton(
-                        onPressed: () {},
-                        child: Text("data"),
-                      ),
+              builder: (_) {
+                return AlertDialog(
+                  //title: const Text('Feature Section'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Close'),
                     ),
-                  ));
+                  ],
+                );
+              });
+          // showModalBottomSheet(
+          //     context: context,
+          //     builder: (_) => Container(
+          //           color: Colors.amber,
+          //           child: Align(
+          //             alignment: Alignment.bottomCenter,
+          //             child:
+          //                 ElevatedButton(onPressed: () {}, child: Text("data")),
+          //           ),
+          //         ));
         },
         child: const Icon(Icons.add),
       ),

@@ -32,17 +32,6 @@ class TrackData {
     this.uiValue = label;
   }
 
-  void setId(String id) {
-    this.uiId = "${uiClass}_$id";
-  }
-
-  void addCustomProperty(Map<String, dynamic> customProperty) {
-    if (custom == null) {
-      custom = {};
-    }
-    custom!.addAll(customProperty);
-  }
-
   TrackData copy() => TrackData(bound, route,
       uiValue: uiValue, uiClass: uiClass, uiType: uiType, uiId: uiId);
 
