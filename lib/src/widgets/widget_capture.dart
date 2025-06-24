@@ -48,7 +48,12 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     TextFormField,
   ];
 
-  List<Type> containerTypes = [Scaffold];
+  List<Type> containerTypes = [
+    Scaffold,
+    ListView,
+    SingleChildScrollView,
+    GridView,
+  ];
 
   List<Type> overlayTypes = [
     BottomSheet,
