@@ -32,7 +32,7 @@ class TrackData {
       'id': uiId,
       'value': uiValue,
       'type': uiType,
-      'bound': bound,
+      'bound': bound.toString(),
     };
   }
 
