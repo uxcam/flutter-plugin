@@ -102,6 +102,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       Text widget = element.widget as Text;
       trackData = _dataForWidget(element);
       trackData.setLabel(widget.data ?? "");
+      trackData.setId(formatValueToId(widget.data ?? ""));
     }
     if (element.widget is Image || element.widget is Icon) {
       trackData = _dataForWidget(element);
@@ -120,6 +121,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     }
     TrackData trackData = _dataForWidget(element);
     trackData.setLabel(hint);
+    trackData.setId(formatValueToId(hint));
     uxCam.addWidgetDataForTracking(trackData);
   }
 
@@ -128,7 +130,9 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     if (renderObject is RenderParagraph) {
       final textSpan = renderObject.text;
       if (textSpan is TextSpan) {
-        containingWidget.setLabel(extractTextFromSpan(textSpan));
+        final label = extractTextFromSpan(textSpan);
+        containingWidget.setLabel(label);
+        containingWidget.setId(formatValueToId(label));
         uxCam.addWidgetDataForTracking(containingWidget);
       }
     }
@@ -160,13 +164,9 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     int _uiType = -1;
     if (knownButtonTypes.contains(element.widget.runtimeType)) {
       _uiType = 1;
-      _uiId = "${route}_${element.widget.runtimeType}_${buttonCounter}";
-      buttonCounter++;
     }
     if (fieldTypes.contains(element.widget.runtimeType)) {
       _uiType = 2;
-      _uiId = "${route}_${element.widget.runtimeType}_${fieldCounter}";
-      fieldCounter++;
     }
     if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
       if (element.widget.runtimeType.toString() == "Text" ||
@@ -176,17 +176,18 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       if (element.widget.runtimeType.toString() == "Image" ||
           element.widget.runtimeType.toString() == "Icon") {
         _uiType = 12;
+        _uiId =
+            "${route}_${element.widget.runtimeType}_${nonInteractiveCounter}";
+        nonInteractiveCounter++;
       }
-      _uiId = "${route}_${element.widget.runtimeType}_${nonInteractiveCounter}";
-      nonInteractiveCounter++;
     }
     if (containerTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
-      _uiId = "${route}_${element.widget.runtimeType}_00";
+      _uiId = "00";
     }
     if (overlayTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
-      _uiId = "${route}_${element.widget.runtimeType}_10";
+      _uiId = "10";
     }
 
     return TrackData(
@@ -216,5 +217,12 @@ class _WidgetCaptureState extends State<WidgetCapture> {
     final offset = Offset(translation.x, translation.y);
     final bounds = renderObject.paintBounds.shift(offset);
     return bounds;
+  }
+
+  String formatValueToId(String value) {
+    return value
+        .replaceAll(' ', '')
+        .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
+        .toLowerCase();
   }
 }
