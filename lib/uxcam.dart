@@ -41,13 +41,13 @@ class UxCam {
         if (_trackData.route == "/") {
           _trackData.route = "root";
           if (_trackData.uiId != null) {
-            _trackData.uiId =
-                "root" + _trackData.uiId!.substring(1, _trackData.uiId!.length);
+            _trackData.uiId = "root_${_trackData.uiClass!}_${_trackData.uiId!}";
           }
-        }
-        if (_trackData.uiId != null && _trackData.uiId!.startsWith("/")) {
+        } else {
+          _trackData.route =
+              _trackData.route.substring(1, _trackData.route.length);
           _trackData.uiId =
-              _trackData.uiId!.substring(1, _trackData.uiId!.length);
+              "${_trackData.route}_${_trackData.uiClass!}_${_trackData.uiId!}";
         }
         print("messagey:" + _trackData.toString());
         return jsonEncode(_trackData.toJson());

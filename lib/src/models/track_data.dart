@@ -18,6 +18,10 @@ class TrackData {
     this.uiValue = label;
   }
 
+  void setId(String id) {
+    this.uiId = id;
+  }
+
   TrackData copy() => TrackData(bound, route,
       uiValue: uiValue, uiClass: uiClass, uiType: uiType, uiId: uiId);
 
