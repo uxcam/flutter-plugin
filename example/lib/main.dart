@@ -50,22 +50,36 @@ class UXCamPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
-      body: IndexedStack(
+      body: ListView(
         children: [
-          Container(
-            child: Text("data1"),
-          ),
-          Container(
-            child: Text("data2"),
-          ),
-          Container(
-            child: Text("data3"),
-          ),
-          Container(
-            child: Text("data4"),
-          ),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
+          ElevatedButton(onPressed: () {}, child: Text("data")),
         ],
       ),
+      // body: IndexedStack(
+      //   children: [
+      //     Container(
+      //       child: Text("data1"),
+      //     ),
+      //     Container(
+      //       child: Text("data2"),
+      //     ),
+      //     Container(
+      //       child: Text("data3"),
+      //     ),
+      //     Container(
+      //       child: Text("data4"),
+      //     ),
+      //   ],
+      // ),
       // body: Column(
       //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
       //   crossAxisAlignment: CrossAxisAlignment.stretch,
