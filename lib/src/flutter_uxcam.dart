@@ -457,7 +457,7 @@ class FlutterUxcam {
     await _channel.invokeMethod<void>("appendGestureContent", {
       "x": position.dx.toDouble(),
       "y": position.dy.toDouble(),
-      "data": jsonEncode(trackData.toJson()),
+      "data": trackData.toJson(),
     });
   }
 }
