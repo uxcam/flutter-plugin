@@ -33,16 +33,28 @@ class GestureHandler {
     Icon,
   ];
 
+  List<Type> interactiveTypes = [
+    Radio,
+    Slider,
+    Switch,
+    Checkbox,
+  ];
+
   List<Type> fieldTypes = [
     TextField,
     TextFormField,
   ];
 
-  List<Type> containerTypes = [Scaffold];
+  List<Type> containerTypes = [
+    Scaffold,
+    ListView,
+    SingleChildScrollView,
+    GridView,
+  ];
 
   List<Type> overlayTypes = [
     BottomSheet,
-    Dialog,
+    AlertDialog,
   ];
 
   void inspectElement(Element element) {
@@ -50,6 +62,7 @@ class GestureHandler {
     nonInteractiveCounter = 0;
     removeTrackData();
     _inspectDirectChild(element);
+    _generateCompoundButtonIdFromSiblings();
   }
 
   void _inspectDirectChild(Element element) {
@@ -68,6 +81,8 @@ class GestureHandler {
       _inspectTextFieldChild(element);
     } else if (knownButtonTypes.contains(element.widget.runtimeType)) {
       _inspectButtonChild(_dataForWidget(element), element);
+    } else if (_isInteractive(element)) {
+      _inspectInteractiveChild(element);
     } else if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
       _inspectNonInteractiveChild(element);
     } else {
@@ -83,11 +98,53 @@ class GestureHandler {
       trackData.setLabel(widget.data ?? "");
       trackData.setId(formatValueToId(widget.data ?? ""));
     }
-    if (element.widget is Image || element.widget is Icon) {
+    if (element.widget is Image) {
+      String? label = (element.widget as Image).semanticLabel;
       trackData = _dataForWidget(element);
-      trackData.setLabel("");
+      trackData.setLabel(label ?? "");
+      trackData.addCustomProperty({
+        "content_desc: ": label ?? "",
+      });
     }
+    if (element.widget is Icon) {
+      String? label = (element.widget as Icon).semanticLabel;
+      trackData = _dataForWidget(element);
+      trackData.setLabel(label ?? "");
+      trackData.addCustomProperty({
+        "content_desc: ": label ?? "",
+      });
+    }
+
     if (trackData != null) {
+      addWidgetDataForTracking(trackData);
+    }
+  }
+
+  void _inspectInteractiveChild(Element element) {
+    TrackData? trackData;
+    if (element.widget is Radio) {
+      Radio widget = element.widget as Radio;
+      trackData = _dataForWidget(element);
+      trackData.setLabel((widget.value ?? false).toString());
+    }
+    if (element.widget is Slider) {
+      Slider widget = element.widget as Slider;
+      trackData = _dataForWidget(element);
+      trackData.setLabel(widget.value.toString());
+    }
+    if (element.widget is Checkbox) {
+      Checkbox widget = element.widget as Checkbox;
+      trackData = _dataForWidget(element);
+      trackData.setLabel(widget.value.toString());
+    }
+    if (element.widget is Switch) {
+      Switch widget = element.widget as Switch;
+      trackData = _dataForWidget(element);
+      trackData.setLabel(widget.value.toString());
+    }
+
+    if (trackData != null) {
+      trackData.setId("${trackData.depth}");
       addWidgetDataForTracking(trackData);
     }
   }
@@ -112,9 +169,11 @@ class GestureHandler {
         final label = extractTextFromSpan(textSpan);
         containingWidget.setLabel(label);
         containingWidget.setId(formatValueToId(label));
+        addWidgetDataForTracking(containingWidget);
       }
       addWidgetDataForTracking(containingWidget);
     }
+    addWidgetDataForTracking(containingWidget);
     element.visitChildElements(
         (element) => _inspectButtonChild(containingWidget, element));
   }
@@ -140,17 +199,19 @@ class GestureHandler {
     String route = topRoute;
     String _uiId =
         element.widget.key != null ? element.widget.key.toString() : "";
-
+    String _uiClass = element.widget.runtimeType.toString();
     int _uiType = -1;
     if (knownButtonTypes.contains(element.widget.runtimeType)) {
       _uiType = 1;
-      _uiId = "${route}_${element.widget.runtimeType}_${buttonCounter}";
-      buttonCounter++;
     }
     if (fieldTypes.contains(element.widget.runtimeType)) {
       _uiType = 2;
-      _uiId = "${route}_${element.widget.runtimeType}_${fieldCounter}";
-      fieldCounter++;
+    }
+    if (_isInteractive(element)) {
+      _uiType = 3;
+      if (element.widget.runtimeType.toString().startsWith("Radio")) {
+        _uiClass = "Radio";
+      }
     }
     if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
       if (element.widget.runtimeType.toString() == "Text" ||
@@ -160,18 +221,19 @@ class GestureHandler {
       if (element.widget.runtimeType.toString() == "Image" ||
           element.widget.runtimeType.toString() == "Icon") {
         _uiType = 12;
+        _uiId = "${nonInteractiveCounter}";
+        nonInteractiveCounter++;
       }
-      _uiId = "${route}_${element.widget.runtimeType}_${nonInteractiveCounter}";
-      nonInteractiveCounter++;
     }
+
     if (containerTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
-      _uiId = "00";
+      _uiId = "${element.widget.runtimeType.toString()}_00";
       isViewGroup = true;
     }
     if (overlayTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
-      _uiId = "10";
+      _uiId = "${element.widget.runtimeType.toString()}_10";
       isViewGroup = true;
     }
 
@@ -180,10 +242,11 @@ class GestureHandler {
           ? _getRectFromBox(renderObject as RenderBox)
           : Rect.zero,
       route,
-      uiClass: element.widget.runtimeType.toString(),
+      uiClass: _uiClass,
       uiId: _uiId,
       uiType: _uiType,
       isViewGroup: isViewGroup,
+      depth: element.depth,
     );
   }
 
@@ -232,22 +295,49 @@ class GestureHandler {
       if (_trackData.route == "/") {
         _trackData.route = "root";
         if (_trackData.uiId != null) {
-          _trackData.uiId = "root_${_trackData.uiClass!}_${_trackData.uiId!}";
+          _trackData.uiId = "root_${_trackData.uiId!}";
         }
       } else {
         _trackData.uiId =
-            "${_trackData.route.replaceAll(' ', '')}_${_trackData.uiClass!}_${_trackData.uiId!}";
+            "${_trackData.route.replaceAll(' ', '')}_${_trackData.uiId!}";
         if (_trackData.uiId!.startsWith("/")) {
           _trackData.uiId = _trackData.uiId!.substring(1);
         }
       }
-
-      print("messagex:" + _trackData.toString());
-
       FlutterUxcam.appendGestureContent(
         offset,
         _trackData,
       );
     }
+  }
+
+  bool _isInteractive(Element element) {
+    final isPresent = interactiveTypes.contains(element.widget.runtimeType);
+    if (isPresent) {
+      return true;
+    } else {
+      //Radio types require extra processing
+      if (element.widget.runtimeType.toString().startsWith("Radio")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _generateCompoundButtonIdFromSiblings() {
+    final compoundData = _trackList.where((data) {
+      return data.uiType == 3;
+    }).toList();
+
+    for (var data in compoundData) {
+      try {
+        final requiredDepth = data.depth;
+        final compoundId = data.uiId ?? "";
+        final sibling = _trackList.firstWhere(
+            (data) => data.depth == requiredDepth && data.uiId != compoundId);
+        data.uiId = "${data.uiClass}_${sibling.uiValue}";
+      } on StateError {}
+    }
+    print("object");
   }
 }
