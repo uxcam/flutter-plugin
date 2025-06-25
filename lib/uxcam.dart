@@ -44,10 +44,8 @@ class UxCam {
             _trackData.uiId = "root_${_trackData.uiClass!}_${_trackData.uiId!}";
           }
         } else {
-          _trackData.route =
-              _trackData.route.substring(1, _trackData.route.length);
           _trackData.uiId =
-              "${_trackData.route}_${_trackData.uiClass!}_${_trackData.uiId!}";
+              "${_trackData.route.replaceAll(' ', '')}_${_trackData.uiClass!}_${_trackData.uiId!}";
         }
         print("messagey:" + _trackData.toString());
         return jsonEncode(_trackData.toJson());
