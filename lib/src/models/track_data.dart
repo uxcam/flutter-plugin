@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
@@ -30,9 +31,15 @@ class TrackData {
     return {
       'class': uiClass,
       'id': uiId,
-      'value': uiValue,
+      'value':
+          jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : ""),
       'type': uiType,
-      'bound': bound.toString(),
+      'bound': {
+        "left": bound.left,
+        "top": bound.top,
+        "right": bound.right,
+        "bottom": bound.bottom,
+      },
     };
   }
 

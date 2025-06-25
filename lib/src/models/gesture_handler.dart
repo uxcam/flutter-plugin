@@ -230,7 +230,10 @@ class GestureHandler {
         _trackData.uiId =
             _trackData.uiId!.substring(1, _trackData.uiId!.length);
       }
-      FlutterUxcam.appendGestureContent(offset, _trackData);
+      FlutterUxcam.appendGestureContent(
+        offset,
+        _trackData,
+      );
     }
   }
 }
