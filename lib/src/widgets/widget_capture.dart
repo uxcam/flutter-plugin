@@ -136,6 +136,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
         uxCam.addWidgetDataForTracking(containingWidget);
       }
     }
+    uxCam.addWidgetDataForTracking(containingWidget);
     element.visitChildElements(
         (element) => _inspectButtonChild(containingWidget, element));
   }
@@ -176,8 +177,7 @@ class _WidgetCaptureState extends State<WidgetCapture> {
       if (element.widget.runtimeType.toString() == "Image" ||
           element.widget.runtimeType.toString() == "Icon") {
         _uiType = 12;
-        _uiId =
-            "${route}_${element.widget.runtimeType}_${nonInteractiveCounter}";
+        _uiId = "${nonInteractiveCounter}";
         nonInteractiveCounter++;
       }
     }
