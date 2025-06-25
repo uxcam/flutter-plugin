@@ -31,12 +31,14 @@ class MyApp extends StatelessWidget {
 
     FlutterUxcam.startWithConfiguration(config);
 
-    return UXCamGestureHandler(
-      child: MaterialApp(
-        initialRoute: "/",
-        onGenerateRoute: onGenerateRoute,
-        navigatorObservers: [FlutterUxcamNavigatorObserver()],
-      ),
+    return MaterialApp(
+      initialRoute: "/",
+      onGenerateRoute: onGenerateRoute,
+      builder: (context, child) {
+        return UXCamGestureHandler(
+          child: child!,
+        );
+      },
     );
   }
 }
