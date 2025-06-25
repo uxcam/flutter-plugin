@@ -31,6 +31,13 @@ class _UXCamGestureHandlerState extends State<UXCamGestureHandler> {
   Offset? _lastPointerDownLocation;
   TrackData? _lastTrackData;
 
+
+  @override
+  void initState() {
+    super.initState();
+    gestureHandler = GestureHandler();     
+  }
+
   @override
   Widget build(BuildContext context) {
     return Listener(
