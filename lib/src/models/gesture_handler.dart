@@ -1,5 +1,3 @@
-
-
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -9,7 +7,6 @@ import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 
 class GestureHandler {
-
   List<TrackData> _trackList = [];
   String _topRoute = "/";
   String get topRoute => _topRoute;
@@ -43,9 +40,7 @@ class GestureHandler {
     TextFormField,
   ];
 
-  List<Type> containerTypes = [
-    Scaffold
-    ];
+  List<Type> containerTypes = [Scaffold];
 
   List<Type> overlayTypes = [
     BottomSheet,
@@ -59,7 +54,7 @@ class GestureHandler {
     _inspectDirectChild(element);
   }
 
- void _inspectDirectChild(Element element) {
+  void _inspectDirectChild(Element element) {
     //first capture route information
     if (containerTypes.contains(element.widget.runtimeType)) {
       updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
@@ -69,7 +64,7 @@ class GestureHandler {
       updateTopRoute("/overlay");
       addWidgetDataForTracking(_dataForWidget(element));
     }
-    
+
     if (userDefinedTypes.contains(element.widget.runtimeType)) {
     } else if (fieldTypes.contains(element.widget.runtimeType)) {
       _inspectTextFieldChild(element);
@@ -209,34 +204,36 @@ class GestureHandler {
   }
 
   void notifyTrackDataAt(Offset offset) {
+    TrackData? _trackData;
+    try {
+      _trackData = _trackList.lastWhere((data) {
+        return data.bound.contains(offset);
+      });
+    } catch (e) {}
 
-      TrackData? _trackData;
-      try {
-        _trackData = _trackList.lastWhere((data) {
-          return data.bound.contains(offset);
-        });
-      } catch (e) {}
+    print("messagex:" + offset.toString());
+    print("messagex:" + _trackList.toString());
 
-      print("messagex:" + offset.toString());
-      print("messagex:" + _trackList.toString());
-
-      if (_trackData != null) {
-        if (_trackData.route != _topRoute) {
-          return;
-        }
-
-        if (_trackData.route == "/") {
-          _trackData.route = "root";
-          if (_trackData.uiId != null) {
-            _trackData.uiId =
-                "root" + _trackData.uiId!.substring(1, _trackData.uiId!.length);
-          }
-        }
-        if (_trackData.uiId != null && _trackData.uiId!.startsWith("/")) {
-          _trackData.uiId =
-              _trackData.uiId!.substring(1, _trackData.uiId!.length);
-        }
-        FlutterUxcam.appendGestureContent(offset, _trackData);
+    if (_trackData != null) {
+      if (_trackData.route != _topRoute) {
+        return;
       }
+
+      if (_trackData.route == "/") {
+        _trackData.route = "root";
+        if (_trackData.uiId != null) {
+          _trackData.uiId =
+              "root" + _trackData.uiId!.substring(1, _trackData.uiId!.length);
+        }
+      }
+      if (_trackData.uiId != null && _trackData.uiId!.startsWith("/")) {
+        _trackData.uiId =
+            _trackData.uiId!.substring(1, _trackData.uiId!.length);
+      }
+      FlutterUxcam.appendGestureContent(
+        offset,
+        _trackData,
+      );
+    }
   }
 }

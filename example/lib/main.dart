@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
       initialRoute: "/",
       onGenerateRoute: onGenerateRoute,
       builder: (context, child) {
-        return WidgetCapture(
+        return UXCamGestureHandler(
           child: child!,
         );
       },
