@@ -66,16 +66,23 @@ extension UtilIntExtension on double {
 
 extension ElementX on Element {
   bool isRendered() {
+    final renderObject = this.renderObject;
+    if (renderObject != null && renderObject is RenderBox) {
+      if (!renderObject.hasSize) {
+        return false;
+      }
+    } else {
+      return false;
+    }
+
     final visibility = findAncestorWidgetOfExactType<Visibility>();
     if (visibility != null && !visibility.visible) {
       return false;
     }
-    print("object");
     final offstage = findAncestorWidgetOfExactType<Offstage>();
     if (offstage != null && offstage.offstage) {
       return false;
     }
-    print("object");
     final opacity = findAncestorWidgetOfExactType<Opacity>();
     if (opacity != null && opacity.opacity == 0.0) {
       return false;
