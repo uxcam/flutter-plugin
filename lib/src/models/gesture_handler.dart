@@ -38,11 +38,16 @@ class GestureHandler {
     TextFormField,
   ];
 
-  List<Type> containerTypes = [Scaffold];
+  List<Type> containerTypes = [
+    Scaffold,
+    ListView,
+    SingleChildScrollView,
+    GridView,
+  ];
 
   List<Type> overlayTypes = [
     BottomSheet,
-    Dialog,
+    AlertDialog,
   ];
 
   void inspectElement(Element element) {
@@ -112,9 +117,11 @@ class GestureHandler {
         final label = extractTextFromSpan(textSpan);
         containingWidget.setLabel(label);
         containingWidget.setId(formatValueToId(label));
+        addWidgetDataForTracking(containingWidget);
       }
       addWidgetDataForTracking(containingWidget);
     }
+    addWidgetDataForTracking(containingWidget);
     element.visitChildElements(
         (element) => _inspectButtonChild(containingWidget, element));
   }
@@ -144,13 +151,9 @@ class GestureHandler {
     int _uiType = -1;
     if (knownButtonTypes.contains(element.widget.runtimeType)) {
       _uiType = 1;
-      _uiId = "${route}_${element.widget.runtimeType}_${buttonCounter}";
-      buttonCounter++;
     }
     if (fieldTypes.contains(element.widget.runtimeType)) {
       _uiType = 2;
-      _uiId = "${route}_${element.widget.runtimeType}_${fieldCounter}";
-      fieldCounter++;
     }
     if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
       if (element.widget.runtimeType.toString() == "Text" ||
@@ -160,19 +163,17 @@ class GestureHandler {
       if (element.widget.runtimeType.toString() == "Image" ||
           element.widget.runtimeType.toString() == "Icon") {
         _uiType = 12;
+        _uiId = "${nonInteractiveCounter}";
+        nonInteractiveCounter++;
       }
-      _uiId = "${route}_${element.widget.runtimeType}_${nonInteractiveCounter}";
-      nonInteractiveCounter++;
     }
     if (containerTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
       _uiId = "00";
-      isViewGroup = true;
     }
     if (overlayTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
       _uiId = "10";
-      isViewGroup = true;
     }
 
     return TrackData(
@@ -237,17 +238,18 @@ class GestureHandler {
       } else {
         _trackData.uiId =
             "${_trackData.route.replaceAll(' ', '')}_${_trackData.uiClass!}_${_trackData.uiId!}";
-        if (_trackData.uiId!.startsWith("/")) {
-          _trackData.uiId = _trackData.uiId!.substring(1);
-        }
       }
-
-      print("messagex:" + _trackData.toString());
-
       FlutterUxcam.appendGestureContent(
         offset,
         _trackData,
       );
     }
+  }
+
+  String formatValueToId(String value) {
+    return value
+        .replaceAll(' ', '')
+        .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
+        .toLowerCase();
   }
 }
