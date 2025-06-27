@@ -211,9 +211,6 @@ class GestureHandler {
       });
     } catch (e) {}
 
-    print("messagex:" + offset.toString());
-    print("messagex:" + _trackList.toString());
-
     if (_trackData != null) {
       if (_trackData.route != _topRoute) {
         return;
@@ -230,6 +227,9 @@ class GestureHandler {
         _trackData.uiId =
             _trackData.uiId!.substring(1, _trackData.uiId!.length);
       }
+
+      print("messagex:" + _trackData.toString());
+
       FlutterUxcam.appendGestureContent(
         offset,
         _trackData,
