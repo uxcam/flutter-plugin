@@ -134,6 +134,7 @@ class GestureHandler {
   TrackData _dataForWidget(Element element) {
     final renderObject = element.renderObject;
 
+    bool isViewGroup = false;
     String route = topRoute;
     String _uiId =
         element.widget.key != null ? element.widget.key.toString() : "";
@@ -164,10 +165,12 @@ class GestureHandler {
     if (containerTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
       _uiId = "${route}_${element.widget.runtimeType}_00";
+      isViewGroup = true;
     }
     if (overlayTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
       _uiId = "${route}_${element.widget.runtimeType}_10";
+      isViewGroup = true;
     }
 
     return TrackData(
@@ -178,6 +181,7 @@ class GestureHandler {
       uiClass: element.widget.runtimeType.toString(),
       uiId: _uiId,
       uiType: _uiType,
+      isViewGroup: isViewGroup,
     );
   }
 
