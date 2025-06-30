@@ -11,9 +11,14 @@ class TrackData {
   String? uiClass;
   int uiType;
   Key? widgetKey;
+  bool? isViewGroup;
 
   TrackData(this.bound, this.route,
-      {this.uiValue = "", this.uiClass, this.uiType = -1, this.uiId});
+      {this.uiValue = "",
+      this.uiClass,
+      this.uiType = -1,
+      this.uiId,
+      this.isViewGroup});
 
   void setLabel(String label) {
     this.uiValue = label;
@@ -34,6 +39,7 @@ class TrackData {
       'value':
           jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : ""),
       'type': uiType,
+      'isViewGroup': isViewGroup ?? false,
       'bound': {
         "left": bound.left,
         "top": bound.top,
