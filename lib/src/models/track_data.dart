@@ -10,22 +10,15 @@ class TrackData {
   String? uiId;
   String? uiClass;
   int uiType;
-  int depth;
+  Key? widgetKey;
   bool? isViewGroup;
-  Map<String, dynamic>? custom;
-  bool isSensitive = false;
 
-  TrackData(
-    this.bound,
-    this.route, {
-    this.uiValue,
-    this.uiClass,
-    this.uiType = -1,
-    this.uiId,
-    this.isViewGroup,
-    this.depth = -1,
-    this.isSensitive = false,
-  });
+  TrackData(this.bound, this.route,
+      {this.uiValue = "",
+      this.uiClass,
+      this.uiType = -1,
+      this.uiId,
+      this.isViewGroup});
 
   void setLabel(String label) {
     this.uiValue = label;
@@ -73,6 +66,7 @@ class TrackData {
       'value':
           jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : ""),
       'type': uiType,
+      'isViewGroup': isViewGroup ?? false,
       'bound': {
         "left": bound.left,
         "top": bound.top,

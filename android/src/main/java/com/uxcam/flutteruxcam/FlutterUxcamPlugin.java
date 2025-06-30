@@ -24,7 +24,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
-//import com.uxcam.screenaction.internal.DefaultInternalApiFacade;
+import com.uxcam.internal.FlutterFacade;
 // import com.uxcam.screenaction.internal.ElementDataRequestListener;
 // import com.uxcam.screenaction.internal.ElementDataResponseListener;
 import com.uxcam.screenaction.models.ScreenActionContentCrossPlatform;
@@ -95,7 +95,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static Activity activity;
 
     private CrossPlatformDelegate delegate;
-    //private DefaultInternalApiFacade flutterFacade;
 
     private int leftPadding;
     private int cutoutTop = 0;

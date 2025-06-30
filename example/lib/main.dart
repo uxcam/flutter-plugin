@@ -34,6 +34,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       initialRoute: "/",
       onGenerateRoute: onGenerateRoute,
+      navigatorObservers: [FlutterUxcamNavigatorObserver()],
       builder: (context, child) {
         return UXCamGestureHandler(
           child: child!,
