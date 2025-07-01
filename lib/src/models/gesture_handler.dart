@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
@@ -83,6 +81,7 @@ class GestureHandler {
       Text widget = element.widget as Text;
       trackData = _dataForWidget(element);
       trackData.setLabel(widget.data ?? "");
+      trackData.setId(formatValueToId(widget.data ?? ""));
     }
     if (element.widget is Image || element.widget is Icon) {
       trackData = _dataForWidget(element);
@@ -101,6 +100,7 @@ class GestureHandler {
     }
     TrackData trackData = _dataForWidget(element);
     trackData.setLabel(hint);
+    trackData.setId(formatValueToId(hint));
     addWidgetDataForTracking(trackData);
   }
 
@@ -109,9 +109,11 @@ class GestureHandler {
     if (renderObject is RenderParagraph) {
       final textSpan = renderObject.text;
       if (textSpan is TextSpan) {
-        containingWidget.setLabel(extractTextFromSpan(textSpan));
-        addWidgetDataForTracking(containingWidget);
+        final label = extractTextFromSpan(textSpan);
+        containingWidget.setLabel(label);
+        containingWidget.setId(formatValueToId(label));
       }
+      addWidgetDataForTracking(containingWidget);
     }
     element.visitChildElements(
         (element) => _inspectButtonChild(containingWidget, element));
@@ -164,12 +166,12 @@ class GestureHandler {
     }
     if (containerTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
-      _uiId = "${route}_${element.widget.runtimeType}_00";
+      _uiId = "00";
       isViewGroup = true;
     }
     if (overlayTypes.contains(element.widget.runtimeType)) {
       _uiType = 5;
-      _uiId = "${route}_${element.widget.runtimeType}_10";
+      _uiId = "10";
       isViewGroup = true;
     }
 
@@ -190,6 +192,13 @@ class GestureHandler {
     final offset = Offset(translation.x, translation.y);
     final bounds = renderObject.paintBounds.shift(offset);
     return bounds;
+  }
+
+  String formatValueToId(String value) {
+    return value
+        .replaceAll(' ', '')
+        .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
+        .toLowerCase();
   }
 
   void addWidgetDataForTracking(TrackData data) {
@@ -223,13 +232,14 @@ class GestureHandler {
       if (_trackData.route == "/") {
         _trackData.route = "root";
         if (_trackData.uiId != null) {
-          _trackData.uiId =
-              "root" + _trackData.uiId!.substring(1, _trackData.uiId!.length);
+          _trackData.uiId = "root_${_trackData.uiClass!}_${_trackData.uiId!}";
         }
-      }
-      if (_trackData.uiId != null && _trackData.uiId!.startsWith("/")) {
+      } else {
         _trackData.uiId =
-            _trackData.uiId!.substring(1, _trackData.uiId!.length);
+            "${_trackData.route.replaceAll(' ', '')}_${_trackData.uiClass!}_${_trackData.uiId!}";
+        if (_trackData.uiId!.startsWith("/")) {
+          _trackData.uiId = _trackData.uiId!.substring(1);
+        }
       }
 
       print("messagex:" + _trackData.toString());
