@@ -80,12 +80,9 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
     String taggingScreen = '';
     List<String> currentStackNames = List.from(_screenNames);
     if (currentStackNames.isNotEmpty) {
-      currentStackNames.removeWhere((e) => e.startsWith(":"));
-      if (currentStackNames.isNotEmpty) {
-        taggingScreen = currentStackNames.last;
-      }
+      taggingScreen = currentStackNames.last;
     }
-    if (taggingScreen.isNotEmpty) {
+    if (taggingScreen.isNotEmpty && !taggingScreen.startsWith(":")) {
       FlutterUxcam.tagScreenName(taggingScreen);
     }
   }
