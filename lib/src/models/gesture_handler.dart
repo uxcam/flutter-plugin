@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
@@ -11,7 +13,11 @@ class GestureHandler {
 
   List<SummaryTree> summaryTreeByRoute = [];
 
-  List<Type> userDefinedTypes = [];
+  int userDefinedCounter = 0;
+  int buttonCounter = 0;
+  int nonInteractiveCounter = 0;
+  int fieldCounter = 0;
+  int formFieldCounter = 0;
 
   List<Type> knownButtonTypes = [
     ElevatedButton,
@@ -110,12 +116,25 @@ class GestureHandler {
       }
       return;
     }
-    if (type == 1) {
-      final subTree = _inspectButtonChild(element);
-      if (subTree != null) {
-        addSubTreeIfInsideBounds(node, subTree);
-      }
-      return;
+
+    if (userDefinedTypes.contains(element.widget.runtimeType)) {
+    } else if (fieldTypes.contains(element.widget.runtimeType)) {
+      _inspectTextFieldChild(element);
+    } else if (knownButtonTypes.contains(element.widget.runtimeType)) {
+      _inspectButtonChild(_dataForWidget(element), element);
+    } else if (_isInteractive(element)) {
+      _inspectInteractiveChild(element);
+    } else if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
+      _inspectNonInteractiveChild(element);
+    } else {
+      element.visitChildElements((child) {
+        // if (child.widget is OccludeWrapper) {
+        //   // Do not recurse into this child or its subtree
+        //   return;
+        // }
+        // Recursively visit this child's subtree
+        _inspectDirectChild(child);
+      });
     }
     if (type == 2) {
       final subTree = _inspectTextFieldChild(element);
@@ -134,19 +153,29 @@ class GestureHandler {
     element.visitChildElements((elem) => _inspectDirectChild(node, elem));
   }
 
-  SummaryTree? _inspectInteractiveChild(Element element) {
-    SummaryTree? subTree;
-    String label = "";
-
-    void _extractTextFromButton(Element element) {
-      final renderObject = element.renderObject;
-      if (renderObject is RenderParagraph) {
-        final textSpan = renderObject.text;
-        if (textSpan is TextSpan) {
-          label = extractTextFromSpan(textSpan);
-        }
-      }
-      element.visitChildElements((element) => _extractTextFromButton(element));
+  void _inspectNonInteractiveChild(Element element) {
+    TrackData? trackData;
+    if (element.widget is Text) {
+      Text widget = element.widget as Text;
+      trackData = _dataForWidget(element);
+      trackData?.setLabel(widget.data ?? "");
+      trackData?.setId(formatValueToId(widget.data ?? ""));
+    }
+    if (element.widget is Image) {
+      String? label = (element.widget as Image).semanticLabel;
+      trackData = _dataForWidget(element);
+      trackData.setLabel(label ?? "");
+      trackData.addCustomProperty({
+        "content_desc: ": label ?? "",
+      });
+    }
+    if (element.widget is Icon) {
+      String? label = (element.widget as Icon).semanticLabel;
+      trackData = _dataForWidget(element);
+      trackData.setLabel(label ?? "");
+      trackData.addCustomProperty({
+        "content_desc: ": label ?? "",
+      });
     }
 
     final sibling = element.getSibling();
@@ -203,28 +232,43 @@ class GestureHandler {
       hint = textField.decoration?.hintText ??
           textField.decoration?.labelText ??
           "";
+    } else if (element.widget is TextFormField) {
+      String? hintFromDescendant;
+      element.visitChildElements((child) {
+        if (child.widget is TextField) {
+          final textField = child.widget as TextField;
+          hintFromDescendant =
+              textField.decoration?.hintText ?? textField.decoration?.labelText;
+        } else {
+          child.visitChildElements((child) {
+            if (child.widget is TextField) {
+              final textField = child.widget as TextField;
+              hintFromDescendant = textField.decoration?.hintText ??
+                  textField.decoration?.labelText;
+            }
+          });
+        }
+        ;
+      });
+      hint = hintFromDescendant ?? "";
     }
-    subTree = SummaryTree(
-      ModalRoute.of(element)?.settings.name ?? "",
-      element.widget.runtimeType.toString(),
-      2,
-      value: hint,
-      bound: element.getEffectiveBounds(),
-    );
-    return subTree;
+
+    TrackData? trackData = _dataForWidget(element);
+    trackData?.setLabel(hint);
+    if (hint != "") {
+      trackData?.setId(formatValueToId(hint));
+    }
+    addWidgetDataForTracking(trackData);
   }
 
-  SummaryTree? _inspectButtonChild(Element element) {
-    SummaryTree? subTree;
-    String label = "";
-
-    void _extractTextFromButton(Element element) {
-      final renderObject = element.renderObject;
-      if (renderObject is RenderParagraph) {
-        final textSpan = renderObject.text;
-        if (textSpan is TextSpan) {
-          label = extractTextFromSpan(textSpan);
-        }
+  void _inspectButtonChild(TrackData? containingWidget, Element element) {
+    final renderObject = element.renderObject;
+    if (renderObject is RenderParagraph) {
+      final textSpan = renderObject.text;
+      if (textSpan is TextSpan) {
+        final label = extractTextFromSpan(textSpan);
+        containingWidget?.setLabel(label);
+        // containingWidget?.setId(formatValueToId(label));
       }
       element.visitChildElements((element) => _extractTextFromButton(element));
     }
@@ -320,10 +364,93 @@ class GestureHandler {
     return buffer.toString();
   }
 
-  void addTreeIfInsideBounds(SummaryTree tree) {
-    if (tree.bound.contains(position)) {
-      summaryTreeByRoute.add(tree);
+  TrackData? _dataForWidget(Element element) {
+    final renderObject = element.renderObject;
+
+    bool isViewGroup = false;
+    String route = topRoute;
+    String depth = element.depth.toString();
+    String _uiId =
+        element.widget.key != null ? element.widget.key.toString() : "";
+    String _uiClass = element.widget.runtimeType.toString();
+    int _uiType = -1;
+
+    if (knownButtonTypes.contains(element.widget.runtimeType)) {
+      _uiType = 1;
+      String id = "${knownButtonTypes.hashCode}_${depth.hashCode}";
+      _uiId = element.widget.key != null ? element.widget.key.toString() : id;
     }
+    if (fieldTypes.contains(element.widget.runtimeType)) {
+      _uiType = 2;
+      String id = "${fieldTypes.hashCode}_${depth.toString().hashCode}";
+      _uiId = element.widget.key != null ? element.widget.key.toString() : id;
+    }
+    if (_isInteractive(element)) {
+      _uiType = 3;
+      if (element.widget.runtimeType.toString().startsWith("Radio")) {
+        _uiClass = "Radio";
+      }
+    }
+    if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
+      if (element.widget.runtimeType.toString() == "Text" ||
+          element.widget.runtimeType.toString() == "RichText") {
+        _uiType = 7;
+        String id =
+            "${nonInteractiveTypes.hashCode}_${"Text".hashCode}_${depth.hashCode}";
+        _uiId = element.widget.key != null ? element.widget.key.toString() : id;
+      }
+      if (element.widget.runtimeType.toString() == "Image" ||
+          element.widget.runtimeType.toString() == "Icon") {
+        _uiType = 12;
+        String id =
+            "${nonInteractiveTypes.hashCode}_${"Image".hashCode}_${depth.hashCode}";
+        _uiId = element.widget.key != null ? element.widget.key.toString() : id;
+        nonInteractiveCounter++;
+      }
+    }
+
+    if (containerTypes.contains(element.widget.runtimeType)) {
+      _uiType = 5;
+      _uiId = "${containerTypes.hashCode}_${depth.hashCode}";
+      isViewGroup = true;
+    }
+    if (overlayTypes.contains(element.widget.runtimeType)) {
+      _uiType = 5;
+      _uiId = "${overlayTypes.hashCode}_${depth.hashCode}";
+      isViewGroup = true;
+    }
+
+    TrackData trackData = TrackData(
+      element.isRendered()
+          ? _getRectFromBox(renderObject as RenderBox)
+          : Rect.zero,
+      route,
+      uiValue: "",
+      uiClass: _uiClass,
+      uiType: _uiType,
+      uiId: _uiId,
+      isViewGroup: isViewGroup,
+      depth: element.depth,
+      isSensitive: isDescendantOfType(element, OccludeWrapper),
+    );
+
+    if (trackData.bound == Rect.zero) {
+      // If the element is not rendered, we can skip adding it
+      return null;
+    }
+    return trackData;
+  }
+
+  bool isDescendantOfType(Element element, Type targetType) {
+    bool found = false;
+    element.visitAncestorElements((ancestor) {
+      if (ancestor.widget.runtimeType == targetType) {
+        found = true;
+        return false; // Stop visiting
+      }
+      return true; // Continue visiting
+    });
+    return found;
   }
 
   void addSubTreeIfInsideBounds(SummaryTree root, SummaryTree tree) {
@@ -340,11 +467,13 @@ class GestureHandler {
         .replaceAll(' ', '')
         .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
         .toLowerCase();
-    int hash = 5381;
-    for (int i = 0; i < input.length; i++) {
-      hash = ((hash << 5) + hash) + input.codeUnitAt(i);
-    }
-    return hash.toUnsigned(32).toRadixString(16);
+  }
+
+  void addWidgetDataForTracking(TrackData? data) {
+    if (data == null) return;
+    final id = data.uiId ?? "";
+    _trackList.removeWhere((item) => item.uiId == id);
+    _trackList.add(data);
   }
 
   void updateTopRoute(String route) {
@@ -352,54 +481,43 @@ class GestureHandler {
     if (_topRoute == "") _topRoute = "/";
   }
 
-  void sendTrackDataFromSummaryTree() {
-    TrackData? trackData;
-    String uId = "";
-    final summaryTree = summaryTreeByRoute.last;
-    String route = summaryTree.route;
-    if (route == "/") {
-      route = "root";
-    }
-    uId += route + "_";
-    if (summaryTree.subTrees.isEmpty) {
-      uId += summaryTree.uiClass;
-      trackData = TrackData(
-        summaryTree.bound,
-        route,
-        uiValue: "",
-        uiId: formatValueToId(uId),
-        uiClass: summaryTree.uiClass,
-        uiType: summaryTree.type,
-      );
-    } else {
-      final subTree = summaryTree.subTrees.first;
-      if (subTree.type == 5) {
-        uId += subTree.uiClass + "_";
-        final elementTree = subTree.subTrees.first;
-        uId += elementTree.uiClass + "_" + elementTree.value;
-        trackData = TrackData(
-          elementTree.bound,
-          route,
-          uiValue: elementTree.value,
-          uiId: formatValueToId(uId),
-          uiClass: elementTree.uiClass,
-          uiType: elementTree.type,
-        );
-      } else {
-        uId += subTree.uiClass + "_" + subTree.value;
-        trackData = TrackData(
-          subTree.bound,
-          route,
-          uiValue: subTree.value,
-          uiId: formatValueToId(uId),
-          uiClass: subTree.uiClass,
-          uiType: subTree.type,
-        );
-      }
-    }
+  void removeTrackData() {
+    _trackList.clear();
+  }
 
-    print("messagex:" + trackData.toString());
-    FlutterUxcam.appendGestureContent(position, trackData);
+  void notifyTrackDataAt(Offset offset) {
+    TrackData? _trackData;
+    try {
+      _trackData = _trackList.lastWhere((data) {
+        return data.bound.contains(offset);
+      });
+    } catch (e) {}
+
+    if (_trackData != null) {
+      if (_trackData.route != _topRoute) {
+        return;
+      }
+
+      if (_trackData.route == "/") {
+        _trackData.route = "root";
+        if (_trackData.uiId != null) {
+          _trackData.uiId = "root_${_trackData.uiId!}";
+        }
+      } else {
+        _trackData.uiId =
+            "${_trackData.route.replaceAll(' ', '')}_${_trackData.uiId!}";
+        if (_trackData.uiId!.startsWith("/")) {
+          _trackData.uiId = _trackData.uiId!.substring(1);
+        }
+      }
+
+      print("messagex:" + _trackData.toString());
+
+      FlutterUxcam.appendGestureContent(
+        offset,
+        _trackData,
+      );
+    }
   }
 
   bool _isInteractive(Element element) {
