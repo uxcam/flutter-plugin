@@ -10,22 +10,34 @@ class TrackData {
   String? uiId;
   String? uiClass;
   int uiType;
-  Key? widgetKey;
+  int depth;
   bool? isViewGroup;
+  Map<String, dynamic>? custom;
 
-  TrackData(this.bound, this.route,
-      {this.uiValue = "",
-      this.uiClass,
-      this.uiType = -1,
-      this.uiId,
-      this.isViewGroup});
+  TrackData(
+    this.bound,
+    this.route, {
+    this.uiValue = "",
+    this.uiClass,
+    this.uiType = -1,
+    this.uiId,
+    this.isViewGroup,
+    this.depth = -1,
+  });
 
   void setLabel(String label) {
     this.uiValue = label;
   }
 
   void setId(String id) {
-    this.uiId = id;
+    this.uiId = "${uiClass}_$id";
+  }
+
+  void addCustomProperty(Map<String, dynamic> customProperty) {
+    if (custom == null) {
+      custom = {};
+    }
+    custom!.addAll(customProperty);
   }
 
   TrackData copy() => TrackData(bound, route,
@@ -50,6 +62,7 @@ class TrackData {
         "right": bound.right,
         "bottom": bound.bottom,
       },
+      "custom": custom ?? {},
     };
   }
 
