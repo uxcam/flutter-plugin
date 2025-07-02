@@ -42,7 +42,6 @@ class GestureHandler {
 
   List<Type> fieldTypes = [
     TextField,
-    TextFormField,
   ];
 
   List<Type> containerTypes = [
@@ -153,7 +152,9 @@ class GestureHandler {
     String hint = "";
     if (element.widget is TextField) {
       final textField = element.widget as TextField;
-      hint = textField.decoration?.hintText ?? "";
+      hint = textField.decoration?.hintText ??
+          textField.decoration?.labelText ??
+          "";
     }
     TrackData trackData = _dataForWidget(element);
     trackData.setLabel(hint);
