@@ -13,6 +13,7 @@ class TrackData {
   int depth;
   bool? isViewGroup;
   Map<String, dynamic>? custom;
+  bool isSensitive = false;
 
   TrackData(
     this.bound,
@@ -23,6 +24,7 @@ class TrackData {
     this.uiId,
     this.isViewGroup,
     this.depth = -1,
+    this.isSensitive = false,
   });
 
   void setLabel(String label) {
@@ -56,6 +58,7 @@ class TrackData {
           jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : ""),
       'type': uiType,
       'isViewGroup': isViewGroup ?? false,
+      'isSensitive': isSensitive,
       'bound': {
         "left": bound.left,
         "top": bound.top,
