@@ -53,8 +53,10 @@ class _UXCamGestureHandlerState extends State<UXCamGestureHandler> {
 
   void _onTappedAt(BuildContext context, Offset position) {
     context.visitChildElements((element) {
+      gestureHandler.setPosition(position);
       gestureHandler.inspectElement(element);
-      gestureHandler.notifyTrackDataAt(position);
+      gestureHandler.sendTrackDataFromSummaryTree();
+      // gestureHandler.notifyTrackDataAt(position);
     });
   }
 }

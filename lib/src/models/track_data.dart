@@ -13,6 +13,7 @@ class TrackData {
   int depth;
   bool? isViewGroup;
   Map<String, dynamic>? custom;
+  bool isSensitive = false;
 
   TrackData(
     this.bound,
@@ -23,6 +24,7 @@ class TrackData {
     this.uiId,
     this.isViewGroup,
     this.depth = -1,
+    this.isSensitive = false,
   });
 
   void setLabel(String label) {
@@ -45,34 +47,7 @@ class TrackData {
 
   @override
   String toString() {
-    return 'TrackData(bound: $bound,  route: $route, id: $uiId, type: $uiType,value: $uiValue,)';
-  }
-
-  Map<String, dynamic> toJson() {
-    final value =
-        jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : "");
-    final effectiveclass = uiClass != null && uiClass!.isNotEmpty
-        ? uiClass
-        : Platform.isAndroid
-            ? jsonEncode("")
-            : "";
-    Map<String, dynamic> result = {
-      'isViewGroup': isViewGroup ?? false,
-      'isSensitive': isSensitive,
-      "type": uiType,
-      'bound': {
-        "left": bound.left,
-        "top": bound.top,
-        "right": bound.right,
-        "bottom": bound.bottom,
-      },
-      "custom": custom ?? {},
-      "id": Platform.isAndroid ? jsonEncode(uiId) : uiId,
-      "value": Platform.isAndroid ? value : uiValue,
-      "name": Platform.isAndroid ? value : uiValue,
-      "class": effectiveclass,
-    };
-    return result;
+    return 'TrackData(bound: $bound,  route: $route, id: $uiId, value: $uiValue, class: $uiClass)';
   }
 
   Map<String, dynamic> toJson() {
@@ -83,6 +58,7 @@ class TrackData {
           jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : ""),
       'type': uiType,
       'isViewGroup': isViewGroup ?? false,
+      'isSensitive': isSensitive,
       'bound': {
         "left": bound.left,
         "top": bound.top,
@@ -106,23 +82,19 @@ class SummaryTree {
   String route;
   String uiClass;
   int type;
-  int hashCode;
   String value;
   Map<String, dynamic> custom;
   List<SummaryTree> subTrees;
   bool isViewGroup;
-  bool isOccluded;
 
   SummaryTree(
     this.route,
     this.uiClass,
-    this.type,
-    this.hashCode, {
+    this.type, {
     this.bound = Rect.zero,
     this.value = "",
     this.subTrees = const [],
     this.custom = const {},
     this.isViewGroup = false,
-    this.isOccluded = false,
   });
 }
