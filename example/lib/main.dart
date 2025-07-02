@@ -86,24 +86,45 @@ class UXCamPage extends StatelessWidget {
       //     ElevatedButton(onPressed: () {}, child: Text('data')),
       //   ],
       // ),
-      body: ListView(
-        padding: const EdgeInsets.all(8.0),
+      // body: ListView(
+      //   padding: const EdgeInsets.all(8.0),
+      //   children: [
+      //     Text(
+      //       "This is a smart events demo",
+      //       style: Theme.of(context).textTheme.headlineSmall,
+      //     ),
+      //     Image.asset(
+      //       "assets/images/testimage.jpg",
+      //       semanticLabel: "this is a test image",
+      //     ),
+      //     TextField(
+      //       decoration: InputDecoration(hintText: "this is a hint"),
+      //     ),
+      //     TextFormField(),
+      //     FeatureSection(
+      //       title: 'Screen Tagging',
+      //       onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+      //       buttonTitle: 'Login',
+      //     ),
+      //     TextButton(onPressed: () {}, child: Text("Signup")),
+      //     Row(
+      //       children: [
+      //         Radio(value: true, groupValue: false, onChanged: (val) {}),
+      //         Text(
+      //           "radio",
+      //           style: Theme.of(context).textTheme.headlineSmall,
+      //         ),
+      //       ],
+      //     ),
+      //   ],
+      // ),
+      body: Row(
         children: [
+          Radio(value: true, groupValue: false, onChanged: (val) {}),
           Text(
-            "This is a smart events demo",
+            "radio",
             style: Theme.of(context).textTheme.headlineSmall,
           ),
-          Image.asset("assets/images/testimage.jpg"),
-          TextField(
-            decoration: InputDecoration(hintText: "this is a hint"),
-          ),
-          TextFormField(),
-          FeatureSection(
-            title: 'Screen Tagging',
-            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
-            buttonTitle: 'Login',
-          ),
-          TextButton(onPressed: () {}, child: Text("Signup")),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -195,7 +216,7 @@ MaterialPageRoute<dynamic> onGenerateRoute(RouteSettings settings) {
   switch (settings.name) {
     case 'detail':
       return MaterialPageRoute(
-        builder: (_) => const DetailPage(),
+        builder: (_) => const UXCamPage(),
         settings: RouteSettings(
           arguments: settings.arguments,
           name: "detail",
@@ -212,26 +233,26 @@ MaterialPageRoute<dynamic> onGenerateRoute(RouteSettings settings) {
   }
 }
 
-class DetailPage extends StatelessWidget {
-  const DetailPage({Key? key}) : super(key: key);
+// class DetailPage extends StatelessWidget {
+//   const DetailPage({Key? key}) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-          ElevatedButton(onPressed: () {}, child: Text("data")),
-        ],
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: Column(
+//         children: [
+//           ElevatedButton(onPressed: () {}, child: Text("data")),
+//           ElevatedButton(onPressed: () {}, child: Text("data")),
+//           ElevatedButton(onPressed: () {}, child: Text("data")),
+//           ElevatedButton(onPressed: () {}, child: Text("data")),
+//           ElevatedButton(onPressed: () {}, child: Text("data")),
+//           ElevatedButton(onPressed: () {}, child: Text("data")),
+//           ElevatedButton(onPressed: () {}, child: Text("data")),
+//           ElevatedButton(onPressed: () {}, child: Text("data")),
+//           ElevatedButton(onPressed: () {}, child: Text("data")),
+//           ElevatedButton(onPressed: () {}, child: Text("data")),
+//         ],
+//       ),
+//     );
+//   }
+// }
