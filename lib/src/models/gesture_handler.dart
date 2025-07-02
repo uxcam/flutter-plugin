@@ -164,16 +164,16 @@ class GestureHandler {
     if (element.widget is Image) {
       String? label = (element.widget as Image).semanticLabel;
       trackData = _dataForWidget(element);
-      trackData.setLabel(label ?? "");
-      trackData.addCustomProperty({
+      trackData?.setLabel(label ?? "");
+      trackData?.addCustomProperty({
         "content_desc: ": label ?? "",
       });
     }
     if (element.widget is Icon) {
       String? label = (element.widget as Icon).semanticLabel;
       trackData = _dataForWidget(element);
-      trackData.setLabel(label ?? "");
-      trackData.addCustomProperty({
+      trackData?.setLabel(label ?? "");
+      trackData?.addCustomProperty({
         "content_desc: ": label ?? "",
       });
     }
@@ -185,40 +185,24 @@ class GestureHandler {
     }
 
     if (element.widget is Radio) {
-      subTree = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        3,
-        value: label,
-        bound: element.getEffectiveBounds(),
-      );
+      Radio widget = element.widget as Radio;
+      trackData = _dataForWidget(element);
+      trackData?.setLabel((widget.value ?? false).toString());
     }
     if (element.widget is Slider) {
-      subTree = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        3,
-        value: label,
-        bound: element.getEffectiveBounds(),
-      );
+      Slider widget = element.widget as Slider;
+      trackData = _dataForWidget(element);
+      trackData?.setLabel(widget.value.toString());
     }
     if (element.widget is Checkbox) {
-      subTree = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        3,
-        value: label,
-        bound: element.getEffectiveBounds(),
-      );
+      Checkbox widget = element.widget as Checkbox;
+      trackData = _dataForWidget(element);
+      trackData?.setLabel(widget.value.toString());
     }
     if (element.widget is Switch) {
-      subTree = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        3,
-        value: label,
-        bound: element.getEffectiveBounds(),
-      );
+      Switch widget = element.widget as Switch;
+      trackData = _dataForWidget(element);
+      trackData?.setLabel(widget.value.toString());
     }
 
     return subTree;
