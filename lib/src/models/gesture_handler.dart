@@ -164,16 +164,16 @@ class GestureHandler {
     if (element.widget is Image) {
       String? label = (element.widget as Image).semanticLabel;
       trackData = _dataForWidget(element);
-      trackData.setLabel(label ?? "");
-      trackData.addCustomProperty({
+      trackData?.setLabel(label ?? "");
+      trackData?.addCustomProperty({
         "content_desc: ": label ?? "",
       });
     }
     if (element.widget is Icon) {
       String? label = (element.widget as Icon).semanticLabel;
       trackData = _dataForWidget(element);
-      trackData.setLabel(label ?? "");
-      trackData.addCustomProperty({
+      trackData?.setLabel(label ?? "");
+      trackData?.addCustomProperty({
         "content_desc: ": label ?? "",
       });
     }
@@ -185,6 +185,7 @@ class GestureHandler {
     }
 
     if (element.widget is Radio) {
+<<<<<<< HEAD
       subTree = SummaryTree(
         ModalRoute.of(element)?.settings.name ?? "",
         element.widget.runtimeType.toString(),
@@ -219,6 +220,26 @@ class GestureHandler {
         value: label,
         bound: element.getEffectiveBounds(),
       );
+=======
+      Radio widget = element.widget as Radio;
+      trackData = _dataForWidget(element);
+      trackData?.setLabel((widget.value ?? false).toString());
+    }
+    if (element.widget is Slider) {
+      Slider widget = element.widget as Slider;
+      trackData = _dataForWidget(element);
+      trackData?.setLabel(widget.value.toString());
+    }
+    if (element.widget is Checkbox) {
+      Checkbox widget = element.widget as Checkbox;
+      trackData = _dataForWidget(element);
+      trackData?.setLabel(widget.value.toString());
+    }
+    if (element.widget is Switch) {
+      Switch widget = element.widget as Switch;
+      trackData = _dataForWidget(element);
+      trackData?.setLabel(widget.value.toString());
+>>>>>>> d98be3d (optional fix.)
     }
 
     return subTree;
