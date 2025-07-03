@@ -18,7 +18,7 @@ class TrackData {
   TrackData(
     this.bound,
     this.route, {
-    this.uiValue = "",
+    this.uiValue,
     this.uiClass,
     this.uiType = -1,
     this.uiId,
@@ -56,6 +56,7 @@ class TrackData {
       'id': uiId,
       'value':
           jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : ""),
+      'name': uiValue,
       'type': uiType,
       'isViewGroup': isViewGroup ?? false,
       'isSensitive': isSensitive,
