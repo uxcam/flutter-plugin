@@ -185,42 +185,6 @@ class GestureHandler {
     }
 
     if (element.widget is Radio) {
-<<<<<<< HEAD
-      subTree = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        3,
-        value: label,
-        bound: element.getEffectiveBounds(),
-      );
-    }
-    if (element.widget is Slider) {
-      subTree = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        3,
-        value: label,
-        bound: element.getEffectiveBounds(),
-      );
-    }
-    if (element.widget is Checkbox) {
-      subTree = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        3,
-        value: label,
-        bound: element.getEffectiveBounds(),
-      );
-    }
-    if (element.widget is Switch) {
-      subTree = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        3,
-        value: label,
-        bound: element.getEffectiveBounds(),
-      );
-=======
       Radio widget = element.widget as Radio;
       trackData = _dataForWidget(element);
       trackData?.setLabel((widget.value ?? false).toString());
@@ -239,7 +203,6 @@ class GestureHandler {
       Switch widget = element.widget as Switch;
       trackData = _dataForWidget(element);
       trackData?.setLabel(widget.value.toString());
->>>>>>> d98be3d (optional fix.)
     }
 
     return subTree;
