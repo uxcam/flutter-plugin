@@ -112,7 +112,12 @@ class UXCamPage extends StatelessWidget {
               },
               child: Text('data')),
           Row(
-            children: [Checkbox(value: false, onChanged: (v) {}), Text('yes')],
+            children: [
+              Checkbox(value: false, onChanged: (v) {}),
+              Text('yes'),
+              Checkbox(value: false, onChanged: (v) {}),
+              Text('no')
+            ],
           ),
           Row(
             children: [Checkbox(value: false, onChanged: (v) {}), Text('no')],
@@ -120,6 +125,10 @@ class UXCamPage extends StatelessWidget {
           Row(
             children: [
               Text('maybe'),
+              Checkbox(value: false, onChanged: (v) {}),
+              Text('yes'),
+              Checkbox(value: false, onChanged: (v) {}),
+              Text('no'),
               Checkbox(value: false, onChanged: (v) {})
             ],
           ),
