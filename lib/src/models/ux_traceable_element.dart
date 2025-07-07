@@ -1,9 +1,6 @@
-
-
 import 'package:flutter/material.dart';
 
 class UxTraceableElement {
-
   List<Type> userDefinedTypes = [];
 
   List<Type> knownButtonTypes = [
@@ -49,6 +46,9 @@ class UxTraceableElement {
     AlertDialog,
   ];
 
+  bool isOverLay(Element element) {
+    return overlayTypes.contains(element.widget.runtimeType);
+  }
 
   int getUxType(Element element) {
     int _uiType = -1;
@@ -93,5 +93,4 @@ class UxTraceableElement {
     }
     return false;
   }
-
 }
