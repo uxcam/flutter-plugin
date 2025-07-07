@@ -6,10 +6,8 @@ import 'package:flutter_uxcam/src/models/track_data.dart';
 
 class GestureHandler {
   Offset position = Offset.zero;
-  List<TrackData> _trackList = [];
   String _topRoute = "/";
   String get topRoute => _topRoute;
-  int nextId = 0;
 
   List<SummaryTree> summaryTreeByRoute = [];
 
@@ -58,6 +56,10 @@ class GestureHandler {
     AlertDialog,
   ];
 
+  void setPosition(Offset position) {
+    this.position = position;
+  }
+
   void inspectElement(Element element) {
     summaryTreeByRoute.clear();
     _inspectDirectChild(
@@ -68,6 +70,7 @@ class GestureHandler {
           bound: element.getEffectiveBounds(),
         ),
         element);
+    print("object");
   }
 
   void _inspectDirectChild(SummaryTree parent, Element element) {
@@ -84,6 +87,7 @@ class GestureHandler {
             element.widget.runtimeType.toString(),
             5,
             bound: element.getEffectiveBounds(),
+            isViewGroup: true,
           );
           tree.subTrees = [...tree.subTrees, node];
         }
@@ -94,6 +98,7 @@ class GestureHandler {
           element.widget.runtimeType.toString(),
           5,
           bound: element.getEffectiveBounds(),
+          isViewGroup: true,
         );
         addTreeIfInsideBounds(node);
       }
@@ -331,10 +336,15 @@ class GestureHandler {
   }
 
   String formatValueToId(String value) {
-    return value
+    final input = value
         .replaceAll(' ', '')
         .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
         .toLowerCase();
+    int hash = 5381;
+    for (int i = 0; i < input.length; i++) {
+      hash = ((hash << 5) + hash) + input.codeUnitAt(i);
+    }
+    return hash.toUnsigned(32).toRadixString(16);
   }
 
   void updateTopRoute(String route) {
@@ -342,36 +352,54 @@ class GestureHandler {
     if (_topRoute == "") _topRoute = "/";
   }
 
-  void notifyTrackDataAt(Offset offset) {
-    TrackData? _trackData;
-    try {
-      _trackData = _trackList.lastWhere((data) {
-        return data.bound.contains(offset);
-      });
-    } catch (e) {}
-
-    if (_trackData != null) {
-      if (_trackData.route != _topRoute) {
-        return;
-      }
-
-      if (_trackData.route == "/") {
-        _trackData.route = "root";
-        if (_trackData.uiId != null) {
-          _trackData.uiId = "root_${_trackData.uiId!}";
-        }
-      } else {
-        _trackData.uiId =
-            "${_trackData.route.replaceAll(' ', '')}_${_trackData.uiId!}";
-        if (_trackData.uiId!.startsWith("/")) {
-          _trackData.uiId = _trackData.uiId!.substring(1);
-        }
-      }
-      FlutterUxcam.appendGestureContent(
-        offset,
-        _trackData,
-      );
+  void sendTrackDataFromSummaryTree() {
+    TrackData? trackData;
+    String uId = "";
+    final summaryTree = summaryTreeByRoute.last;
+    String route = summaryTree.route;
+    if (route == "/") {
+      route = "root";
     }
+    uId += route + "_";
+    if (summaryTree.subTrees.isEmpty) {
+      uId += summaryTree.uiClass;
+      trackData = TrackData(
+        summaryTree.bound,
+        route,
+        uiValue: "",
+        uiId: formatValueToId(uId),
+        uiClass: summaryTree.uiClass,
+        uiType: summaryTree.type,
+      );
+    } else {
+      final subTree = summaryTree.subTrees.first;
+      if (subTree.type == 5) {
+        uId += subTree.uiClass + "_";
+        final elementTree = subTree.subTrees.first;
+        uId += elementTree.uiClass + "_" + elementTree.value;
+        trackData = TrackData(
+          elementTree.bound,
+          route,
+          uiValue: elementTree.value,
+          uiId: formatValueToId(uId),
+          uiClass: elementTree.uiClass,
+          uiType: elementTree.type,
+        );
+      } else {
+        uId += subTree.uiClass + "_" + subTree.value;
+        trackData = TrackData(
+          subTree.bound,
+          route,
+          uiValue: subTree.value,
+          uiId: formatValueToId(uId),
+          uiClass: subTree.uiClass,
+          uiType: subTree.type,
+        );
+      }
+    }
+
+    print("messagex:" + trackData.toString());
+    FlutterUxcam.appendGestureContent(position, trackData);
   }
 
   bool _isInteractive(Element element) {
@@ -385,9 +413,5 @@ class GestureHandler {
       }
     }
     return false;
-  }
-
-  void setPosition(Offset position) {
-    this.position = position;
   }
 }

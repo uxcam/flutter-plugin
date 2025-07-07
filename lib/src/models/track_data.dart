@@ -45,7 +45,7 @@ class TrackData {
 
   @override
   String toString() {
-    return 'TrackData(bound: $bound,  route: $route, id: $uiId, value: $uiValue)';
+    return 'TrackData(bound: $bound,  route: $route, id: $uiId, value: $uiValue, class: $uiClass)';
   }
 
   Map<String, dynamic> toJson() {
@@ -82,6 +82,7 @@ class SummaryTree {
   String value;
   Map<String, dynamic> custom;
   List<SummaryTree> subTrees;
+  bool isViewGroup;
 
   SummaryTree(
     this.route,
@@ -91,5 +92,6 @@ class SummaryTree {
     this.value = "",
     this.subTrees = const [],
     this.custom = const {},
+    this.isViewGroup = false,
   });
 }
