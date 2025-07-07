@@ -126,7 +126,11 @@ class UXCamPage extends StatelessWidget {
           Row(
             children: [Text('no'), Checkbox(value: false, onChanged: (v) {})],
           ),
-          ElevatedButton(onPressed: () {}, child: Text('data')),
+          ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed("detail");
+              },
+              child: Text('data')),
         ],
       ),
       // body: Row(
@@ -281,7 +285,7 @@ MaterialPageRoute<dynamic> onGenerateRoute(RouteSettings settings) {
   switch (settings.name) {
     case 'detail':
       return MaterialPageRoute(
-        builder: (_) => const UXCamPage(),
+        builder: (_) => const UserFormFirstPage(),
         settings: RouteSettings(
           arguments: settings.arguments,
           name: "detail",
