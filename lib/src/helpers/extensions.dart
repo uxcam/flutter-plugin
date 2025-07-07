@@ -89,4 +89,42 @@ extension ElementX on Element {
     }
     return true;
   }
+
+  String getUniqueId() {
+    final slotInParent = this.slot;
+    if (slotInParent != null) {
+      final slot = (slotInParent as IndexedSlot).index;
+      if (slot % 2 == 0) {}
+    }
+    return "";
+  }
+
+  Rect getEffectiveBounds() {
+    final renderObject = this.renderObject as RenderBox;
+    final translation = renderObject.getTransformTo(null).getTranslation();
+    final offset = Offset(translation.x, translation.y);
+    final bounds = renderObject.paintBounds.shift(offset);
+    return isRendered() ? bounds : Rect.zero;
+  }
+
+  Element? getSibling() {
+    Element? sibling;
+    final indexInParent = slot as IndexedSlot;
+    int siblingIndex = -1;
+    if (indexInParent.index % 2 == 0) {
+      siblingIndex = indexInParent.index + 1;
+    } else {
+      siblingIndex = indexInParent.index - 1;
+    }
+    visitAncestorElements((ancestor) {
+      ancestor.visitChildren((element) {
+        if (siblingIndex == (element.slot as IndexedSlot).index) {
+          sibling = element;
+          return;
+        }
+      });
+      return false;
+    });
+    return sibling;
+  }
 }
