@@ -74,14 +74,26 @@ class GestureHandler {
   }
 
   void _inspectDirectChild(SummaryTree parent, Element element) {
-    final type = getUxType(element);
     SummaryTree node = parent;
-    if (type == 5) {
-      updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
-      try {
-        final tree =
-            summaryTreeByRoute.firstWhere((tree) => tree.route == _topRoute);
-        if (tree.uiClass != element.widget.runtimeType.toString()) {
+    if (element.isRendered()) {
+      final type = getUxType(element);
+      if (type == 5) {
+        updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
+        try {
+          final tree =
+              summaryTreeByRoute.firstWhere((tree) => tree.route == _topRoute);
+          if (tree.uiClass != element.widget.runtimeType.toString()) {
+            node = SummaryTree(
+              _topRoute,
+              element.widget.runtimeType.toString(),
+              5,
+              bound: element.getEffectiveBounds(),
+              isViewGroup: true,
+            );
+            tree.subTrees = [...tree.subTrees, node];
+          }
+        } on StateError {
+          //a new route has appeared, create a new summary tree
           node = SummaryTree(
             _topRoute,
             element.widget.runtimeType.toString(),
@@ -89,60 +101,37 @@ class GestureHandler {
             bound: element.getEffectiveBounds(),
             isViewGroup: true,
           );
-          tree.subTrees = [...tree.subTrees, node];
+          addTreeIfInsideBounds(node);
         }
-      } on StateError {
-        //a new route has appeared, create a new summary tree
-        node = SummaryTree(
-          _topRoute,
-          element.widget.runtimeType.toString(),
-          5,
-          bound: element.getEffectiveBounds(),
-          isViewGroup: true,
-        );
-        addTreeIfInsideBounds(node);
       }
-    }
-    if (type == 7 || type == 12) {
-      final subTree = _inspectNonInteractiveChild(element);
-      if (subTree != null) {
-        addSubTreeIfInsideBounds(node, subTree);
+      if (type == 7 || type == 12) {
+        final subTree = _inspectNonInteractiveChild(element);
+        if (subTree != null) {
+          addSubTreeIfInsideBounds(node, subTree);
+        }
+        return;
       }
-      return;
-    }
-
-    if (userDefinedTypes.contains(element.widget.runtimeType)) {
-    } else if (fieldTypes.contains(element.widget.runtimeType)) {
-      _inspectTextFieldChild(element);
-    } else if (knownButtonTypes.contains(element.widget.runtimeType)) {
-      _inspectButtonChild(_dataForWidget(element), element);
-    } else if (_isInteractive(element)) {
-      _inspectInteractiveChild(element);
-    } else if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
-      _inspectNonInteractiveChild(element);
-    } else {
-      element.visitChildElements((child) {
-        // if (child.widget is OccludeWrapper) {
-        //   // Do not recurse into this child or its subtree
-        //   return;
-        // }
-        // Recursively visit this child's subtree
-        _inspectDirectChild(child);
-      });
-    }
-    if (type == 2) {
-      final subTree = _inspectTextFieldChild(element);
-      if (subTree != null) {
-        addSubTreeIfInsideBounds(node, subTree);
+      if (type == 1) {
+        final subTree = _inspectButtonChild(element);
+        if (subTree != null) {
+          addSubTreeIfInsideBounds(node, subTree);
+        }
+        return;
       }
-      return;
-    }
-    if (type == 3) {
-      final subTree = _inspectInteractiveChild(element);
-      if (subTree != null) {
-        addSubTreeIfInsideBounds(node, subTree);
+      if (type == 2) {
+        final subTree = _inspectTextFieldChild(element);
+        if (subTree != null) {
+          addSubTreeIfInsideBounds(node, subTree);
+        }
+        return;
       }
-      return;
+      if (type == 3) {
+        final subTree = _inspectInteractiveChild(element);
+        if (subTree != null) {
+          addSubTreeIfInsideBounds(node, subTree);
+        }
+        return;
+      }
     }
     element.visitChildElements((elem) => _inspectDirectChild(node, elem));
   }
@@ -440,9 +429,67 @@ class GestureHandler {
     if (_topRoute == "") _topRoute = "/";
   }
 
-  void removeTrackData() {
-    _trackList.clear();
+  String _generateUIdFromSummaryTree(SummaryTree tree) {
+    return tree.uiClass + "_" + tree.value;
   }
+
+  void sendTrackDataFromSummaryTree() {
+    TrackData? trackData;
+    String uId = "";
+    final summaryTree = summaryTreeByRoute.last;
+    String route = summaryTree.route;
+    if (route == "/") {
+      route = "root";
+    }
+    uId += route + "_";
+    if (summaryTree.subTrees.isEmpty) {
+      uId += summaryTree.uiClass;
+      trackData = TrackData(
+        summaryTree.bound,
+        route,
+        uiValue: "",
+        uiId: formatValueToId(uId),
+        uiClass: summaryTree.uiClass,
+        uiType: summaryTree.type,
+      );
+    } else {
+      final subTree = summaryTree.subTrees.last;
+      if (subTree.type == 5) {
+        uId += subTree.uiClass + "_";
+        if (subTree.subTrees.isEmpty) {
+          uId += subTree.uiClass;
+          trackData = TrackData(
+            subTree.bound,
+            route,
+            uiValue: subTree.value,
+            uiId: formatValueToId(uId),
+            uiClass: subTree.uiClass,
+            uiType: subTree.type,
+          );
+        } else {
+          final elementTree = subTree.subTrees.last;
+          uId += _generateUIdFromSummaryTree(elementTree);
+          trackData = TrackData(
+            elementTree.bound,
+            route,
+            uiValue: elementTree.value,
+            uiId: formatValueToId(uId),
+            uiClass: elementTree.uiClass,
+            uiType: elementTree.type,
+          );
+        }
+      } else {
+        uId += _generateUIdFromSummaryTree(subTree);
+        trackData = TrackData(
+          subTree.bound,
+          route,
+          uiValue: subTree.value,
+          uiId: formatValueToId(uId),
+          uiClass: subTree.uiClass,
+          uiType: subTree.type,
+        );
+      }
+    }
 
   void notifyTrackDataAt(Offset offset) {
     TrackData? _trackData;
