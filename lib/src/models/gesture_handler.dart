@@ -355,7 +355,6 @@ class GestureHandler {
         .replaceAll(' ', '')
         .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
         .toLowerCase();
-    return input;
     int hash = 5381;
     for (int i = 0; i < input.length; i++) {
       hash = ((hash << 5) + hash) + input.codeUnitAt(i);
