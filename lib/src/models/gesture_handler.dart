@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
+import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
 
 class GestureHandler {
   Offset position = Offset.zero;
@@ -13,54 +14,7 @@ class GestureHandler {
 
   List<SummaryTree> summaryTreeByRoute = [];
 
-  int userDefinedCounter = 0;
-  int buttonCounter = 0;
-  int nonInteractiveCounter = 0;
-  int fieldCounter = 0;
-  int formFieldCounter = 0;
-
-  List<Type> knownButtonTypes = [
-    ElevatedButton,
-    TextButton,
-    OutlinedButton,
-    GestureDetector,
-    InkWell,
-    IconButton,
-    FloatingActionButton,
-  ];
-
-  List<Type> nonInteractiveTypes = [
-    Image,
-    Text,
-    RichText,
-    Icon,
-  ];
-
-  List<Type> interactiveTypes = [
-    Radio,
-    Slider,
-    Switch,
-    Checkbox,
-  ];
-
-  List<Type> fieldTypes = [
-    TextField,
-  ];
-
-  List<Type> scrollingContainerTypes = [
-    ListView,
-    SingleChildScrollView,
-    GridView,
-  ];
-
-  List<Type> containerTypes = [
-    Scaffold,
-  ];
-
-  List<Type> overlayTypes = [
-    BottomSheet,
-    AlertDialog,
-  ];
+  final UxTraceableElement traceableElement = UxTraceableElement();
 
   void setPosition(Offset position) {
     this.position = position;
@@ -72,7 +26,7 @@ class GestureHandler {
         SummaryTree(
           _topRoute,
           element.widget.runtimeType.toString(),
-          getUxType(element),
+          traceableElement.getUxType(element),
           bound: element.getEffectiveBounds(),
         ),
         element);
@@ -80,6 +34,7 @@ class GestureHandler {
   }
 
   void _inspectDirectChild(SummaryTree parent, Element element) {
+    final type = traceableElement.getUxType(element);
     SummaryTree node = parent;
     if (element.isRendered()) {
       final type = getUxType(element);
@@ -291,36 +246,6 @@ class GestureHandler {
           });
     }
     return subTree;
-  }
-
-  int getUxType(Element element) {
-    int _uiType = -1;
-    if (knownButtonTypes.contains(element.widget.runtimeType)) {
-      _uiType = 1;
-    }
-    if (fieldTypes.contains(element.widget.runtimeType)) {
-      _uiType = 2;
-    }
-    if (_isInteractive(element)) {
-      _uiType = 3;
-    }
-    if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
-      if (element.widget.runtimeType.toString() == "Text" ||
-          element.widget.runtimeType.toString() == "RichText") {
-        _uiType = 7;
-      }
-      if (element.widget.runtimeType.toString() == "Image" ||
-          element.widget.runtimeType.toString() == "Icon") {
-        _uiType = 12;
-      }
-    }
-
-    if (containerTypes.contains(element.widget.runtimeType) ||
-        scrollingContainerTypes.contains(element.widget.runtimeType) ||
-        overlayTypes.contains(element.widget.runtimeType)) {
-      _uiType = 5;
-    }
-    return _uiType;
   }
 
   String extractTextFromSpan(TextSpan span) {
@@ -551,16 +476,4 @@ class GestureHandler {
     }
   }
 
-  bool _isInteractive(Element element) {
-    final isPresent = interactiveTypes.contains(element.widget.runtimeType);
-    if (isPresent) {
-      return true;
-    } else {
-      //Radio types require extra processing
-      if (element.widget.runtimeType.toString().startsWith("Radio")) {
-        return true;
-      }
-    }
-    return false;
-  }
 }
