@@ -10,7 +10,6 @@ import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
 class GestureHandler {
   Offset position = Offset.zero;
   String _topRoute = "/";
-  String get topRoute => _topRoute;
 
   List<SummaryTree> summaryTreeByRoute = [];
 
@@ -39,7 +38,9 @@ class GestureHandler {
     if (element.isRendered()) {
       final type = getUxType(element);
       if (type == 5) {
-        updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
+        if (!traceableElement.isOverLay(element)) {
+          updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
+        }
         try {
           final tree =
               summaryTreeByRoute.firstWhere((tree) => tree.route == _topRoute);
@@ -51,7 +52,7 @@ class GestureHandler {
               bound: element.getEffectiveBounds(),
               isViewGroup: true,
             );
-            tree.subTrees = [...tree.subTrees, node];
+            addSubTreeIfInsideBounds(tree, node);
           }
         } on StateError {
           //a new route has appeared, create a new summary tree
@@ -243,21 +244,10 @@ class GestureHandler {
     return buffer.toString();
   }
 
-  TrackData? _dataForWidget(Element element) {
-    final renderObject = element.renderObject;
-
-    bool isViewGroup = false;
-    String route = topRoute;
-    String depth = element.depth.toString();
-    String _uiId =
-        element.widget.key != null ? element.widget.key.toString() : "";
-    String _uiClass = element.widget.runtimeType.toString();
-    int _uiType = -1;
-
-    if (knownButtonTypes.contains(element.widget.runtimeType)) {
-      _uiType = 1;
-      String id = "${knownButtonTypes.hashCode}_${depth.hashCode}";
-      _uiId = element.widget.key != null ? element.widget.key.toString() : id;
+  void addTreeIfInsideBounds(SummaryTree tree) {
+    if (tree.bound.contains(position)) {
+      summaryTreeByRoute.removeWhere((tree) => tree.route != _topRoute);
+      summaryTreeByRoute.add(tree);
     }
     if (fieldTypes.contains(element.widget.runtimeType)) {
       _uiType = 2;
@@ -346,13 +336,12 @@ class GestureHandler {
         .replaceAll(' ', '')
         .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
         .toLowerCase();
-  }
-
-  void addWidgetDataForTracking(TrackData? data) {
-    if (data == null) return;
-    final id = data.uiId ?? "";
-    _trackList.removeWhere((item) => item.uiId == id);
-    _trackList.add(data);
+    return input;
+    int hash = 5381;
+    for (int i = 0; i < input.length; i++) {
+      hash = ((hash << 5) + hash) + input.codeUnitAt(i);
+    }
+    return hash.toUnsigned(32).toRadixString(16);
   }
 
   void updateTopRoute(String route) {

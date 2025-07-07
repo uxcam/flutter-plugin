@@ -46,6 +46,10 @@ class UxTraceableElement {
     AlertDialog,
   ];
 
+  bool isOverLay(Element element) {
+    return overlayTypes.contains(element.widget.runtimeType);
+  }
+
   int getUxType(Element element) {
     int _uiType = -1;
 
