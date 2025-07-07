@@ -73,3 +73,23 @@ class TrackData {
     print("Element type : $uiType");
   }
 }
+
+class SummaryTree {
+  Rect bound;
+  String route;
+  String uiClass;
+  int type;
+  String value;
+  Map<String, dynamic> custom;
+  List<SummaryTree> subTrees;
+
+  SummaryTree(
+    this.route,
+    this.uiClass,
+    this.type, {
+    this.bound = Rect.zero,
+    this.value = "",
+    this.subTrees = const [],
+    this.custom = const {},
+  });
+}
