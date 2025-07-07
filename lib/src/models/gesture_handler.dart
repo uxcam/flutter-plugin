@@ -5,16 +5,15 @@ import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 
 class GestureHandler {
+  Offset position = Offset.zero;
   List<TrackData> _trackList = [];
   String _topRoute = "/";
   String get topRoute => _topRoute;
+  int nextId = 0;
+
+  List<SummaryTree> summaryTreeByRoute = [];
 
   List<Type> userDefinedTypes = [];
-
-  int userDefinedCounter = 0;
-  int buttonCounter = 0;
-  int nonInteractiveCounter = 0;
-  int fieldCounter = 0;
 
   List<Type> knownButtonTypes = [
     ElevatedButton,
@@ -44,11 +43,14 @@ class GestureHandler {
     TextField,
   ];
 
-  List<Type> containerTypes = [
-    Scaffold,
+  List<Type> scrollingContainerTypes = [
     ListView,
     SingleChildScrollView,
     GridView,
+  ];
+
+  List<Type> containerTypes = [
+    Scaffold,
   ];
 
   List<Type> overlayTypes = [
@@ -57,98 +59,139 @@ class GestureHandler {
   ];
 
   void inspectElement(Element element) {
-    buttonCounter = 0;
-    nonInteractiveCounter = 0;
-    removeTrackData();
-    _inspectDirectChild(element);
-    _generateCompoundButtonIdFromSiblings();
+    summaryTreeByRoute.clear();
+    _inspectDirectChild(
+        SummaryTree(
+          _topRoute,
+          element.widget.runtimeType.toString(),
+          getUxType(element),
+          bound: element.getEffectiveBounds(),
+        ),
+        element);
   }
 
-  void _inspectDirectChild(Element element) {
-    //first capture route information
-    if (containerTypes.contains(element.widget.runtimeType)) {
+  void _inspectDirectChild(SummaryTree parent, Element element) {
+    final type = getUxType(element);
+    SummaryTree node = parent;
+    if (type == 5) {
       updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
-      addWidgetDataForTracking(_dataForWidget(element));
+      try {
+        final tree =
+            summaryTreeByRoute.firstWhere((tree) => tree.route == _topRoute);
+        if (tree.uiClass != element.widget.runtimeType.toString()) {
+          node = SummaryTree(
+            _topRoute,
+            element.widget.runtimeType.toString(),
+            5,
+            bound: element.getEffectiveBounds(),
+          );
+          tree.subTrees = [...tree.subTrees, node];
+        }
+      } on StateError {
+        //a new route has appeared, create a new summary tree
+        node = SummaryTree(
+          _topRoute,
+          element.widget.runtimeType.toString(),
+          5,
+          bound: element.getEffectiveBounds(),
+        );
+        addTreeIfInsideBounds(node);
+      }
     }
-    if (overlayTypes.contains(element.widget.runtimeType)) {
-      updateTopRoute("/overlay");
-      addWidgetDataForTracking(_dataForWidget(element));
+    if (type == 7 || type == 12) {
+      final subTree = _inspectNonInteractiveChild(element);
+      if (subTree != null) {
+        addSubTreeIfInsideBounds(node, subTree);
+      }
+      return;
     }
-
-    if (userDefinedTypes.contains(element.widget.runtimeType)) {
-    } else if (fieldTypes.contains(element.widget.runtimeType)) {
-      _inspectTextFieldChild(element);
-    } else if (knownButtonTypes.contains(element.widget.runtimeType)) {
-      _inspectButtonChild(_dataForWidget(element), element);
-    } else if (_isInteractive(element)) {
-      _inspectInteractiveChild(element);
-    } else if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
-      _inspectNonInteractiveChild(element);
-    } else {
-      element.visitChildElements(_inspectDirectChild);
+    if (type == 1) {
+      final subTree = _inspectButtonChild(element);
+      if (subTree != null) {
+        addSubTreeIfInsideBounds(node, subTree);
+      }
+      return;
     }
+    if (type == 2) {
+      final subTree = _inspectTextFieldChild(element);
+      if (subTree != null) {
+        addSubTreeIfInsideBounds(node, subTree);
+      }
+      return;
+    }
+    if (type == 3) {
+      final subTree = _inspectInteractiveChild(element);
+      if (subTree != null) {
+        addSubTreeIfInsideBounds(node, subTree);
+      }
+      return;
+    }
+    element.visitChildElements((elem) => _inspectDirectChild(node, elem));
   }
 
-  void _inspectNonInteractiveChild(Element element) {
-    TrackData? trackData;
-    if (element.widget is Text) {
-      Text widget = element.widget as Text;
-      trackData = _dataForWidget(element);
-      trackData.setLabel(widget.data ?? "");
-      trackData.setId(formatValueToId(widget.data ?? ""));
-    }
-    if (element.widget is Image) {
-      String? label = (element.widget as Image).semanticLabel;
-      trackData = _dataForWidget(element);
-      trackData.setLabel(label ?? "");
-      trackData.addCustomProperty({
-        "content_desc: ": label ?? "",
-      });
-    }
-    if (element.widget is Icon) {
-      String? label = (element.widget as Icon).semanticLabel;
-      trackData = _dataForWidget(element);
-      trackData.setLabel(label ?? "");
-      trackData.addCustomProperty({
-        "content_desc: ": label ?? "",
-      });
+  SummaryTree? _inspectInteractiveChild(Element element) {
+    SummaryTree? subTree;
+    String label = "";
+
+    void _extractTextFromButton(Element element) {
+      final renderObject = element.renderObject;
+      if (renderObject is RenderParagraph) {
+        final textSpan = renderObject.text;
+        if (textSpan is TextSpan) {
+          label = extractTextFromSpan(textSpan);
+        }
+      }
+      element.visitChildElements((element) => _extractTextFromButton(element));
     }
 
-    if (trackData != null) {
-      addWidgetDataForTracking(trackData);
-    }
-  }
+    final sibling = element.getSibling();
 
-  void _inspectInteractiveChild(Element element) {
-    TrackData? trackData;
+    if (sibling != null) {
+      _extractTextFromButton(sibling);
+    }
+
     if (element.widget is Radio) {
-      Radio widget = element.widget as Radio;
-      trackData = _dataForWidget(element);
-      trackData.setLabel((widget.value ?? false).toString());
+      subTree = SummaryTree(
+        ModalRoute.of(element)?.settings.name ?? "",
+        element.widget.runtimeType.toString(),
+        3,
+        value: label,
+        bound: element.getEffectiveBounds(),
+      );
     }
     if (element.widget is Slider) {
-      Slider widget = element.widget as Slider;
-      trackData = _dataForWidget(element);
-      trackData.setLabel(widget.value.toString());
+      subTree = SummaryTree(
+        ModalRoute.of(element)?.settings.name ?? "",
+        element.widget.runtimeType.toString(),
+        3,
+        value: label,
+        bound: element.getEffectiveBounds(),
+      );
     }
     if (element.widget is Checkbox) {
-      Checkbox widget = element.widget as Checkbox;
-      trackData = _dataForWidget(element);
-      trackData.setLabel(widget.value.toString());
+      subTree = SummaryTree(
+        ModalRoute.of(element)?.settings.name ?? "",
+        element.widget.runtimeType.toString(),
+        3,
+        value: label,
+        bound: element.getEffectiveBounds(),
+      );
     }
     if (element.widget is Switch) {
-      Switch widget = element.widget as Switch;
-      trackData = _dataForWidget(element);
-      trackData.setLabel(widget.value.toString());
+      subTree = SummaryTree(
+        ModalRoute.of(element)?.settings.name ?? "",
+        element.widget.runtimeType.toString(),
+        3,
+        value: label,
+        bound: element.getEffectiveBounds(),
+      );
     }
 
-    if (trackData != null) {
-      trackData.setId("${trackData.depth}");
-      addWidgetDataForTracking(trackData);
-    }
+    return subTree;
   }
 
-  void _inspectTextFieldChild(Element element) {
+  SummaryTree? _inspectTextFieldChild(Element element) {
+    SummaryTree? subTree;
     String hint = "";
     if (element.widget is TextField) {
       final textField = element.widget as TextField;
@@ -156,27 +199,106 @@ class GestureHandler {
           textField.decoration?.labelText ??
           "";
     }
-    TrackData trackData = _dataForWidget(element);
-    trackData.setLabel(hint);
-    trackData.setId(formatValueToId(hint));
-    addWidgetDataForTracking(trackData);
+    subTree = SummaryTree(
+      ModalRoute.of(element)?.settings.name ?? "",
+      element.widget.runtimeType.toString(),
+      2,
+      value: hint,
+      bound: element.getEffectiveBounds(),
+    );
+    return subTree;
   }
 
-  void _inspectButtonChild(TrackData containingWidget, Element element) {
-    final renderObject = element.renderObject;
-    if (renderObject is RenderParagraph) {
-      final textSpan = renderObject.text;
-      if (textSpan is TextSpan) {
-        final label = extractTextFromSpan(textSpan);
-        containingWidget.setLabel(label);
-        containingWidget.setId(formatValueToId(label));
-        addWidgetDataForTracking(containingWidget);
+  SummaryTree? _inspectButtonChild(Element element) {
+    SummaryTree? subTree;
+    String label = "";
+
+    void _extractTextFromButton(Element element) {
+      final renderObject = element.renderObject;
+      if (renderObject is RenderParagraph) {
+        final textSpan = renderObject.text;
+        if (textSpan is TextSpan) {
+          label = extractTextFromSpan(textSpan);
+        }
       }
-      addWidgetDataForTracking(containingWidget);
+      element.visitChildElements((element) => _extractTextFromButton(element));
     }
-    addWidgetDataForTracking(containingWidget);
-    element.visitChildElements(
-        (element) => _inspectButtonChild(containingWidget, element));
+
+    _extractTextFromButton(element);
+    subTree = SummaryTree(
+      ModalRoute.of(element)?.settings.name ?? "",
+      element.widget.runtimeType.toString(),
+      1,
+      value: label,
+      bound: element.getEffectiveBounds(),
+    );
+
+    return subTree;
+  }
+
+  SummaryTree? _inspectNonInteractiveChild(Element element) {
+    SummaryTree? subTree;
+    if (element.widget is Text) {
+      Text widget = element.widget as Text;
+      subTree = SummaryTree(
+        ModalRoute.of(element)?.settings.name ?? "",
+        element.widget.runtimeType.toString(),
+        7,
+        value: widget.data ?? "",
+        bound: element.getEffectiveBounds(),
+      );
+    }
+    if (element.widget is Image) {
+      String? label = (element.widget as Image).semanticLabel;
+      subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
+          element.widget.runtimeType.toString(), 7,
+          value: (element.widget as Image).semanticLabel ?? "",
+          bound: element.getEffectiveBounds(),
+          custom: {
+            "content_desc: ": label ?? "",
+          });
+    }
+    if (element.widget is Icon) {
+      String? label = (element.widget as Icon).semanticLabel;
+      subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
+          element.widget.runtimeType.toString(), 7,
+          value: (element.widget as Icon).semanticLabel ?? "",
+          bound: element.getEffectiveBounds(),
+          custom: {
+            "content_desc: ": label ?? "",
+          });
+    }
+    return subTree;
+  }
+
+  int getUxType(Element element) {
+    int _uiType = -1;
+    if (knownButtonTypes.contains(element.widget.runtimeType)) {
+      _uiType = 1;
+    }
+    if (fieldTypes.contains(element.widget.runtimeType)) {
+      _uiType = 2;
+    }
+    if (_isInteractive(element)) {
+      _uiType = 3;
+    }
+    if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
+      if (element.widget.runtimeType.toString() == "Text" ||
+          element.widget.runtimeType.toString() == "RichText") {
+        _uiType = 7;
+      }
+      if (element.widget.runtimeType.toString() == "Image" ||
+          element.widget.runtimeType.toString() == "Icon") {
+        _uiType = 12;
+      }
+    }
+
+    if (containerTypes.contains(element.widget.runtimeType) ||
+        scrollingContainerTypes.contains(element.widget.runtimeType) ||
+        overlayTypes.contains(element.widget.runtimeType)) {
+      _uiType = 5;
+    }
+    return _uiType;
   }
 
   String extractTextFromSpan(TextSpan span) {
@@ -193,69 +315,19 @@ class GestureHandler {
     return buffer.toString();
   }
 
-  TrackData _dataForWidget(Element element) {
-    final renderObject = element.renderObject;
-
-    bool isViewGroup = false;
-    String route = topRoute;
-    String _uiId =
-        element.widget.key != null ? element.widget.key.toString() : "";
-    String _uiClass = element.widget.runtimeType.toString();
-    int _uiType = -1;
-    if (knownButtonTypes.contains(element.widget.runtimeType)) {
-      _uiType = 1;
+  void addTreeIfInsideBounds(SummaryTree tree) {
+    if (tree.bound.contains(position)) {
+      summaryTreeByRoute.add(tree);
     }
-    if (fieldTypes.contains(element.widget.runtimeType)) {
-      _uiType = 2;
-    }
-    if (_isInteractive(element)) {
-      _uiType = 3;
-      if (element.widget.runtimeType.toString().startsWith("Radio")) {
-        _uiClass = "Radio";
-      }
-    }
-    if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
-      if (element.widget.runtimeType.toString() == "Text" ||
-          element.widget.runtimeType.toString() == "RichText") {
-        _uiType = 7;
-      }
-      if (element.widget.runtimeType.toString() == "Image" ||
-          element.widget.runtimeType.toString() == "Icon") {
-        _uiType = 12;
-        _uiId = "${nonInteractiveCounter}";
-        nonInteractiveCounter++;
-      }
-    }
-
-    if (containerTypes.contains(element.widget.runtimeType)) {
-      _uiType = 5;
-      _uiId = "${element.widget.runtimeType.toString()}_00";
-      isViewGroup = true;
-    }
-    if (overlayTypes.contains(element.widget.runtimeType)) {
-      _uiType = 5;
-      _uiId = "${element.widget.runtimeType.toString()}_10";
-      isViewGroup = true;
-    }
-
-    return TrackData(
-      element.isRendered()
-          ? _getRectFromBox(renderObject as RenderBox)
-          : Rect.zero,
-      route,
-      uiClass: _uiClass,
-      uiId: _uiId,
-      uiType: _uiType,
-      isViewGroup: isViewGroup,
-      depth: element.depth,
-    );
   }
 
-  Rect _getRectFromBox(RenderBox renderObject) {
-    final translation = renderObject.getTransformTo(null).getTranslation();
-    final offset = Offset(translation.x, translation.y);
-    final bounds = renderObject.paintBounds.shift(offset);
-    return bounds;
+  void addSubTreeIfInsideBounds(SummaryTree root, SummaryTree tree) {
+    if (tree.bound.contains(position)) {
+      root.subTrees = [
+        ...root.subTrees,
+        tree,
+      ];
+    }
   }
 
   String formatValueToId(String value) {
@@ -265,19 +337,9 @@ class GestureHandler {
         .toLowerCase();
   }
 
-  void addWidgetDataForTracking(TrackData data) {
-    final id = data.uiId ?? "";
-    _trackList.removeWhere((item) => item.uiId == id);
-    _trackList.add(data);
-  }
-
   void updateTopRoute(String route) {
     _topRoute = route;
     if (_topRoute == "") _topRoute = "/";
-  }
-
-  void removeTrackData() {
-    _trackList.clear();
   }
 
   void notifyTrackDataAt(Offset offset) {
@@ -325,20 +387,7 @@ class GestureHandler {
     return false;
   }
 
-  void _generateCompoundButtonIdFromSiblings() {
-    final compoundData = _trackList.where((data) {
-      return data.uiType == 3;
-    }).toList();
-
-    for (var data in compoundData) {
-      try {
-        final requiredDepth = data.depth;
-        final compoundId = data.uiId ?? "";
-        final sibling = _trackList.firstWhere(
-            (data) => data.depth == requiredDepth && data.uiId != compoundId);
-        data.uiId = "${data.uiClass}_${sibling.uiValue}";
-      } on StateError {}
-    }
-    print("object");
+  void setPosition(Offset position) {
+    this.position = position;
   }
 }

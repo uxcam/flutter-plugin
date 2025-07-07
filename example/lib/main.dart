@@ -31,15 +31,12 @@ class MyApp extends StatelessWidget {
 
     FlutterUxcam.startWithConfiguration(config);
 
-    return MaterialApp(
-      initialRoute: "/",
-      onGenerateRoute: onGenerateRoute,
-      navigatorObservers: [FlutterUxcamNavigatorObserver()],
-      builder: (context, child) {
-        return UXCamGestureHandler(
-          child: child!,
-        );
-      },
+    return UXCamGestureHandler(
+      child: MaterialApp(
+        initialRoute: "/",
+        onGenerateRoute: onGenerateRoute,
+        navigatorObservers: [FlutterUxcamNavigatorObserver()],
+      ),
     );
   }
 }
@@ -50,44 +47,7 @@ class UXCamPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
-      // body: IndexedStack(
-      //   children: [
-      //     Container(
-      //       child: Text("data1"),
-      //     ),
-      //     Container(
-      //       child: Text("data2"),
-      //     ),
-      //     Container(
-      //       child: Text("data3"),
-      //     ),
-      //     Container(
-      //       child: Text("data4"),
-      //     ),
-      //   ],
-      // ),
-      // body: Column(
-      //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      //   crossAxisAlignment: CrossAxisAlignment.stretch,
-      //   children: [
-      //     ElevatedButton(
-      //         onPressed: () {
-      //           showDialog(
-      //               context: context,
-      //               builder: (_) {
-      //                 return AlertDialog(
-      //                   actions: [Text('data')],
-      //                 );
-      //               });
-      //         },
-      //         child: Text('data')),
-      //     ElevatedButton(onPressed: () {}, child: Text('data')),
-      //     ElevatedButton(onPressed: () {}, child: Text('data')),
-      //   ],
-      // ),
       // body: ListView(
-      //   padding: const EdgeInsets.all(8.0),
       //   children: [
       //     Text(
       //       "This is a smart events demo",
@@ -107,18 +67,99 @@ class UXCamPage extends StatelessWidget {
       //       buttonTitle: 'Login',
       //     ),
       //     TextButton(onPressed: () {}, child: Text("Signup")),
-      //     Row(
-      //       children: [
-      //         Radio(value: true, groupValue: false, onChanged: (val) {}),
-      //         Text(
-      //           "radio",
-      //           style: Theme.of(context).textTheme.headlineSmall,
-      //         ),
-      //       ],
+      //   ],
+      // ),
+      // body: IndexedStack(
+      //   children: [
+      //     Container(
+      //       child: Text("data1"),
+      //     ),
+      //     Container(
+      //       child: Text("data2"),
+      //     ),
+      //     Container(
+      //       child: Text("data3"),
+      //     ),
+      //     Container(
+      //       child: Text("data4"),
       //     ),
       //   ],
       // ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ElevatedButton(onPressed: () {}, child: Text('data')),
+          TextField(
+            decoration: InputDecoration(hintText: "this is a hint"),
+          ),
+          ElevatedButton(
+              onPressed: () {
+                showDialog(
+                    context: context,
+                    builder: (_) {
+                      return AlertDialog(
+                        title: const Text('Feature Section'),
+                        content: Text("data"),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      );
+                    });
+              },
+              child: Text('data')),
+          Row(
+            children: [Checkbox(value: false, onChanged: (v) {}), Text('yes')],
+          ),
+          Row(
+            children: [Checkbox(value: false, onChanged: (v) {}), Text('no')],
+          ),
+          Row(
+            children: [
+              Text('maybe'),
+              Checkbox(value: false, onChanged: (v) {})
+            ],
+          ),
+          Row(
+            children: [Text('no'), Checkbox(value: false, onChanged: (v) {})],
+          ),
+          ElevatedButton(onPressed: () {}, child: Text('data')),
+        ],
+      ),
       // body: Row(
+      //   children: [
+      //     Text(
+      //       "radio",
+      //       style: Theme.of(context).textTheme.headlineSmall,
+      //     ),
+      //     Radio(value: true, groupValue: false, onChanged: (val) {}),
+      //   ],
+      // ),
+      // body: ListView(
+      //   padding: const EdgeInsets.all(8.0),
+      //   children: [
+      // Text(
+      //   "This is a smart events demo",
+      //   style: Theme.of(context).textTheme.headlineSmall,
+      // ),
+      // Image.asset(
+      //   "assets/images/testimage.jpg",
+      //   semanticLabel: "this is a test image",
+      // ),
+      // TextField(
+      //   decoration: InputDecoration(hintText: "this is a hint"),
+      // ),
+      // TextFormField(),
+      // FeatureSection(
+      //   title: 'Screen Tagging',
+      //   onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+      //   buttonTitle: 'Login',
+      // ),
+      // TextButton(onPressed: () {}, child: Text("Signup")),
+      // Column(
       //   children: [
       //     Radio(value: true, groupValue: false, onChanged: (val) {}),
       //     Text(
@@ -127,10 +168,30 @@ class UXCamPage extends StatelessWidget {
       //     ),
       //   ],
       // ),
-      bottomNavigationBar: BottomNavigationWidget(
-        currentIndex: 0,
-        onTap: (i) {},
-      ),
+      // Column(
+      //   children: [
+      //     Slider(value: 0, onChanged: (x) {}),
+      //     Text(
+      //       "slider",
+      //       style: Theme.of(context).textTheme.headlineSmall,
+      //     ),
+      //   ],
+      // ),
+      //],
+      //),
+      // body: Row(
+      //   children: [
+      //     Radio(value: true, groupValue: false, onChanged: (val) {}),
+      // Text(
+      //   "radio",
+      //   style: Theme.of(context).textTheme.headlineSmall,
+      // ),
+      //   ],
+      // ),
+      // bottomNavigationBar: BottomNavigationWidget(
+      //   currentIndex: 0,
+      //   onTap: (i) {},
+      // ),
       // floatingActionButton: FloatingActionButton(
       //   onPressed: () {
       //     showDialog(
@@ -161,6 +222,20 @@ class UXCamPage extends StatelessWidget {
       //   child: const Icon(Icons.add),
       // ),
     );
+  }
+}
+
+class StatefulTest extends StatefulWidget {
+  const StatefulTest({Key? key}) : super(key: key);
+
+  @override
+  State<StatefulTest> createState() => _StatefulTestState();
+}
+
+class _StatefulTestState extends State<StatefulTest> {
+  @override
+  Widget build(BuildContext context) {
+    return const Placeholder();
   }
 }
 
@@ -206,7 +281,7 @@ MaterialPageRoute<dynamic> onGenerateRoute(RouteSettings settings) {
   switch (settings.name) {
     case 'detail':
       return MaterialPageRoute(
-        builder: (_) => const UserFormFirstPage(),
+        builder: (_) => const UXCamPage(),
         settings: RouteSettings(
           arguments: settings.arguments,
           name: "detail",
@@ -214,7 +289,7 @@ MaterialPageRoute<dynamic> onGenerateRoute(RouteSettings settings) {
       );
     default:
       return MaterialPageRoute(
-        builder: (_) => const UserFormFirstPage(),
+        builder: (_) => const UXCamPage(),
         settings: RouteSettings(
           arguments: settings.arguments,
           name: "/",
