@@ -47,16 +47,17 @@ class TrackData {
 
   @override
   String toString() {
-    return 'TrackData(bound: $bound,  route: $route, id: $uiId, value: $uiValue, class: $uiClass)';
+    return 'TrackData(bound: $bound,  route: $route, id: $uiId, type: $uiType,value: $uiValue,)';
   }
 
   Map<String, dynamic> toJson() {
+    final value =
+        jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : "");
     return {
       'class': uiClass,
       'id': uiId,
-      'value':
-          jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : ""),
-      'name': uiValue,
+      'value': value,
+      'name': value,
       'type': uiType,
       'isViewGroup': isViewGroup ?? false,
       'isSensitive': isSensitive,

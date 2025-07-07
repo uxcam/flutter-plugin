@@ -89,57 +89,66 @@ class UXCamPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ElevatedButton(onPressed: () {}, child: Text('data')),
-          TextField(
-            decoration: InputDecoration(hintText: "this is a hint"),
+          // ElevatedButton(onPressed: () {}, child: Text('data')),
+          // TextField(
+          //   decoration: InputDecoration(hintText: "this is a hint"),
+          // ),
+          // ElevatedButton(
+          //     onPressed: () {
+          //       showDialog(
+          //           context: context,
+          //           builder: (_) {
+          //             return AlertDialog(
+          //               title: const Text('Feature Section'),
+          //               content: Text("data"),
+          //               actions: [
+          //                 TextButton(
+          //                   onPressed: () => Navigator.of(context).pop(),
+          //                   child: const Text('Close'),
+          //                 ),
+          //               ],
+          //             );
+          //           });
+          //     },
+          //     child: Text('data')),
+          CheckboxListTile(
+            title: const Text('Crash Handling'),
+            subtitle: const Text(
+              '(Enabled By Default)',
+              style: TextStyle(fontSize: 12),
+            ),
+            value: false,
+            onChanged: (value) => {},
           ),
-          ElevatedButton(
-              onPressed: () {
-                showDialog(
-                    context: context,
-                    builder: (_) {
-                      return AlertDialog(
-                        title: const Text('Feature Section'),
-                        content: Text("data"),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Close'),
-                          ),
-                        ],
-                      );
-                    });
-              },
-              child: Text('data')),
-          Row(
-            children: [
-              Checkbox(value: false, onChanged: (v) {}),
-              Text('yes'),
-              Checkbox(value: false, onChanged: (v) {}),
-              Text('no')
-            ],
-          ),
-          Row(
-            children: [Checkbox(value: false, onChanged: (v) {}), Text('no')],
-          ),
-          Row(
-            children: [
-              Text('maybe'),
-              Checkbox(value: false, onChanged: (v) {}),
-              Text('yes'),
-              Checkbox(value: false, onChanged: (v) {}),
-              Text('no'),
-              Checkbox(value: false, onChanged: (v) {})
-            ],
-          ),
-          Row(
-            children: [Text('no'), Checkbox(value: false, onChanged: (v) {})],
-          ),
-          ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pushNamed("detail");
-              },
-              child: Text('data')),
+          // Row(
+          //   children: [
+          //     Checkbox(value: false, onChanged: (v) {}),
+          //     Text('yes'),
+          //     Checkbox(value: false, onChanged: (v) {}),
+          //     Text('no')
+          //   ],
+          // ),
+          // Row(
+          //   children: [Checkbox(value: false, onChanged: (v) {}), Text('no')],
+          // ),
+          // Row(
+          //   children: [
+          //     Text('maybe'),
+          //     Checkbox(value: false, onChanged: (v) {}),
+          //     Text('yes'),
+          //     Checkbox(value: false, onChanged: (v) {}),
+          //     Text('no'),
+          //     Checkbox(value: false, onChanged: (v) {})
+          //   ],
+          // ),
+          // Row(
+          //   children: [Text('no'), Checkbox(value: false, onChanged: (v) {})],
+          // ),
+          // ElevatedButton(
+          //     onPressed: () {
+          //       Navigator.of(context).pushNamed("detail");
+          //     },
+          //     child: Text('data')),
         ],
       ),
       // body: Row(
@@ -201,10 +210,10 @@ class UXCamPage extends StatelessWidget {
       // ),
       //   ],
       // ),
-      // bottomNavigationBar: BottomNavigationWidget(
-      //   currentIndex: 0,
-      //   onTap: (i) {},
-      // ),
+      bottomNavigationBar: BottomNavigationWidget(
+        currentIndex: 0,
+        onTap: (i) {},
+      ),
       // floatingActionButton: FloatingActionButton(
       //   onPressed: () {
       //     showDialog(
