@@ -47,7 +47,121 @@ class UXCamPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      body: ListView(
+        children: [
+          Text(
+            "This is a smart events demo",
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          Image.asset(
+            "assets/images/testimage.jpg",
+            //semanticLabel: "this is a test image",
+          ),
+          TextField(
+            decoration: InputDecoration(hintText: "this is a hint"),
+          ),
+          TextFormField(),
+          FeatureSection(
+            title: 'Screen Tagging',
+            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+            buttonTitle: 'Login',
+          ),
+          TextButton(onPressed: () {}, child: Text("Signup")),
+        ],
+      ),
+      // body: IndexedStack(
+      //   children: [
+      //     Container(
+      //       child: Text("data1"),
+      //     ),
+      //     Container(
+      //       child: Text("data2"),
+      //     ),
+      //     Container(
+      //       child: Text("data3"),
+      //     ),
+      //     Container(
+      //       child: Text("data4"),
+      //     ),
+      //   ],
+      // ),
+      // body: Column(
+      //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      //   crossAxisAlignment: CrossAxisAlignment.stretch,
+      //   children: [
+      // ElevatedButton(onPressed: () {}, child: Text('data')),
+      // TextField(
+      //   decoration: InputDecoration(hintText: "this is a hint"),
+      // ),
+      // ElevatedButton(
+      //     onPressed: () {
+      //       showDialog(
+      //           context: context,
+      //           builder: (_) {
+      //             return AlertDialog(
+      //               title: const Text('Feature Section'),
+      //               content: Text("data"),
+      //               actions: [
+      //                 TextButton(
+      //                   onPressed: () => Navigator.of(context).pop(),
+      //                   child: const Text('Close'),
+      //                 ),
+      //               ],
+      //             );
+      //           });
+      //     },
+      //     child: Text('data')),
+      // CheckboxListTile(
+      //   title: const Text('Crash Handling'),
+      //   subtitle: const Text(
+      //     '(Enabled By Default)',
+      //     style: TextStyle(fontSize: 12),
+      //   ),
+      //   value: false,
+      //   onChanged: (value) => {},
+      // ),
+      // Row(
+      //   children: [
+      //     Checkbox(value: false, onChanged: (v) {}),
+      //     Text('yes'),
+      //     Checkbox(value: false, onChanged: (v) {}),
+      //     Text('no')
+      //   ],
+      // ),
+      // Row(
+      //   children: [Checkbox(value: false, onChanged: (v) {}), Text('no')],
+      // ),
+      // Row(
+      //   children: [
+      //     Text('maybe'),
+      //     Checkbox(value: false, onChanged: (v) {}),
+      //     Text('yes'),
+      //     Checkbox(value: false, onChanged: (v) {}),
+      //     Text('no'),
+      //     Checkbox(value: false, onChanged: (v) {})
+      //   ],
+      // ),
+      // Row(
+      //   children: [Text('no'), Checkbox(value: false, onChanged: (v) {})],
+      // ),
+      // ElevatedButton(
+      //     onPressed: () {
+      //       Navigator.of(context).pushNamed("detail");
+      //     },
+      //     child: Text('data')),
+      //    ],
+      //),
+      // body: Row(
+      //   children: [
+      //     Text(
+      //       "radio",
+      //       style: Theme.of(context).textTheme.headlineSmall,
+      //     ),
+      //     Radio(value: true, groupValue: false, onChanged: (val) {}),
+      //   ],
+      // ),
       // body: ListView(
+      //   padding: const EdgeInsets.all(8.0),
       //   children: [
       //     Text(
       //       "This is a smart events demo",
@@ -67,140 +181,26 @@ class UXCamPage extends StatelessWidget {
       //       buttonTitle: 'Login',
       //     ),
       //     TextButton(onPressed: () {}, child: Text("Signup")),
-      //   ],
-      // ),
-      // body: IndexedStack(
-      //   children: [
-      //     Container(
-      //       child: Text("data1"),
+      //     Column(
+      //       children: [
+      //         Radio(value: true, groupValue: false, onChanged: (val) {}),
+      //         Text(
+      //           "radio",
+      //           style: Theme.of(context).textTheme.headlineSmall,
+      //         ),
+      //       ],
       //     ),
-      //     Container(
-      //       child: Text("data2"),
-      //     ),
-      //     Container(
-      //       child: Text("data3"),
-      //     ),
-      //     Container(
-      //       child: Text("data4"),
-      //     ),
-      //   ],
-      // ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ElevatedButton(onPressed: () {}, child: Text('data')),
-          // TextField(
-          //   decoration: InputDecoration(hintText: "this is a hint"),
-          // ),
-          // ElevatedButton(
-          //     onPressed: () {
-          //       showDialog(
-          //           context: context,
-          //           builder: (_) {
-          //             return AlertDialog(
-          //               title: const Text('Feature Section'),
-          //               content: Text("data"),
-          //               actions: [
-          //                 TextButton(
-          //                   onPressed: () => Navigator.of(context).pop(),
-          //                   child: const Text('Close'),
-          //                 ),
-          //               ],
-          //             );
-          //           });
-          //     },
-          //     child: Text('data')),
-          CheckboxListTile(
-            title: const Text('Crash Handling'),
-            subtitle: const Text(
-              '(Enabled By Default)',
-              style: TextStyle(fontSize: 12),
-            ),
-            value: false,
-            onChanged: (value) => {},
-          ),
-          // Row(
-          //   children: [
-          //     Checkbox(value: false, onChanged: (v) {}),
-          //     Text('yes'),
-          //     Checkbox(value: false, onChanged: (v) {}),
-          //     Text('no')
-          //   ],
-          // ),
-          // Row(
-          //   children: [Checkbox(value: false, onChanged: (v) {}), Text('no')],
-          // ),
-          // Row(
-          //   children: [
-          //     Text('maybe'),
-          //     Checkbox(value: false, onChanged: (v) {}),
-          //     Text('yes'),
-          //     Checkbox(value: false, onChanged: (v) {}),
-          //     Text('no'),
-          //     Checkbox(value: false, onChanged: (v) {})
-          //   ],
-          // ),
-          // Row(
-          //   children: [Text('no'), Checkbox(value: false, onChanged: (v) {})],
-          // ),
-          // ElevatedButton(
-          //     onPressed: () {
-          //       Navigator.of(context).pushNamed("detail");
-          //     },
-          //     child: Text('data')),
-        ],
-      ),
-      // body: Row(
-      //   children: [
-      //     Text(
-      //       "radio",
-      //       style: Theme.of(context).textTheme.headlineSmall,
-      //     ),
-      //     Radio(value: true, groupValue: false, onChanged: (val) {}),
-      //   ],
-      // ),
-      // body: ListView(
-      //   padding: const EdgeInsets.all(8.0),
-      //   children: [
-      // Text(
-      //   "This is a smart events demo",
-      //   style: Theme.of(context).textTheme.headlineSmall,
-      // ),
-      // Image.asset(
-      //   "assets/images/testimage.jpg",
-      //   semanticLabel: "this is a test image",
-      // ),
-      // TextField(
-      //   decoration: InputDecoration(hintText: "this is a hint"),
-      // ),
-      // TextFormField(),
-      // FeatureSection(
-      //   title: 'Screen Tagging',
-      //   onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
-      //   buttonTitle: 'Login',
-      // ),
-      // TextButton(onPressed: () {}, child: Text("Signup")),
-      // Column(
-      //   children: [
-      //     Radio(value: true, groupValue: false, onChanged: (val) {}),
-      //     Text(
-      //       "radio",
-      //       style: Theme.of(context).textTheme.headlineSmall,
+      //     Column(
+      //       children: [
+      //         Slider(value: 0, onChanged: (x) {}),
+      //         Text(
+      //           "slider",
+      //           style: Theme.of(context).textTheme.headlineSmall,
+      //         ),
+      //       ],
       //     ),
       //   ],
       // ),
-      // Column(
-      //   children: [
-      //     Slider(value: 0, onChanged: (x) {}),
-      //     Text(
-      //       "slider",
-      //       style: Theme.of(context).textTheme.headlineSmall,
-      //     ),
-      //   ],
-      // ),
-      //],
-      //),
       // body: Row(
       //   children: [
       //     Radio(value: true, groupValue: false, onChanged: (val) {}),
@@ -210,10 +210,10 @@ class UXCamPage extends StatelessWidget {
       // ),
       //   ],
       // ),
-      bottomNavigationBar: BottomNavigationWidget(
-        currentIndex: 0,
-        onTap: (i) {},
-      ),
+      // bottomNavigationBar: BottomNavigationWidget(
+      //   currentIndex: 0,
+      //   onTap: (i) {},
+      // ),
       // floatingActionButton: FloatingActionButton(
       //   onPressed: () {
       //     showDialog(
