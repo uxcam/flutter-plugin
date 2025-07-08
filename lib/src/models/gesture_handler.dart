@@ -36,8 +36,7 @@ class GestureHandler {
     final type = traceableElement.getUxType(element);
     SummaryTree node = parent;
     if (element.isRendered()) {
-      final type = getUxType(element);
-      if (type == 5) {
+      if (type == UX_VIEWGROUP) {
         if (!traceableElement.isOverLay(element)) {
           updateTopRoute(ModalRoute.of(element)?.settings.name ?? "");
         }
@@ -48,7 +47,7 @@ class GestureHandler {
             node = SummaryTree(
               _topRoute,
               element.widget.runtimeType.toString(),
-              5,
+              UX_VIEWGROUP,
               bound: element.getEffectiveBounds(),
               isViewGroup: true,
             );
@@ -59,35 +58,35 @@ class GestureHandler {
           node = SummaryTree(
             _topRoute,
             element.widget.runtimeType.toString(),
-            5,
+            UX_VIEWGROUP,
             bound: element.getEffectiveBounds(),
             isViewGroup: true,
           );
           addTreeIfInsideBounds(node);
         }
       }
-      if (type == 7 || type == 12) {
+      if (type == UX_TEXT || type == UX_IMAGE) {
         final subTree = _inspectNonInteractiveChild(element);
         if (subTree != null) {
           addSubTreeIfInsideBounds(node, subTree);
         }
         return;
       }
-      if (type == 1) {
+      if (type == UX_BUTTON) {
         final subTree = _inspectButtonChild(element);
         if (subTree != null) {
           addSubTreeIfInsideBounds(node, subTree);
         }
         return;
       }
-      if (type == 2) {
+      if (type == UX_FIELD) {
         final subTree = _inspectTextFieldChild(element);
         if (subTree != null) {
           addSubTreeIfInsideBounds(node, subTree);
         }
         return;
       }
-      if (type == 3) {
+      if (type == UX_COMPOUND) {
         final subTree = _inspectInteractiveChild(element);
         if (subTree != null) {
           addSubTreeIfInsideBounds(node, subTree);
@@ -129,26 +128,13 @@ class GestureHandler {
       _extractTextFromButton(sibling);
     }
 
-    if (element.widget is Radio) {
-      Radio widget = element.widget as Radio;
-      trackData = _dataForWidget(element);
-      trackData?.setLabel((widget.value ?? false).toString());
-    }
-    if (element.widget is Slider) {
-      Slider widget = element.widget as Slider;
-      trackData = _dataForWidget(element);
-      trackData?.setLabel(widget.value.toString());
-    }
-    if (element.widget is Checkbox) {
-      Checkbox widget = element.widget as Checkbox;
-      trackData = _dataForWidget(element);
-      trackData?.setLabel(widget.value.toString());
-    }
-    if (element.widget is Switch) {
-      Switch widget = element.widget as Switch;
-      trackData = _dataForWidget(element);
-      trackData?.setLabel(widget.value.toString());
-    }
+    subTree = SummaryTree(
+      ModalRoute.of(element)?.settings.name ?? "",
+      element.widget.runtimeType.toString(),
+      UX_COMPOUND,
+      value: label,
+      bound: element.getEffectiveBounds(),
+    );
 
     return subTree;
   }
@@ -162,13 +148,14 @@ class GestureHandler {
           textField.decoration?.labelText ??
           "";
     }
-
-    TrackData? trackData = _dataForWidget(element);
-    trackData?.setLabel(hint);
-    if (hint != "") {
-      trackData?.setId(formatValueToId(hint));
-    }
-    addWidgetDataForTracking(trackData);
+    subTree = SummaryTree(
+      ModalRoute.of(element)?.settings.name ?? "",
+      element.widget.runtimeType.toString(),
+      UX_FIELD,
+      value: hint,
+      bound: element.getEffectiveBounds(),
+    );
+    return subTree;
   }
 
   void _inspectButtonChild(TrackData? containingWidget, Element element) {
@@ -187,7 +174,7 @@ class GestureHandler {
     subTree = SummaryTree(
       ModalRoute.of(element)?.settings.name ?? "",
       element.widget.runtimeType.toString(),
-      1,
+      UX_BUTTON,
       value: label,
       bound: element.getEffectiveBounds(),
     );
@@ -202,32 +189,53 @@ class GestureHandler {
       subTree = SummaryTree(
         ModalRoute.of(element)?.settings.name ?? "",
         element.widget.runtimeType.toString(),
-        7,
+        UX_TEXT,
         value: widget.data ?? "",
         bound: element.getEffectiveBounds(),
       );
     }
     if (element.widget is Image) {
-      String? label = (element.widget as Image).semanticLabel;
+      String imageDataString =
+          _extractImageStringRepresentation(element.widget as Image);
+
       subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
-          element.widget.runtimeType.toString(), 7,
-          value: (element.widget as Image).semanticLabel ?? "",
+          element.widget.runtimeType.toString(), UX_IMAGE,
+          value: imageDataString,
           bound: element.getEffectiveBounds(),
           custom: {
-            "content_desc: ": label ?? "",
+            "content_desc: ": imageDataString,
           });
     }
     if (element.widget is Icon) {
-      String? label = (element.widget as Icon).semanticLabel;
+      final iconWidget = element.widget as Icon;
+      String iconDataString = iconWidget.semanticLabel ?? "";
+      if (iconWidget.icon != null) {
+        iconDataString =
+            "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
+      }
       subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
-          element.widget.runtimeType.toString(), 7,
-          value: (element.widget as Icon).semanticLabel ?? "",
+          element.widget.runtimeType.toString(), UX_IMAGE,
+          value: iconDataString,
           bound: element.getEffectiveBounds(),
           custom: {
-            "content_desc: ": label ?? "",
+            "content_desc: ": iconDataString,
           });
     }
     return subTree;
+  }
+
+  String _extractImageStringRepresentation(Image image) {
+    final provider = image.image;
+    if (provider is NetworkImage) {
+      return provider.url;
+    }
+    if (provider is AssetImage) {
+      print(provider.assetName);
+    }
+    if (provider is FileImage) {
+      print(provider.file.path);
+    }
+    return image.semanticLabel ?? "";
   }
 
   String extractTextFromSpan(TextSpan span) {
@@ -341,6 +349,7 @@ class GestureHandler {
       hash = ((hash << 5) + hash) + input.codeUnitAt(i);
     }
     return hash.toUnsigned(32).toRadixString(16);
+    //return input;
   }
 
   void updateTopRoute(String route) {
@@ -373,7 +382,7 @@ class GestureHandler {
       );
     } else {
       final subTree = summaryTree.subTrees.last;
-      if (subTree.type == 5) {
+      if (subTree.type == UX_VIEWGROUP) {
         uId += subTree.uiClass + "_";
         if (subTree.subTrees.isEmpty) {
           uId += subTree.uiClass;
