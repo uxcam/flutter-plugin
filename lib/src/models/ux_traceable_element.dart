@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 
+const UX_UNKOWN = -1;
+const UX_TEXT = 7;
+const UX_IMAGE = 12;
+const UX_BUTTON = 1;
+const UX_FIELD = 2;
+const UX_COMPOUND = 3;
+const UX_VIEWGROUP = 5;
+
 class UxTraceableElement {
   List<Type> userDefinedTypes = [];
 
@@ -51,32 +59,32 @@ class UxTraceableElement {
   }
 
   int getUxType(Element element) {
-    int _uiType = -1;
+    int _uiType = UX_UNKOWN;
 
     if (knownButtonTypes.contains(element.widget.runtimeType)) {
-      _uiType = 1;
+      _uiType = UX_BUTTON;
     }
     if (fieldTypes.contains(element.widget.runtimeType)) {
-      _uiType = 2;
+      _uiType = UX_FIELD;
     }
     if (_isInteractive(element)) {
-      _uiType = 3;
+      _uiType = UX_COMPOUND;
     }
     if (nonInteractiveTypes.contains(element.widget.runtimeType)) {
       if (element.widget.runtimeType.toString() == "Text" ||
           element.widget.runtimeType.toString() == "RichText") {
-        _uiType = 7;
+        _uiType = UX_TEXT;
       }
       if (element.widget.runtimeType.toString() == "Image" ||
           element.widget.runtimeType.toString() == "Icon") {
-        _uiType = 12;
+        _uiType = UX_IMAGE;
       }
     }
 
     if (containerTypes.contains(element.widget.runtimeType) ||
         scrollingContainerTypes.contains(element.widget.runtimeType) ||
         overlayTypes.contains(element.widget.runtimeType)) {
-      _uiType = 5;
+      _uiType = UX_VIEWGROUP;
     }
     return _uiType;
   }
