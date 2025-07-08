@@ -158,14 +158,19 @@ class GestureHandler {
     return subTree;
   }
 
-  void _inspectButtonChild(TrackData? containingWidget, Element element) {
-    final renderObject = element.renderObject;
-    if (renderObject is RenderParagraph) {
-      final textSpan = renderObject.text;
-      if (textSpan is TextSpan) {
-        final label = extractTextFromSpan(textSpan);
-        containingWidget?.setLabel(label);
-        // containingWidget?.setId(formatValueToId(label));
+  SummaryTree? _inspectButtonChild(Element element) {
+    SummaryTree? subTree;
+    String label = "";
+
+    void _extractTextFromButton(Element element) {
+      final renderObject = element.renderObject;
+      if (renderObject is RenderParagraph) {
+        final textSpan = renderObject.text;
+        if (textSpan is TextSpan) {
+          if (label.isEmpty) {
+            label = extractTextFromSpan(textSpan);
+          }
+        }
       }
       element.visitChildElements((element) => _extractTextFromButton(element));
     }
