@@ -210,10 +210,10 @@ class UXCamPage extends StatelessWidget {
       // ),
       //   ],
       // ),
-      // bottomNavigationBar: BottomNavigationWidget(
-      //   currentIndex: 0,
-      //   onTap: (i) {},
-      // ),
+      bottomNavigationBar: BottomNavigationWidget(
+        currentIndex: 0,
+        onTap: (i) {},
+      ),
       // floatingActionButton: FloatingActionButton(
       //   onPressed: () {
       //     showDialog(
