@@ -378,12 +378,12 @@ class GestureHandler {
         .replaceAll(' ', '')
         .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
         .toLowerCase();
-    // int hash = 5381;
-    // for (int i = 0; i < input.length; i++) {
-    //   hash = ((hash << 5) + hash) + input.codeUnitAt(i);
-    // }
-    // return hash.toUnsigned(32).toRadixString(16);
-    return input;
+    int hash = 5381;
+    for (int i = 0; i < input.length; i++) {
+      hash = ((hash << 5) + hash) + input.codeUnitAt(i);
+    }
+    return hash.toUnsigned(32).toRadixString(16);
+    //return input;
   }
 
   void updateTopRoute(String route) {
