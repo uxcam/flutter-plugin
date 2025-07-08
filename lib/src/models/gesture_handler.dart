@@ -97,29 +97,29 @@ class GestureHandler {
     element.visitChildElements((elem) => _inspectDirectChild(node, elem));
   }
 
-  void _inspectNonInteractiveChild(Element element) {
-    TrackData? trackData;
-    if (element.widget is Text) {
-      Text widget = element.widget as Text;
-      trackData = _dataForWidget(element);
-      trackData?.setLabel(widget.data ?? "");
-      trackData?.setId(formatValueToId(widget.data ?? ""));
-    }
-    if (element.widget is Image) {
-      String? label = (element.widget as Image).semanticLabel;
-      trackData = _dataForWidget(element);
-      trackData?.setLabel(label ?? "");
-      trackData?.addCustomProperty({
-        "content_desc: ": label ?? "",
-      });
-    }
-    if (element.widget is Icon) {
-      String? label = (element.widget as Icon).semanticLabel;
-      trackData = _dataForWidget(element);
-      trackData?.setLabel(label ?? "");
-      trackData?.addCustomProperty({
-        "content_desc: ": label ?? "",
-      });
+  SummaryTree? _inspectInteractiveChild(Element element) {
+    SummaryTree? subTree;
+    String label = "";
+
+    void _extractTextFromButton(Element element) {
+      if (element.widget is Icon) {
+        final iconWidget = element.widget as Icon;
+        String iconDataString = iconWidget.semanticLabel ?? "";
+        if (iconWidget.icon != null) {
+          iconDataString =
+              "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
+        }
+        label = iconDataString;
+      } else {
+        final renderObject = element.renderObject;
+        if (renderObject is RenderParagraph) {
+          final textSpan = renderObject.text;
+          if (textSpan is TextSpan) {
+            label = extractTextFromSpan(textSpan);
+          }
+        }
+      }
+      element.visitChildElements((element) => _extractTextFromButton(element));
     }
 
     final sibling = element.getSibling();
@@ -163,12 +163,22 @@ class GestureHandler {
     String label = "";
 
     void _extractTextFromButton(Element element) {
-      final renderObject = element.renderObject;
-      if (renderObject is RenderParagraph) {
-        final textSpan = renderObject.text;
-        if (textSpan is TextSpan) {
-          if (label.isEmpty) {
-            label = extractTextFromSpan(textSpan);
+      if (element.widget is Icon) {
+        final iconWidget = element.widget as Icon;
+        String iconDataString = iconWidget.semanticLabel ?? "";
+        if (iconWidget.icon != null) {
+          iconDataString =
+              "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
+        }
+        label = iconDataString;
+      } else {
+        final renderObject = element.renderObject;
+        if (renderObject is RenderParagraph) {
+          final textSpan = renderObject.text;
+          if (textSpan is TextSpan) {
+            if (label.isEmpty) {
+              label = extractTextFromSpan(textSpan);
+            }
           }
         }
       }
@@ -349,12 +359,12 @@ class GestureHandler {
         .replaceAll(' ', '')
         .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
         .toLowerCase();
-    int hash = 5381;
-    for (int i = 0; i < input.length; i++) {
-      hash = ((hash << 5) + hash) + input.codeUnitAt(i);
-    }
-    return hash.toUnsigned(32).toRadixString(16);
-    //return input;
+    // int hash = 5381;
+    // for (int i = 0; i < input.length; i++) {
+    //   hash = ((hash << 5) + hash) + input.codeUnitAt(i);
+    // }
+    // return hash.toUnsigned(32).toRadixString(16);
+    return input;
   }
 
   void updateTopRoute(String route) {
