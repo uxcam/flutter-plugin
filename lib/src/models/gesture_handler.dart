@@ -245,10 +245,10 @@ class GestureHandler {
       return provider.url;
     }
     if (provider is AssetImage) {
-      print(provider.assetName);
+      return provider.assetName;
     }
     if (provider is FileImage) {
-      print(provider.file.path);
+      return provider.file.path;
     }
     return image.semanticLabel ?? "";
   }
