@@ -215,7 +215,26 @@ class GestureHandler {
     }
     if (element.widget is Image) {
       String imageDataString =
-          _extractImageStringRepresentation(element.widget as Image);
+          _extractImageStringRepresentation((element.widget as Image).image) ??
+              (element.widget as Image).semanticLabel ??
+              "";
+
+      subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
+          element.widget.runtimeType.toString(), UX_IMAGE,
+          value: imageDataString,
+          bound: element.getEffectiveBounds(),
+          custom: {
+            "content_desc: ": imageDataString,
+          });
+    }
+    if (element.widget is DecoratedBox) {
+      final decoration =
+          (element.widget as DecoratedBox).decoration as BoxDecoration;
+      final _image = decoration.image;
+      String imageDataString = "";
+      if (_image != null) {
+        imageDataString = _extractImageStringRepresentation(_image.image) ?? "";
+      }
 
       subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
           element.widget.runtimeType.toString(), UX_IMAGE,
@@ -243,8 +262,7 @@ class GestureHandler {
     return subTree;
   }
 
-  String _extractImageStringRepresentation(Image image) {
-    final provider = image.image;
+  String? _extractImageStringRepresentation(ImageProvider provider) {
     if (provider is NetworkImage) {
       return provider.url;
     }
@@ -254,7 +272,7 @@ class GestureHandler {
     if (provider is FileImage) {
       return provider.file.path;
     }
-    return image.semanticLabel ?? "";
+    return null;
   }
 
   String extractTextFromSpan(TextSpan span) {
