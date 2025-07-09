@@ -8,7 +8,6 @@ export 'src/models/uxblur.dart';
 export 'src/models/uxoverlay.dart';
 export 'src/models/uxcam_config.dart';
 export './src/widgets/occlude_wrapper.dart';
-export './src/widgets/widget_capture.dart';
 export './src/widgets/uxcam_gesture_handler.dart';
 export './uxcam.dart';
 export 'src/helpers/uxcam_binding.dart';
