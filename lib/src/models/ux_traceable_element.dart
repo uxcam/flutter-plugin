@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 const UX_UNKOWN = -1;
+const UX_CUSTOM = 0;
 const UX_TEXT = 7;
 const UX_IMAGE = 12;
 const UX_BUTTON = 1;
@@ -26,6 +27,7 @@ class UxTraceableElement {
     Text,
     RichText,
     Icon,
+    DecoratedBox,
   ];
 
   List<Type> interactiveTypes = [
@@ -49,6 +51,10 @@ class UxTraceableElement {
     Scaffold,
   ];
 
+  List<Type> variableTypes = [
+    Container,
+  ];
+
   List<Type> overlayTypes = [
     BottomSheet,
     AlertDialog,
@@ -61,6 +67,9 @@ class UxTraceableElement {
   int getUxType(Element element) {
     int _uiType = UX_UNKOWN;
 
+    if (variableTypes.contains(element.widget.runtimeType)) {
+      _uiType = UX_CUSTOM;
+    }
     if (knownButtonTypes.contains(element.widget.runtimeType)) {
       _uiType = UX_BUTTON;
     }
@@ -79,6 +88,12 @@ class UxTraceableElement {
           element.widget.runtimeType.toString() == "Icon") {
         _uiType = UX_IMAGE;
       }
+      // if (element.widget.runtimeType.toString() == "DecoratedBox") {
+      //   final widget = element.widget as DecoratedBox;
+      //   if ((widget.decoration as BoxDecoration).image != null) {
+      //     _uiType = UX_IMAGE;
+      //   }
+      // }
     }
 
     if (containerTypes.contains(element.widget.runtimeType) ||
