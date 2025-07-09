@@ -102,20 +102,22 @@ class GestureHandler {
     String label = "";
 
     void _extractTextFromButton(Element element) {
-      if (element.widget is Icon) {
-        final iconWidget = element.widget as Icon;
-        String iconDataString = iconWidget.semanticLabel ?? "";
-        if (iconWidget.icon != null) {
-          iconDataString =
-              "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
-        }
-        label = iconDataString;
-      } else {
-        final renderObject = element.renderObject;
-        if (renderObject is RenderParagraph) {
-          final textSpan = renderObject.text;
-          if (textSpan is TextSpan) {
-            label = extractTextFromSpan(textSpan);
+      if (element.getEffectiveBounds().contains(position)) {
+        if (element.widget is Icon) {
+          final iconWidget = element.widget as Icon;
+          String iconDataString = iconWidget.semanticLabel ?? "";
+          if (iconWidget.icon != null) {
+            iconDataString =
+                "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
+          }
+          label = iconDataString;
+        } else {
+          final renderObject = element.renderObject;
+          if (renderObject is RenderParagraph) {
+            final textSpan = renderObject.text;
+            if (textSpan is TextSpan) {
+              label = extractTextFromSpan(textSpan);
+            }
           }
         }
       }
@@ -182,21 +184,23 @@ class GestureHandler {
     String label = "";
 
     void _extractTextFromButton(Element element) {
-      if (element.widget is Icon) {
-        final iconWidget = element.widget as Icon;
-        String iconDataString = iconWidget.semanticLabel ?? "";
-        if (iconWidget.icon != null) {
-          iconDataString =
-              "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
-        }
-        label = iconDataString;
-      } else {
-        final renderObject = element.renderObject;
-        if (renderObject is RenderParagraph) {
-          final textSpan = renderObject.text;
-          if (textSpan is TextSpan) {
-            if (label.isEmpty) {
-              label = extractTextFromSpan(textSpan);
+      if (element.getEffectiveBounds().contains(position)) {
+        if (element.widget is Icon) {
+          final iconWidget = element.widget as Icon;
+          String iconDataString = iconWidget.semanticLabel ?? "";
+          if (iconWidget.icon != null) {
+            iconDataString =
+                "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
+          }
+          label = iconDataString;
+        } else {
+          final renderObject = element.renderObject;
+          if (renderObject is RenderParagraph) {
+            final textSpan = renderObject.text;
+            if (textSpan is TextSpan) {
+              if (label.isEmpty) {
+                label = extractTextFromSpan(textSpan);
+              }
             }
           }
         }
