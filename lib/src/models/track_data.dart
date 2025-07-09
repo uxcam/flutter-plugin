@@ -55,7 +55,7 @@ class TrackData {
         jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : "");
     return {
       'class': uiClass,
-      'id': uiId,
+      'id': jsonEncode(uiId),
       'value': value,
       'name': value,
       'type': uiType,
