@@ -49,6 +49,7 @@ class UxTraceableElement {
 
   List<Type> containerTypes = [
     Scaffold,
+    ListTile,
   ];
 
   List<Type> variableTypes = [
@@ -88,12 +89,14 @@ class UxTraceableElement {
           element.widget.runtimeType.toString() == "Icon") {
         _uiType = UX_IMAGE;
       }
-      // if (element.widget.runtimeType.toString() == "DecoratedBox") {
-      //   final widget = element.widget as DecoratedBox;
-      //   if ((widget.decoration as BoxDecoration).image != null) {
-      //     _uiType = UX_IMAGE;
-      //   }
-      // }
+      if (element.widget.runtimeType.toString() == "DecoratedBox") {
+        final widget = element.widget as DecoratedBox;
+        if (widget.decoration is BoxDecoration) {
+          if ((widget.decoration as BoxDecoration).image != null) {
+            _uiType = UX_IMAGE;
+          }
+        }
+      }
     }
 
     if (containerTypes.contains(element.widget.runtimeType) ||

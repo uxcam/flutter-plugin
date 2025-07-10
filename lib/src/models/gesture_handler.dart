@@ -143,23 +143,23 @@ class GestureHandler {
     String label = "";
 
     void _extractTextFromButton(Element element) {
-      if (element.getEffectiveBounds().contains(position)) {
-        if (element.widget is Icon) {
-          final iconWidget = element.widget as Icon;
-          String iconDataString = iconWidget.semanticLabel ?? "";
-          if (iconWidget.icon != null) {
-            iconDataString =
-                "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
-          }
-          label = iconDataString;
-        } else {
-          final renderObject = element.renderObject;
-          if (renderObject is RenderParagraph) {
-            final textSpan = renderObject.text;
-            if (textSpan is TextSpan) {
-              if (label.isEmpty) {
-                label = extractTextFromSpan(textSpan);
-              }
+      if (element.widget is Icon) {
+        final iconWidget = element.widget as Icon;
+        String iconDataString = iconWidget.semanticLabel ?? "";
+        if (iconWidget.icon != null) {
+          iconDataString =
+              "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
+        }
+        label = iconDataString;
+      } else {
+        final renderObject = element.renderObject;
+        if (renderObject is RenderParagraph) {
+          final textSpan = renderObject.text;
+          if (textSpan is TextSpan) {
+            if (label.isEmpty) {
+              label = extractTextFromSpan(textSpan);
+              //always give priority to text. If non-text found first, keep looking
+              return;
             }
           }
         }
@@ -193,6 +193,18 @@ class GestureHandler {
         value: widget.data ?? "",
         bound: element.getEffectiveBounds(),
       );
+    }
+    if (element.widget is RichText) {
+      RichText widget = element.widget as RichText;
+      if (widget.text is TextSpan) {
+        subTree = SummaryTree(
+          ModalRoute.of(element)?.settings.name ?? "",
+          element.widget.runtimeType.toString(),
+          UX_TEXT,
+          value: extractTextFromSpan(widget.text as TextSpan),
+          bound: element.getEffectiveBounds(),
+        );
+      }
     }
     if (element.widget is Image) {
       String imageDataString =
