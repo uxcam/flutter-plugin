@@ -111,7 +111,7 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
         [weakSelf capturGestureEvent:position completion:completion];
     };
     
-    [UXCam captureGestureEventFor: self.gestureInfoHandler];
+    // [UXCam captureGestureEventFor: self.gestureInfoHandler];
     
     [UXCam pauseForOcclusionNextFrameRequestHandler: self.pauseForOcclusionNextFrameRequestHandler];
     [UXCam setOccludeRectsRequestHandler: self.occludeRectsRequestHandler];

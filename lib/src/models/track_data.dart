@@ -57,7 +57,7 @@ class TrackData {
       'class': uiClass,
       'id': jsonEncode(uiId),
       'value': value,
-      'name': value,
+      'name': uiValue,
       'type': uiType,
       'isViewGroup': isViewGroup ?? false,
       'isSensitive': isSensitive,
