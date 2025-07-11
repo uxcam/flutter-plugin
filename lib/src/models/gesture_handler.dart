@@ -162,6 +162,8 @@ class GestureHandler {
     String label = "";
 
     void _extractTextFromButton(Element element) {
+      final renderObject = element.renderObject;
+
       if (element.widget is Icon) {
         final iconWidget = element.widget as Icon;
         String iconDataString = iconWidget.semanticLabel ?? "";
@@ -169,16 +171,20 @@ class GestureHandler {
           iconDataString =
               "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
         }
-        label = iconDataString;
-      } else {
-        final renderObject = element.renderObject;
-        if (renderObject is RenderParagraph) {
-          final textSpan = renderObject.text;
-          if (textSpan is TextSpan) {
-            if (label.isEmpty) {
-              label = extractTextFromSpan(textSpan);
-              //always give priority to text. If non-text found first, keep looking
-              return;
+        if (element.getEffectiveBounds().contains(position)) {
+          label = iconDataString;
+        }
+      }
+
+      if (element.widget is Text && renderObject is RenderParagraph) {
+        final textSpan = renderObject.text;
+        if (textSpan is TextSpan) {
+          final value = extractTextFromSpan(textSpan);
+          if (label.isEmpty) {
+            label = value;
+          } else {
+            if (element.getEffectiveBounds().contains(position)) {
+              label = value;
             }
           }
         }
@@ -319,12 +325,12 @@ class GestureHandler {
         .replaceAll(' ', '')
         .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
         .toLowerCase();
-    // int hash = 5381;
-    // for (int i = 0; i < input.length; i++) {
-    //   hash = ((hash << 5) + hash) + input.codeUnitAt(i);
-    // }
-    // return hash.toUnsigned(32).toRadixString(16);
-    return input;
+    int hash = 5381;
+    for (int i = 0; i < input.length; i++) {
+      hash = ((hash << 5) + hash) + input.codeUnitAt(i);
+    }
+    return hash.toUnsigned(32).toRadixString(16);
+    //return input;
   }
 
   void updateTopRoute(String route) {
