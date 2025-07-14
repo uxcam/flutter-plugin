@@ -213,10 +213,7 @@ class GestureHandler {
       }
     }
     if (element.widget is Image) {
-      String imageDataString =
-          _extractImageStringRepresentation((element.widget as Image).image) ??
-              (element.widget as Image).semanticLabel ??
-              "";
+      String imageDataString = (element.widget as Image).image.toString();
 
       subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
           element.widget.runtimeType.toString(), UX_IMAGE,
@@ -232,7 +229,7 @@ class GestureHandler {
       final _image = decoration.image;
       String imageDataString = "";
       if (_image != null) {
-        imageDataString = _extractImageStringRepresentation(_image.image) ?? "";
+        imageDataString = _image.image.toString();
       }
 
       subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",

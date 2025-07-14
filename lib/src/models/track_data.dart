@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
@@ -55,7 +56,7 @@ class TrackData {
         jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : "");
     return {
       'class': uiClass,
-      'id': uiId,
+      'id': Platform.isAndroid ? jsonEncode(uiId) : uiId,
       'value': value,
       'name': uiValue,
       'type': uiType,
