@@ -310,7 +310,7 @@ class GestureHandler {
     for (int i = 0; i < input.length; i++) {
       hash = ((hash << 5) + hash) + input.codeUnitAt(i);
     }
-    return hash.toUnsigned(32).toRadixString(16);
+    return ":" + hash.toUnsigned(32).toRadixString(16);
     //return input;
   }
 
