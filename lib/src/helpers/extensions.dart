@@ -100,11 +100,15 @@ extension ElementX on Element {
   }
 
   Rect getEffectiveBounds() {
-    final renderObject = this.renderObject as RenderBox;
-    final translation = renderObject.getTransformTo(null).getTranslation();
-    final offset = Offset(translation.x, translation.y);
-    final bounds = renderObject.paintBounds.shift(offset);
-    return isRendered() ? bounds : Rect.zero;
+    Rect finalBounds = Rect.zero;
+    if (this.renderObject is RenderBox) {
+      final renderObject = this.renderObject as RenderBox;
+      final translation = renderObject.getTransformTo(null).getTranslation();
+      final offset = Offset(translation.x, translation.y);
+      final bounds = renderObject.paintBounds.shift(offset);
+      finalBounds = isRendered() ? bounds : Rect.zero;
+    }
+    return finalBounds;
   }
 
   Element? getSibling() {
