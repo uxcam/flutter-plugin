@@ -14,10 +14,10 @@ class UxTraceableElement {
 
   List<Type> knownButtonTypes = [
     ElevatedButton,
-    // TextButton,
+    TextButton,
     OutlinedButton,
-    //GestureDetector,
-    //InkWell,
+    GestureDetector,
+    InkWell,
     IconButton,
     FloatingActionButton,
   ];
