@@ -57,12 +57,8 @@ class TrackData {
     return {
       'class': uiClass,
       'id': Platform.isAndroid ? jsonEncode(uiId) : uiId,
-      'value': value,
-      'name': Platform.isAndroid
-          ? null
-          : uiValue != null && uiValue!.isNotEmpty
-              ? uiValue
-              : "",
+      'value': Platform.isAndroid ? value : uiValue,
+      'name': Platform.isAndroid ? null : uiValue,
       'type': uiType,
       'isViewGroup': isViewGroup ?? false,
       'isSensitive': isSensitive,
