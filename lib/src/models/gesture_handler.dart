@@ -35,7 +35,7 @@ class GestureHandler {
     if (element.isRendered()) {
       if (type == UX_VIEWGROUP) {
         node = SummaryTree(
-          _topRoute,
+          ModalRoute.of(element)?.settings.name ?? "",
           element.widget.runtimeType.toString(),
           UX_VIEWGROUP,
           bound: element.getEffectiveBounds(),
@@ -243,20 +243,12 @@ class GestureHandler {
           });
     }
     if (element.widget is DecoratedBox) {
-      final decoration =
-          (element.widget as DecoratedBox).decoration as BoxDecoration;
-      final _image = decoration.image;
-      String imageDataString = "";
-      if (_image != null) {
-        imageDataString = _image.image.toString();
-      }
-
       subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
           element.widget.runtimeType.toString(), UX_IMAGE,
-          value: imageDataString,
+          value: _extractImageStringRepresentation(element),
           bound: element.getEffectiveBounds(),
           custom: {
-            "content_desc: ": imageDataString,
+            "content_desc: ": _extractImageStringRepresentation(element),
           });
     }
     if (element.widget is Icon) {
@@ -277,17 +269,28 @@ class GestureHandler {
     return subTree;
   }
 
-  String? _extractImageStringRepresentation(ImageProvider provider) {
-    if (provider is NetworkImage) {
-      return provider.url;
+  String _extractImageStringRepresentation(Element element) {
+    String imageDataString = "";
+    if ((element.widget as DecoratedBox).decoration is BoxDecoration) {
+      final decoration =
+          (element.widget as DecoratedBox).decoration as BoxDecoration;
+      final _image = decoration.image;
+      if (_image != null) {
+        imageDataString = _image.image.toString();
+      }
+      final _shape = decoration.shape;
+      if (_image != null) {
+        imageDataString = _image.image.toString();
+      }
+    } else {
+      if ((element.widget as DecoratedBox).decoration is ShapeDecoration) {
+        final decoration =
+            (element.widget as DecoratedBox).decoration as ShapeDecoration;
+        final _shape = decoration.shape;
+        imageDataString = _shape.toString();
+      }
     }
-    if (provider is AssetImage) {
-      return provider.assetName;
-    }
-    if (provider is FileImage) {
-      return provider.file.path;
-    }
-    return null;
+    return imageDataString;
   }
 
   String extractTextFromSpan(TextSpan span) {
@@ -317,17 +320,20 @@ class GestureHandler {
     }
   }
 
-  String formatValueToId(String value) {
+  String formatValueToPseudoId(String value) {
     final input = value
         .replaceAll(' ', '')
-        .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
+        // .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
         .toLowerCase();
+    return input;
+  }
+
+  String generateStringHash(String input) {
     int hash = 5381;
     for (int i = 0; i < input.length; i++) {
       hash = ((hash << 5) + hash) + input.codeUnitAt(i);
     }
     return ":" + hash.toUnsigned(32).toRadixString(16);
-    //return input;
   }
 
   void updateTopRoute(String route) {
@@ -360,12 +366,13 @@ class GestureHandler {
     } while (summaryTree.subTrees.isNotEmpty);
 
     if (summaryTree!.subTrees.isEmpty) {
-      uId += summaryTree.value;
+      uId += formatValueToPseudoId(summaryTree.value);
       trackData = TrackData(
         summaryTree.bound,
-        route,
+        summaryTree.route,
         uiValue: summaryTree.value,
-        uiId: formatValueToId(uId),
+        //uiId: uId,
+        uiId: generateStringHash(uId),
         uiClass: summaryTree.uiClass,
         uiType: summaryTree.type,
       );
