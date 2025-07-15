@@ -292,7 +292,28 @@ class GestureHandler {
     if (root == null) {
       rootTree = tree;
     } else {
-      if (tree.bound.contains(position)) {
+      bool isInside = tree.bound.contains(position);
+      // If not inside, check a small area around the position (10 points in each direction)
+      if (!isInside) {
+        const double delta = 10.0;
+        final offsets = [
+          Offset(position.dx + delta, position.dy),
+          Offset(position.dx - delta, position.dy),
+          Offset(position.dx, position.dy + delta),
+          Offset(position.dx, position.dy - delta),
+          Offset(position.dx + delta, position.dy + delta),
+          Offset(position.dx - delta, position.dy - delta),
+          Offset(position.dx + delta, position.dy - delta),
+          Offset(position.dx - delta, position.dy + delta),
+        ];
+        for (final offset in offsets) {
+          if (tree.bound.contains(offset)) {
+            isInside = true;
+            break;
+          }
+        }
+      }
+      if (isInside) {
         root.subTrees = [
           ...root.subTrees,
           tree,
