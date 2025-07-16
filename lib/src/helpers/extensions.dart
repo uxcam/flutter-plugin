@@ -87,6 +87,10 @@ extension ElementX on Element {
     if (opacity != null && opacity.opacity == 0.0) {
       return false;
     }
+    final animatedOpacity = findAncestorWidgetOfExactType<AnimatedOpacity>();
+    if (animatedOpacity != null && animatedOpacity.opacity == 0.0) {
+      return false;
+    }
     return true;
   }
 
@@ -113,12 +117,14 @@ extension ElementX on Element {
 
   Element? getSibling() {
     Element? sibling;
-    final indexInParent = slot as IndexedSlot;
+    final indexInParent = slot as IndexedSlot?;
     int siblingIndex = -1;
-    if (indexInParent.index % 2 == 0) {
-      siblingIndex = indexInParent.index + 1;
-    } else {
-      siblingIndex = indexInParent.index - 1;
+    if (indexInParent != null) {
+      if (indexInParent.index % 2 == 0) {
+        siblingIndex = indexInParent.index + 1;
+      } else {
+        siblingIndex = indexInParent.index - 1;
+      }
     }
     visitAncestorElements((ancestor) {
       ancestor.visitChildren((element) {
