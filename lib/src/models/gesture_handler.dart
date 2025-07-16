@@ -334,7 +334,7 @@ class GestureHandler {
     if (route == "/") {
       route = "root";
     }
-    uId += route + "_" + summaryTree.uiClass + "_";
+    uId += summaryTree.uiClass + "_";
 
     do {
       try {
@@ -348,6 +348,7 @@ class GestureHandler {
 
     if (summaryTree!.subTrees.isEmpty) {
       uId += formatValueToPseudoId(summaryTree.value);
+      uId = summaryTree.route + "_" + uId;
       trackData = TrackData(
         summaryTree.bound,
         summaryTree.route,
