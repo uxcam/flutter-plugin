@@ -55,7 +55,7 @@ class GestureHandler {
         if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
         }
-        return;
+        //return;
       }
       if (type == UX_FIELD) {
         final subTree = _inspectTextFieldChild(element);
@@ -371,8 +371,8 @@ class GestureHandler {
         summaryTree.bound,
         summaryTree.route,
         uiValue: summaryTree.value,
-        //uiId: uId,
-        uiId: generateStringHash(uId),
+        uiId: uId,
+        //uiId: generateStringHash(uId),
         uiClass: summaryTree.uiClass,
         uiType: summaryTree.type,
       );
