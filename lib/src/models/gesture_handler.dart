@@ -285,7 +285,7 @@ class GestureHandler {
   }
 
   String? extractImagePath(String input) {
-    final regex = RegExp(r'name:\s*"([^"]+)"');
+    final regex = RegExp(r'"([^"]+)"');
     final match = regex.firstMatch(input);
     return match?.group(1);
   }
