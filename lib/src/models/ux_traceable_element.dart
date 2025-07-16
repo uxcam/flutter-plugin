@@ -10,6 +10,27 @@ const UX_COMPOUND = 3;
 const UX_VIEWGROUP = 5;
 
 class UxTraceableElement {
+  /// Add a type to userDefinedTypes if not already present
+  void addUserDefinedType(Type type) {
+    if (!userDefinedTypes.contains(type)) {
+      userDefinedTypes.add(type);
+    }
+  }
+
+  /// Remove a type from userDefinedTypes
+  void removeUserDefinedType(Type type) {
+    userDefinedTypes.remove(type);
+  }
+
+  /// Set the entire userDefinedTypes list
+  void setUserDefinedTypes(List<Type> types) {
+    userDefinedTypes = List<Type>.from(types);
+  }
+
+  /// Clear all userDefinedTypes
+  void clearUserDefinedTypes() {
+    userDefinedTypes.clear();
+  }
   List<Type> userDefinedTypes = [];
 
   List<Type> knownButtonTypes = [
@@ -67,7 +88,10 @@ class UxTraceableElement {
 
   int getUxType(Element element) {
     int _uiType = UX_UNKOWN;
-
+    
+    if (userDefinedTypes.contains(element.widget.runtimeType)) {
+      _uiType = UX_CUSTOM;
+    }
     if (knownButtonTypes.contains(element.widget.runtimeType)) {
       _uiType = UX_BUTTON;
     }
