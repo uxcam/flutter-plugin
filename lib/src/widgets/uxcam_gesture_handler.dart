@@ -25,7 +25,7 @@ import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
 ///
 /// Note: Only one instance should be used per widget tree scope to avoid duplicate tracking.
 /// The widget uses a [Listener] to capture pointer events.
-/// 
+///
 /// This is mandatory if want to use smart event feature.
 
 class UXCamGestureHandler extends StatefulWidget {

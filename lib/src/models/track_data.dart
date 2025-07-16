@@ -89,6 +89,7 @@ class SummaryTree {
   Map<String, dynamic> custom;
   List<SummaryTree> subTrees;
   bool isViewGroup;
+  bool isOccluded;
 
   SummaryTree(
     this.route,
@@ -99,5 +100,6 @@ class SummaryTree {
     this.subTrees = const [],
     this.custom = const {},
     this.isViewGroup = false,
+    this.isOccluded = false,
   });
 }
