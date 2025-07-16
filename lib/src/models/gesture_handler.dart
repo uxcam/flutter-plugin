@@ -312,19 +312,17 @@ class GestureHandler {
       rootTree = tree;
     } else {
       bool isInside = tree.bound.contains(position);
-      // If not inside, check a small area around the position (10 points in each direction)
+      // If not inside, check a circle of points (n points in equal interval around a radius)
       if (!isInside) {
-        const double delta = 10.0;
-        final offsets = [
-          Offset(position.dx + delta, position.dy),
-          Offset(position.dx - delta, position.dy),
-          Offset(position.dx, position.dy + delta),
-          Offset(position.dx, position.dy - delta),
-          Offset(position.dx + delta, position.dy + delta),
-          Offset(position.dx - delta, position.dy - delta),
-          Offset(position.dx + delta, position.dy - delta),
-          Offset(position.dx - delta, position.dy + delta),
-        ];
+        const double radius = 10.0;
+        const int numPoints = 8;
+        final List<Offset> offsets = List.generate(numPoints, (i) {
+          final double angle = (2 * pi * i) / numPoints;
+          return Offset(
+            position.dx + radius * cos(angle),
+            position.dy + radius * sin(angle),
+          );
+        });
         for (final offset in offsets) {
           if (tree.bound.contains(offset)) {
             isInside = true;
