@@ -221,7 +221,8 @@ class GestureHandler {
       }
     }
     if (element.widget is Image) {
-      String imageDataString = (element.widget as Image).image.toString();
+      String imageDataString =
+          extractImagePath((element.widget as Image).image.toString()) ?? "";
 
       subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
           element.widget.runtimeType.toString(), UX_IMAGE,
@@ -264,6 +265,12 @@ class GestureHandler {
     return subTree;
   }
 
+  String? extractImagePath(String input) {
+    final regex = RegExp(r'name:\s*"([^"]+)"');
+    final match = regex.firstMatch(input);
+    return match?.group(1);
+  }
+
   String _extractImageStringRepresentation(Element element) {
     String imageDataString = "";
     if ((element.widget as DecoratedBox).decoration is BoxDecoration) {
@@ -271,18 +278,18 @@ class GestureHandler {
           (element.widget as DecoratedBox).decoration as BoxDecoration;
       final _image = decoration.image;
       if (_image != null) {
-        imageDataString = _image.image.toString();
+        imageDataString = extractImagePath(_image.image.toString()) ?? "";
       }
       final _shape = decoration.shape;
-      if (_image != null) {
-        imageDataString = _image.image.toString();
+      if (_shape != BoxShape.rectangle) {
+        imageDataString = "";
       }
     } else {
       if ((element.widget as DecoratedBox).decoration is ShapeDecoration) {
         final decoration =
             (element.widget as DecoratedBox).decoration as ShapeDecoration;
         final _shape = decoration.shape;
-        imageDataString = _shape.toString();
+        imageDataString = "";
       }
     }
     return imageDataString;
