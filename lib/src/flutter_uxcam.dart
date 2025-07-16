@@ -12,7 +12,6 @@ import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 class FlutterUxcam {
-
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
 
   static UxCam? uxCam;
@@ -474,21 +473,22 @@ class FlutterUxcam {
   /// This will allow UXCam to recognize custom widgets as traceable elements.
   /// [types] is a list of Type objects.
   static void addUserDefinedType(Type type) {
-    UxTraceableElement().addUserDefinedType(type);
+    UxTraceableElement.addUserDefinedType(type);
   }
 
   static void removeUserDefinedType(Type type) {
-    UxTraceableElement().removeUserDefinedType(type);
+    UxTraceableElement.removeUserDefinedType(type);
   }
+
   /// Set the entire userDefinedTypes list.
   /// [types] is a list of Type objects.
   static void setUserDefinedTypes(List<Type> types) {
-    UxTraceableElement().setUserDefinedTypes(types);
+    UxTraceableElement.setUserDefinedTypes(types);
   }
 
   static void clearUserDefinedTypes() {
-    UxTraceableElement().clearUserDefinedTypes();
-  } 
+    UxTraceableElement.clearUserDefinedTypes();
+  }
 }
 
 List<Map<String, String>> getStackTraceElements(StackTrace stackTrace) {

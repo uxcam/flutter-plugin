@@ -40,6 +40,8 @@ class GestureHandler {
           UX_VIEWGROUP,
           bound: element.getEffectiveBounds(),
           isViewGroup: true,
+          isOccluded:
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
         );
         addTreeIfInsideBounds(parent, node);
       }
@@ -69,7 +71,7 @@ class GestureHandler {
         if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
         }
-        return;
+        //return;
       }
     }
     element.visitChildElements((elem) => _inspectDirectChild(node, elem));
@@ -108,13 +110,15 @@ class GestureHandler {
       _extractTextFromButton(sibling);
     }
 
-    subTree = SummaryTree(
-      ModalRoute.of(element)?.settings.name ?? "",
-      element.widget.runtimeType.toString(),
-      UX_COMPOUND,
-      value: label,
-      bound: element.getEffectiveBounds(),
-    );
+    if (label.isNotEmpty) {
+      subTree = SummaryTree(
+        ModalRoute.of(element)?.settings.name ?? "",
+        element.widget.runtimeType.toString(),
+        UX_COMPOUND,
+        value: label,
+        bound: element.getEffectiveBounds(),
+      );
+    }
 
     return subTree;
   }
@@ -217,6 +221,8 @@ class GestureHandler {
         UX_TEXT,
         value: widget.data ?? "",
         bound: element.getEffectiveBounds(),
+        isOccluded:
+            element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
       );
     }
     if (element.widget is RichText) {
@@ -228,6 +234,8 @@ class GestureHandler {
           UX_TEXT,
           value: extractTextFromSpan(widget.text as TextSpan),
           bound: element.getEffectiveBounds(),
+          isOccluded:
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
         );
       }
     }
@@ -238,6 +246,8 @@ class GestureHandler {
           element.widget.runtimeType.toString(), UX_IMAGE,
           value: imageDataString,
           bound: element.getEffectiveBounds(),
+          isOccluded:
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
           custom: {
             "content_desc: ": imageDataString,
           });
@@ -247,6 +257,8 @@ class GestureHandler {
           element.widget.runtimeType.toString(), UX_IMAGE,
           value: _extractImageStringRepresentation(element),
           bound: element.getEffectiveBounds(),
+          isOccluded:
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
           custom: {
             "content_desc: ": _extractImageStringRepresentation(element),
           });
@@ -262,6 +274,8 @@ class GestureHandler {
           element.widget.runtimeType.toString(), UX_IMAGE,
           value: iconDataString,
           bound: element.getEffectiveBounds(),
+          isOccluded:
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
           custom: {
             "content_desc: ": iconDataString,
           });
@@ -390,11 +404,11 @@ class GestureHandler {
       trackData = TrackData(
         summaryTree.bound,
         summaryTree.route,
-        uiValue: summaryTree.value,
-        uiId: uId,
-        //uiId: generateStringHash(uId),
-        uiClass: summaryTree.uiClass,
-        uiType: summaryTree.type,
+        uiValue: summaryTree.isOccluded ? null : summaryTree.value,
+        //uiId: uId,
+        uiId: summaryTree.isOccluded ? "" : generateStringHash(uId),
+        uiClass: summaryTree.isOccluded ? "" : summaryTree.uiClass,
+        uiType: summaryTree.isOccluded ? -1 : summaryTree.type,
       );
     } else {}
 
