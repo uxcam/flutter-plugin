@@ -128,26 +128,6 @@ class UxTraceableElement {
       }
     }
 
-    // if (variableTypes.contains(element.widget.runtimeType)) {
-    //   final widget = element.widget as Container;
-    //   _uiType = UX_VIEWGROUP;
-    // if (widget.decoration == null) {
-    //   _uiType = UX_VIEWGROUP;
-    // } else {
-    //   if (widget.decoration is BoxDecoration) {
-    //     if ((widget.decoration as BoxDecoration).image != null) {
-    //       _uiType = UX_IMAGE;
-    //     }
-    //     if ((widget.decoration as BoxDecoration).shape == BoxShape.circle) {
-    //       _uiType = UX_IMAGE;
-    //     }
-    //   }
-    //   if (widget.decoration is ShapeDecoration) {
-    //     _uiType = UX_IMAGE;
-    //   }
-    // }
-    //}
-
     if (containerTypes.contains(element.widget.runtimeType) ||
         scrollingContainerTypes.contains(element.widget.runtimeType) ||
         overlayTypes.contains(element.widget.runtimeType)) {
