@@ -54,14 +54,15 @@ class TrackData {
   Map<String, dynamic> toJson() {
     final value =
         jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : "");
-    return {
-      'class': uiClass,
-      'id': Platform.isAndroid ? jsonEncode(uiId) : uiId,
-      'value': Platform.isAndroid ? value : uiValue,
-      'name': Platform.isAndroid ? null : uiValue,
-      'type': uiType,
+    final effectiveclass = uiClass != null && uiClass!.isNotEmpty
+        ? uiClass
+        : Platform.isAndroid
+            ? jsonEncode("")
+            : "";
+    Map<String, dynamic> result = {
       'isViewGroup': isViewGroup ?? false,
       'isSensitive': isSensitive,
+      "type": uiType,
       'bound': {
         "left": bound.left,
         "top": bound.top,
@@ -69,7 +70,12 @@ class TrackData {
         "bottom": bound.bottom,
       },
       "custom": custom ?? {},
+      "id": Platform.isAndroid ? jsonEncode(uiId) : uiId,
+      "value": Platform.isAndroid ? value : uiValue,
+      "name": Platform.isAndroid ? value : uiValue,
+      "class": effectiveclass,
     };
+    return result;
   }
 
   void showAnalyticsInfo() {
