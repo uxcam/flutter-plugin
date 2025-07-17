@@ -49,12 +49,14 @@ class GestureHandler {
         final subTree = _inspectButtonChild(element);
         if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
+          node = subTree;
         }
       }
       if (type == UX_COMPOUND) {
         final subTree = _inspectInteractiveChild(element);
         if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
+          node = subTree;
         }
       }
 
@@ -63,6 +65,7 @@ class GestureHandler {
         if (subTree != null) {
           if (subTree.value.isNotEmpty && type != UX_DECOR) {
             addTreeIfInsideBounds(node, subTree);
+            print("object");
             return;
           }
         }
@@ -332,12 +335,15 @@ class GestureHandler {
   void sendTrackDataFromSummaryTree() {
     TrackData? trackData;
     String uId = "";
+    String typePath = "";
     SummaryTree? summaryTree = rootTree;
     String route = summaryTree!.route;
+
     if (route == "/") {
       route = "root";
     }
-    uId += summaryTree.uiClass + "_";
+    uId += summaryTree.uiClass + "#";
+    typePath += "${summaryTree.type}#";
 
     do {
       SummaryTree subTree;
@@ -351,13 +357,17 @@ class GestureHandler {
           return reversedTrees.first;
         });
       }
-      uId += subTree.uiClass + "_";
+      uId += subTree.uiClass + "#";
+      typePath += "${subTree.type}#";
       summaryTree = subTree;
     } while (summaryTree.subTrees.isNotEmpty);
 
-    if (summaryTree!.subTrees.isEmpty) {
-      uId += formatValueToPseudoId(summaryTree.value);
-      uId = summaryTree.route + "_" + uId;
+    if (summaryTree.subTrees.isEmpty) {
+      uId = summaryTree.route + "#" + uId;
+      typePath += "${summaryTree.type}";
+      int effectiveType = UxTraceableElement.parseStringIdToGetType(typePath);
+      uId += "#" + formatValueToPseudoId(summaryTree.value);
+
       trackData = TrackData(
         summaryTree.bound,
         summaryTree.route,
@@ -365,7 +375,7 @@ class GestureHandler {
         uiId: uId,
         //uiId: summaryTree.isOccluded ? "" : generateStringHash(uId),
         uiClass: summaryTree.isOccluded ? "" : summaryTree.uiClass,
-        uiType: summaryTree.isOccluded ? -1 : summaryTree.type,
+        uiType: summaryTree.isOccluded ? UX_UNKOWN : effectiveType,
         isSensitive: summaryTree.isOccluded,
       );
     } else {}

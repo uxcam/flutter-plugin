@@ -36,7 +36,7 @@ class UxTraceableElement {
     userDefinedTypes.clear();
   }
 
-  List<Type> knownButtonTypes = [
+  static List<Type> knownButtonTypes = [
     ElevatedButton,
     TextButton,
     OutlinedButton,
@@ -46,7 +46,7 @@ class UxTraceableElement {
     FloatingActionButton,
   ];
 
-  List<Type> nonInteractiveTypes = [
+  static List<Type> nonInteractiveTypes = [
     Image,
     Text,
     RichText,
@@ -54,33 +54,33 @@ class UxTraceableElement {
     DecoratedBox,
   ];
 
-  List<Type> interactiveTypes = [
+  static List<Type> interactiveTypes = [
     Radio,
     Slider,
     Switch,
     Checkbox,
   ];
 
-  List<Type> fieldTypes = [
+  static List<Type> fieldTypes = [
     TextField,
   ];
 
-  List<Type> scrollingContainerTypes = [
+  static List<Type> scrollingContainerTypes = [
     ListView,
     SingleChildScrollView,
     GridView,
   ];
 
-  List<Type> containerTypes = [
+  static List<Type> containerTypes = [
     Scaffold,
     ListTile,
   ];
 
-  List<Type> variableTypes = [
+  static List<Type> variableTypes = [
     Container,
   ];
 
-  List<Type> overlayTypes = [
+  static List<Type> overlayTypes = [
     BottomSheet,
     AlertDialog,
   ];
@@ -148,5 +148,24 @@ class UxTraceableElement {
       }
     }
     return false;
+  }
+
+  static int parseStringIdToGetType(String typePath) {
+    int type = UX_UNKOWN;
+    final typeHierarchyList = typePath.split("#");
+    for (String typeItem in typeHierarchyList) {
+      final item = int.tryParse(typeItem);
+      if (item != null) {
+        if (item == UX_FIELD) {
+          type = UX_FIELD;
+          continue;
+        }
+        if (type == UX_FIELD || type == UX_BUTTON || type == UX_COMPOUND) {
+          continue;
+        }
+        type = item;
+      }
+    }
+    return type;
   }
 }
