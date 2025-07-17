@@ -45,18 +45,26 @@ class GestureHandler {
         );
         addTreeIfInsideBounds(parent, node);
       }
-      if (type == UX_TEXT || type == UX_IMAGE) {
-        final subTree = _inspectNonInteractiveChild(element);
-        if (subTree != null) {
-          addTreeIfInsideBounds(node, subTree);
-        }
-        return;
-      }
       if (type == UX_BUTTON) {
         final subTree = _inspectButtonChild(element);
         if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
-          return;
+        }
+      }
+      if (type == UX_COMPOUND) {
+        final subTree = _inspectInteractiveChild(element);
+        if (subTree != null) {
+          addTreeIfInsideBounds(node, subTree);
+        }
+      }
+
+      if (type == UX_TEXT || type == UX_IMAGE || type == UX_DECOR) {
+        final subTree = _inspectNonInteractiveChild(element);
+        if (subTree != null) {
+          if (subTree.value.isNotEmpty && type != UX_DECOR) {
+            addTreeIfInsideBounds(node, subTree);
+            return;
+          }
         }
       }
       if (type == UX_FIELD) {
@@ -65,13 +73,6 @@ class GestureHandler {
           addTreeIfInsideBounds(node, subTree);
         }
         return;
-      }
-      if (type == UX_COMPOUND) {
-        final subTree = _inspectInteractiveChild(element);
-        if (subTree != null) {
-          addTreeIfInsideBounds(node, subTree);
-          return;
-        }
       }
     }
     element.visitChildElements((elem) => _inspectDirectChild(node, elem));
@@ -163,50 +164,12 @@ class GestureHandler {
 
   SummaryTree? _inspectButtonChild(Element element) {
     SummaryTree? subTree;
-    String label = "";
-
-    void _extractTextFromButton(Element element) {
-      final renderObject = element.renderObject;
-
-      if (element.widget is Icon) {
-        final iconWidget = element.widget as Icon;
-        String iconDataString = iconWidget.semanticLabel ?? "";
-        if (iconWidget.icon != null) {
-          iconDataString =
-              "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
-        }
-        if (element.getEffectiveBounds().contains(position)) {
-          label = iconDataString;
-        }
-      }
-
-      if (element.widget is Text && renderObject is RenderParagraph) {
-        final textSpan = renderObject.text;
-        if (textSpan is TextSpan) {
-          final value = extractTextFromSpan(textSpan);
-          if (label.isEmpty) {
-            label = value;
-          } else {
-            if (element.getEffectiveBounds().contains(position)) {
-              label = value;
-            }
-          }
-        }
-      }
-      element.visitChildElements((element) => _extractTextFromButton(element));
-    }
-
-    _extractTextFromButton(element);
-    if (label.isNotEmpty) {
-      //there are cases where interactive elements like inkwell and gesturedetector do not have a child.
-      subTree = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        UX_BUTTON,
-        value: label,
-        bound: element.getEffectiveBounds(),
-      );
-    }
+    subTree = SummaryTree(
+      ModalRoute.of(element)?.settings.name ?? "",
+      element.widget.runtimeType.toString(),
+      UX_BUTTON,
+      bound: element.getEffectiveBounds(),
+    );
 
     return subTree;
   }
@@ -396,13 +359,19 @@ class GestureHandler {
     uId += summaryTree.uiClass + "_";
 
     do {
-      try {
-        final subTree = summaryTree!.subTrees.last;
-        uId += subTree.uiClass + "_";
-        summaryTree = subTree;
-      } on StateError {
-        break;
+      SummaryTree subTree;
+      if (summaryTree!.subTrees.length == 1) {
+        subTree = summaryTree.subTrees.first;
+      } else {
+        final reversedTrees = summaryTree.subTrees.reversed;
+        subTree = reversedTrees.firstWhere((node) {
+          return node.value.isNotEmpty;
+        }, orElse: () {
+          return reversedTrees.first;
+        });
       }
+      uId += subTree.uiClass + "_";
+      summaryTree = subTree;
     } while (summaryTree.subTrees.isNotEmpty);
 
     if (summaryTree!.subTrees.isEmpty) {
@@ -412,8 +381,8 @@ class GestureHandler {
         summaryTree.bound,
         summaryTree.route,
         uiValue: summaryTree.isOccluded ? "" : summaryTree.value,
-        //uiId: uId,
-        uiId: summaryTree.isOccluded ? "" : generateStringHash(uId),
+        uiId: uId,
+        //uiId: summaryTree.isOccluded ? "" : generateStringHash(uId),
         uiClass: summaryTree.isOccluded ? "" : summaryTree.uiClass,
         uiType: summaryTree.isOccluded ? -1 : summaryTree.type,
         isSensitive: summaryTree.isOccluded,
