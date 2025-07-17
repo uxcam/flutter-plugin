@@ -411,11 +411,12 @@ class GestureHandler {
       trackData = TrackData(
         summaryTree.bound,
         summaryTree.route,
-        uiValue: summaryTree.isOccluded ? null : summaryTree.value,
+        uiValue: summaryTree.isOccluded ? "" : summaryTree.value,
         //uiId: uId,
         uiId: summaryTree.isOccluded ? "" : generateStringHash(uId),
         uiClass: summaryTree.isOccluded ? "" : summaryTree.uiClass,
         uiType: summaryTree.isOccluded ? -1 : summaryTree.type,
+        isSensitive: summaryTree.isOccluded,
       );
     } else {}
 
