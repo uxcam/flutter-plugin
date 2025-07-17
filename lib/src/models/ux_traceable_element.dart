@@ -4,6 +4,7 @@ const UX_UNKOWN = -1;
 const UX_CUSTOM = 0;
 const UX_TEXT = 7;
 const UX_IMAGE = 12;
+const UX_DECOR = 13;
 const UX_BUTTON = 1;
 const UX_FIELD = 2;
 const UX_COMPOUND = 3;
@@ -116,14 +117,14 @@ class UxTraceableElement {
         final widget = element.widget as DecoratedBox;
         if (widget.decoration is BoxDecoration) {
           if ((widget.decoration as BoxDecoration).image != null) {
-            _uiType = UX_IMAGE;
+            _uiType = UX_DECOR;
           }
           if ((widget.decoration as BoxDecoration).shape == BoxShape.circle) {
-            _uiType = UX_IMAGE;
+            _uiType = UX_DECOR;
           }
         }
         if (widget.decoration is ShapeDecoration) {
-          _uiType = UX_IMAGE;
+          _uiType = UX_DECOR;
         }
       }
     }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
 extension GlobalKeyExtension on GlobalKey {
@@ -91,6 +92,7 @@ extension ElementX on Element {
     if (animatedOpacity != null && animatedOpacity.opacity == 0.0) {
       return false;
     }
+
     return true;
   }
 
