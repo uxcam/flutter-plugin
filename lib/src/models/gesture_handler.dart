@@ -56,8 +56,8 @@ class GestureHandler {
         final subTree = _inspectButtonChild(element);
         if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
+          return;
         }
-        //return;
       }
       if (type == UX_FIELD) {
         final subTree = _inspectTextFieldChild(element);
@@ -70,8 +70,8 @@ class GestureHandler {
         final subTree = _inspectInteractiveChild(element);
         if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
+          return;
         }
-        //return;
       }
     }
     element.visitChildElements((elem) => _inspectDirectChild(node, elem));
