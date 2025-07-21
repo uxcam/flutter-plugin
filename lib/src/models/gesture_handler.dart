@@ -83,46 +83,12 @@ class GestureHandler {
 
   SummaryTree? _inspectInteractiveChild(Element element) {
     SummaryTree? subTree;
-    String label = "";
-
-    void _extractTextFromButton(Element element) {
-      if (element.getEffectiveBounds().contains(position)) {
-        if (element.widget is Icon) {
-          final iconWidget = element.widget as Icon;
-          String iconDataString = iconWidget.semanticLabel ?? "";
-          if (iconWidget.icon != null) {
-            iconDataString =
-                "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
-          }
-          label = iconDataString;
-        } else {
-          final renderObject = element.renderObject;
-          if (renderObject is RenderParagraph) {
-            final textSpan = renderObject.text;
-            if (textSpan is TextSpan) {
-              label = extractTextFromSpan(textSpan);
-            }
-          }
-        }
-      }
-      element.visitChildElements((element) => _extractTextFromButton(element));
-    }
-
-    final sibling = element.getSibling();
-
-    if (sibling != null) {
-      _extractTextFromButton(sibling);
-    }
-
-    if (label.isNotEmpty) {
-      subTree = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        UX_COMPOUND,
-        value: label,
-        bound: element.getEffectiveBounds(),
-      );
-    }
+    subTree = SummaryTree(
+      ModalRoute.of(element)?.settings.name ?? "",
+      element.widget.runtimeType.toString(),
+      UX_COMPOUND,
+      bound: element.getEffectiveBounds(),
+    );
 
     return subTree;
   }
@@ -372,8 +338,8 @@ class GestureHandler {
         summaryTree.bound,
         summaryTree.route,
         uiValue: summaryTree.isOccluded ? "" : summaryTree.value,
-        uiId: uId,
-        //uiId: summaryTree.isOccluded ? "" : generateStringHash(uId),
+        //uiId: uId,
+        uiId: summaryTree.isOccluded ? "" : generateStringHash(uId),
         uiClass: summaryTree.isOccluded ? "" : summaryTree.uiClass,
         uiType: summaryTree.isOccluded ? UX_UNKOWN : effectiveType,
         isSensitive: summaryTree.isOccluded,
