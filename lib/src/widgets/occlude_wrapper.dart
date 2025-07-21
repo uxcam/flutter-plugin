@@ -42,7 +42,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (!mounted) return;
     Rect rect = Rect.zero;
     if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
-      rect = _widgetKey.globalPaintBounds!;
+      rect = _widgetKey.globalPaintBounds ?? Rect.zero;
     }
     OcclusionWrapperManager()
         .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
