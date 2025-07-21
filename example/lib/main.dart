@@ -36,6 +36,8 @@ class UXCamPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // FlutterUXBlur();
+    // FlutterUxcam.applyOcclusion(FlutterUXBlur())
     return Scaffold(
       appBar: AppBar(),
       body: ListView(

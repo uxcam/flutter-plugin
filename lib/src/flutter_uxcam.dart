@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_uxcam/src/flutter_occlusion.dart';
+import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
 import 'package:flutter_uxcam/src/models/uxcam_config.dart';
 import 'package:stack_trace/stack_trace.dart';
