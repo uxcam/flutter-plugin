@@ -9,14 +9,16 @@ import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
 
 class GestureHandler {
   Offset position = Offset.zero;
+  RenderObject? target;
   String _topRoute = "/";
 
   SummaryTree? rootTree;
 
   final UxTraceableElement traceableElement = UxTraceableElement();
 
-  void setPosition(Offset position) {
+  void intialize(Offset position, RenderObject target) {
     this.position = position;
+    this.target = target;
   }
 
   void inspectElement(Element element) {
@@ -38,6 +40,7 @@ class GestureHandler {
           ModalRoute.of(element)?.settings.name ?? "",
           element.widget.runtimeType.toString(),
           UX_VIEWGROUP,
+          element.renderObject?.hashCode ?? 0,
           bound: element.getEffectiveBounds(),
           isViewGroup: true,
           isOccluded:
@@ -73,7 +76,6 @@ class GestureHandler {
         final subTree = _inspectTextFieldChild(element);
         if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
-          print("object");
         }
         return;
       }
@@ -87,6 +89,7 @@ class GestureHandler {
       ModalRoute.of(element)?.settings.name ?? "",
       element.widget.runtimeType.toString(),
       UX_COMPOUND,
+      element.renderObject?.hashCode ?? 0,
       bound: element.getEffectiveBounds(),
     );
 
@@ -106,6 +109,7 @@ class GestureHandler {
       ModalRoute.of(element)?.settings.name ?? "",
       element.widget.runtimeType.toString(),
       UX_FIELD,
+      element.renderObject?.hashCode ?? 0,
       value: hint,
       bound: element.getEffectiveBounds(),
     );
@@ -118,6 +122,7 @@ class GestureHandler {
       ModalRoute.of(element)?.settings.name ?? "",
       element.widget.runtimeType.toString(),
       UX_BUTTON,
+      element.renderObject?.hashCode ?? 0,
       bound: element.getEffectiveBounds(),
     );
 
@@ -132,6 +137,7 @@ class GestureHandler {
         ModalRoute.of(element)?.settings.name ?? "",
         element.widget.runtimeType.toString(),
         UX_TEXT,
+        element.renderObject?.hashCode ?? 0,
         value: widget.data ?? "",
         bound: element.getEffectiveBounds(),
         isOccluded:
@@ -145,6 +151,7 @@ class GestureHandler {
           ModalRoute.of(element)?.settings.name ?? "",
           element.widget.runtimeType.toString(),
           UX_TEXT,
+          element.renderObject?.hashCode ?? 0,
           value: extractTextFromSpan(widget.text as TextSpan),
           bound: element.getEffectiveBounds(),
           isOccluded:
@@ -156,8 +163,11 @@ class GestureHandler {
       String imageDataString =
           extractImagePath((element.widget as Image).image.toString()) ?? "";
 
-      subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
-          element.widget.runtimeType.toString(), UX_IMAGE,
+      subTree = SummaryTree(
+          ModalRoute.of(element)?.settings.name ?? "",
+          element.widget.runtimeType.toString(),
+          UX_IMAGE,
+          element.renderObject?.hashCode ?? 0,
           value: imageDataString,
           bound: element.getEffectiveBounds(),
           isOccluded:
@@ -167,8 +177,11 @@ class GestureHandler {
           });
     }
     if (element.widget is DecoratedBox) {
-      subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
-          element.widget.runtimeType.toString(), UX_IMAGE,
+      subTree = SummaryTree(
+          ModalRoute.of(element)?.settings.name ?? "",
+          element.widget.runtimeType.toString(),
+          UX_IMAGE,
+          element.renderObject?.hashCode ?? 0,
           value: _extractImageStringRepresentation(element),
           bound: element.getEffectiveBounds(),
           isOccluded:
@@ -184,8 +197,11 @@ class GestureHandler {
         iconDataString =
             "${iconWidget.icon!.fontFamily}-${iconWidget.icon!.codePoint.toRadixString(16)}";
       }
-      subTree = SummaryTree(ModalRoute.of(element)?.settings.name ?? "",
-          element.widget.runtimeType.toString(), UX_IMAGE,
+      subTree = SummaryTree(
+          ModalRoute.of(element)?.settings.name ?? "",
+          element.widget.runtimeType.toString(),
+          UX_IMAGE,
+          element.renderObject?.hashCode ?? 0,
           value: iconDataString,
           bound: element.getEffectiveBounds(),
           isOccluded:
@@ -250,11 +266,7 @@ class GestureHandler {
       }
     } else {
       bool isInside = false;
-      if (root.type == UX_BUTTON) {
-        isInside = root.bound.contains(position);
-      } else {
-        isInside = tree.bound.contains(position);
-      }
+      isInside = tree.bound.contains(position);
       // If not inside, check a circle of points (n points in equal interval around a radius)
       if (!isInside) {
         const double radius = 10.0;
@@ -322,7 +334,7 @@ class GestureHandler {
     void traverseTree(SummaryTree tree) {
       uIdPath.add(tree.uiClass);
       typePath.add(tree.type);
-      if (tree.subTrees.isEmpty && tree.value.isNotEmpty) {
+      if (tree.subTrees.isEmpty) {
         leaves.add(tree);
       }
       for (SummaryTree tree in tree.subTrees.reversed) {
@@ -336,7 +348,8 @@ class GestureHandler {
     if (leaves.isNotEmpty) {
       try {
         leaf = leaves.firstWhere((node) {
-          return node.bound.contains(position);
+          return node.bound.contains(position) &&
+              node.hashCode == target?.hashCode;
         });
       } on StateError {
         leaf = leaves[0];

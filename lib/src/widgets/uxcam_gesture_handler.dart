@@ -1,4 +1,6 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_uxcam/src/models/gesture_handler.dart';
 import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
 
@@ -60,8 +62,14 @@ class _UXCamGestureHandlerState extends State<UXCamGestureHandler> {
   }
 
   void _onTappedAt(BuildContext context, Offset position) {
+    final result = HitTestResult();
+    RendererBinding.instance.hitTest(result, position);
+
+    final target = result.path.firstWhere((item) => item is BoxHitTestEntry);
+    final targetedObject = target.target as RenderObject;
+
     context.visitChildElements((element) {
-      gestureHandler.setPosition(position);
+      gestureHandler.intialize(position, targetedObject);
       gestureHandler.inspectElement(element);
       gestureHandler.sendTrackDataFromSummaryTree();
     });
