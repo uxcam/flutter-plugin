@@ -63,9 +63,8 @@ class GestureHandler {
       if (type == UX_TEXT || type == UX_IMAGE || type == UX_DECOR) {
         final subTree = _inspectNonInteractiveChild(element);
         if (subTree != null) {
-          if (subTree.value.isNotEmpty && type != UX_DECOR) {
-            addTreeIfInsideBounds(node, subTree);
-            print("object");
+          addTreeIfInsideBounds(node, subTree);
+          if (type == UX_TEXT || type == UX_IMAGE) {
             return;
           }
         }
@@ -74,6 +73,7 @@ class GestureHandler {
         final subTree = _inspectTextFieldChild(element);
         if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
+          print("object");
         }
         return;
       }
@@ -262,9 +262,18 @@ class GestureHandler {
 
   void addTreeIfInsideBounds(SummaryTree? root, SummaryTree tree) {
     if (root == null) {
-      rootTree = tree;
+      if (tree.type == UX_VIEWGROUP) {
+        //there is a case where the absolute root of the summary tree is not a view group. ex. when long pressing/ holding a textfield,
+        //a context menu will appear, which is not part of the widget tree. In that case we have to prevent such a widget as the absolute root can only be a view group.
+        rootTree = tree;
+      }
     } else {
-      bool isInside = tree.bound.contains(position);
+      bool isInside = false;
+      if (root.type == UX_BUTTON) {
+        isInside = root.bound.contains(position);
+      } else {
+        isInside = tree.bound.contains(position);
+      }
       // If not inside, check a circle of points (n points in equal interval around a radius)
       if (!isInside) {
         const double radius = 10.0;
@@ -319,53 +328,59 @@ class GestureHandler {
 
   void sendTrackDataFromSummaryTree() {
     TrackData? trackData;
-    String uId = "";
-    String typePath = "";
+    List<String> uIdPath = [];
+    List<int> typePath = [];
     SummaryTree? summaryTree = rootTree;
-    String route = summaryTree!.route;
+    List<SummaryTree> leaves = [];
 
+    String route = summaryTree!.route;
     if (route == "/") {
       route = "root";
     }
-    uId += summaryTree.uiClass + "#";
-    typePath += "${summaryTree.type}#";
 
-    do {
-      SummaryTree subTree;
-      if (summaryTree!.subTrees.length == 1) {
-        subTree = summaryTree.subTrees.first;
-      } else {
-        final reversedTrees = summaryTree.subTrees.reversed;
-        subTree = reversedTrees.firstWhere((node) {
-          return node.value.isNotEmpty;
-        }, orElse: () {
-          return reversedTrees.first;
-        });
+    void traverseTree(SummaryTree tree) {
+      uIdPath.add(tree.uiClass);
+      typePath.add(tree.type);
+      if (tree.subTrees.isEmpty && tree.value.isNotEmpty) {
+        leaves.add(tree);
       }
-      uId += subTree.uiClass + "#";
-      typePath += "${subTree.type}#";
-      summaryTree = subTree;
-    } while (summaryTree.subTrees.isNotEmpty);
+      for (SummaryTree tree in tree.subTrees.reversed) {
+        traverseTree(tree);
+      }
+    }
 
-    if (summaryTree.subTrees.isEmpty) {
-      uId = summaryTree.route + "#" + uId;
-      typePath += "${summaryTree.type}";
-      int effectiveType = UxTraceableElement.parseStringIdToGetType(typePath);
-      uId += "#" + formatValueToPseudoId(summaryTree.value);
+    traverseTree(summaryTree);
+
+    SummaryTree? leaf;
+    if (leaves.isNotEmpty) {
+      try {
+        leaf = leaves.firstWhere((node) {
+          return node.bound.contains(position);
+        });
+      } on StateError {
+        leaf = leaves[0];
+      }
+    }
+
+    if (leaf != null) {
+      String uId = leaf.route + "#" + uIdPath.join("#") + "#" + leaf.uiClass;
+      int effectiveType = UxTraceableElement.parseStringIdToGetType(
+          typePath.join("#") + "#" + leaf.type.toString());
+      uId += "#" + formatValueToPseudoId(leaf.value);
 
       trackData = TrackData(
-        summaryTree.bound,
-        summaryTree.route,
-        uiValue: summaryTree.isOccluded ? "" : summaryTree.value,
-        //uiId: uId,
-        uiId: summaryTree.isOccluded ? "" : generateStringHash(uId),
-        uiClass: summaryTree.isOccluded ? "" : summaryTree.uiClass,
-        uiType: summaryTree.isOccluded ? UX_UNKOWN : effectiveType,
-        isSensitive: summaryTree.isOccluded,
+        leaf.bound,
+        leaf.route,
+        uiValue: leaf.isOccluded ? "" : leaf.value,
+        uiId: uId,
+        //uiId: leaf!.isOccluded ? "" : generateStringHash(uId),
+        uiClass: leaf.isOccluded ? "" : leaf.uiClass,
+        uiType: leaf.isOccluded ? UX_UNKOWN : effectiveType,
+        isSensitive: leaf.isOccluded,
       );
-    } else {}
 
-    print("messagex:" + trackData.toString());
-    FlutterUxcam.appendGestureContent(position, trackData!);
+      print("messagex:" + trackData.toString());
+      FlutterUxcam.appendGestureContent(position, trackData);
+    }
   }
 }
