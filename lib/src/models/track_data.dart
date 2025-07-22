@@ -91,6 +91,7 @@ class SummaryTree {
   String route;
   String uiClass;
   int type;
+  int hashCode;
   String value;
   Map<String, dynamic> custom;
   List<SummaryTree> subTrees;
@@ -100,7 +101,8 @@ class SummaryTree {
   SummaryTree(
     this.route,
     this.uiClass,
-    this.type, {
+    this.type,
+    this.hashCode, {
     this.bound = Rect.zero,
     this.value = "",
     this.subTrees = const [],

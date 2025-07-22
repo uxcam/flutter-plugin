@@ -122,6 +122,9 @@ class UxTraceableElement {
           if ((widget.decoration as BoxDecoration).shape == BoxShape.circle) {
             _uiType = UX_DECOR;
           }
+          if ((widget.decoration as BoxDecoration).color != null) {
+            _uiType = UX_DECOR;
+          }
         }
         if (widget.decoration is ShapeDecoration) {
           _uiType = UX_DECOR;
@@ -156,6 +159,10 @@ class UxTraceableElement {
     for (String typeItem in typeHierarchyList) {
       final item = int.tryParse(typeItem);
       if (item != null) {
+        if (item == UX_VIEWGROUP) {
+          type = UX_VIEWGROUP;
+          continue;
+        }
         if (item == UX_FIELD) {
           type = UX_FIELD;
           continue;
