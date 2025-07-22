@@ -376,7 +376,7 @@ class GestureHandler {
     }
 
     if (leaf != null) {
-      String uId = leaf.route + "#" + uIdPath.join("#") + "#" + leaf.uiClass;
+      String uId = uIdPath.join("#") + "#" + leaf.uiClass;
       int effectiveType = UxTraceableElement.parseStringIdToGetType(
           typePath.join("#") + "#" + leaf.type.toString());
       uId += "#" + formatValueToPseudoId(leaf.value);
@@ -385,8 +385,8 @@ class GestureHandler {
         leaf.bound,
         leaf.route,
         uiValue: leaf.isOccluded ? "" : leaf.value,
-        uiId: uId,
-        //uiId: leaf!.isOccluded ? "" : generateStringHash(uId),
+        //uiId: uId,
+        uiId: leaf.isOccluded ? "" : leaf.route + generateStringHash(uId),
         uiClass: leaf.isOccluded ? "" : leaf.uiClass,
         uiType: leaf.isOccluded ? UX_UNKOWN : effectiveType,
         isSensitive: leaf.isOccluded,
