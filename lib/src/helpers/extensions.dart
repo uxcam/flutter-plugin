@@ -96,6 +96,14 @@ extension ElementX on Element {
     return true;
   }
 
+  bool targetListContainsElement(List<int>? targetList) {
+    final renderObject = this.renderObject;
+    if (renderObject != null && renderObject is RenderBox) {
+      return targetList?.contains(renderObject.hashCode) ?? false;
+    }
+    return false;
+  }
+
   String getUniqueId() {
     final slotInParent = this.slot;
     if (slotInParent != null) {
