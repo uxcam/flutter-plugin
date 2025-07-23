@@ -65,11 +65,13 @@ class _UXCamGestureHandlerState extends State<UXCamGestureHandler> {
     final result = HitTestResult();
     RendererBinding.instance.hitTest(result, position);
 
-    final target = result.path.firstWhere((item) => item is BoxHitTestEntry);
-    final targetedObject = target.target as RenderObject;
+    final targetList = result.path
+        .where((item) => item is BoxHitTestEntry)
+        .map((item) => (item.target as RenderObject).hashCode)
+        .toList();
 
     context.visitChildElements((element) {
-      gestureHandler.intialize(position, targetedObject);
+      gestureHandler.intialize(position, targetList);
       gestureHandler.inspectElement(element);
       gestureHandler.sendTrackDataFromSummaryTree();
     });

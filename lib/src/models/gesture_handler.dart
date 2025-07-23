@@ -9,76 +9,100 @@ import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
 
 class GestureHandler {
   Offset position = Offset.zero;
-  RenderObject? target;
+  List<int>? targetHashList;
   String _topRoute = "/";
 
   SummaryTree? rootTree;
 
   final UxTraceableElement traceableElement = UxTraceableElement();
 
-  void intialize(Offset position, RenderObject target) {
+  void intialize(Offset position, List<int> target) {
     this.position = position;
-    this.target = target;
+    this.targetHashList = target;
   }
 
   void inspectElement(Element element) {
     rootTree = null;
     _inspectDirectChild(null, element);
-    print("object");
-  }
-
-  bool elementExistsInTree(Element element) {
-    return false;
   }
 
   void _inspectDirectChild(SummaryTree? parent, Element element) {
     final type = traceableElement.getUxType(element);
     SummaryTree? node = parent;
-    if (element.isRendered()) {
-      if (type == UX_VIEWGROUP) {
-        node = SummaryTree(
-          ModalRoute.of(element)?.settings.name ?? "",
-          element.widget.runtimeType.toString(),
-          UX_VIEWGROUP,
-          element.renderObject?.hashCode ?? 0,
-          bound: element.getEffectiveBounds(),
-          isViewGroup: true,
-          isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
-        );
+
+    if (type == UX_VIEWGROUP) {
+      node = SummaryTree(
+        ModalRoute.of(element)?.settings.name ?? "",
+        element.widget.runtimeType.toString(),
+        UX_VIEWGROUP,
+        element.renderObject?.hashCode ?? 0,
+        bound: element.getEffectiveBounds(),
+        isViewGroup: true,
+        isOccluded:
+            element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
+      );
+      if (element.isRendered() &&
+          element.targetListContainsElement(targetHashList)) {
         addTreeIfInsideBounds(parent, node);
       }
-      if (type == UX_BUTTON) {
-        final subTree = _inspectButtonChild(element);
-        if (subTree != null) {
+    }
+    if (type == UX_BUTTON) {
+      final subTree = _inspectButtonChild(element);
+      if (subTree != null) {
+        if (element.isRendered() &&
+            element.targetListContainsElement(targetHashList)) {
           addTreeIfInsideBounds(node, subTree);
           node = subTree;
         }
       }
-      if (type == UX_COMPOUND) {
-        final subTree = _inspectInteractiveChild(element);
-        if (subTree != null) {
+    }
+    if (type == UX_COMPOUND) {
+      final subTree = _inspectInteractiveChild(element);
+      if (subTree != null) {
+        if (element.isRendered() &&
+            element.targetListContainsElement(targetHashList)) {
           addTreeIfInsideBounds(node, subTree);
           node = subTree;
         }
       }
+    }
 
-      if (type == UX_TEXT || type == UX_IMAGE || type == UX_DECOR) {
-        final subTree = _inspectNonInteractiveChild(element);
-        if (subTree != null) {
-          addTreeIfInsideBounds(node, subTree);
-          if (type == UX_TEXT || type == UX_IMAGE) {
-            return;
+    if (type == UX_TEXT || type == UX_IMAGE || type == UX_DECOR) {
+      final subTree = _inspectNonInteractiveChild(element);
+      if (subTree != null) {
+        if (element.isRendered()) {
+          if (node?.type == UX_BUTTON) {
+            addTreeIfInsideBounds(node, subTree, alwaysAdd: true);
+          } else {
+            if (element.targetListContainsElement(targetHashList)) {
+              addTreeIfInsideBounds(node, subTree);
+            } else {
+              if ((targetHashList?.contains(node.hashCode) ?? false) &&
+                  subTree.bound.contains(position)) {
+                /// this is a special case. Consider the scenario: Stack(children:[Image, InkWell])
+                /// if InkWell(or any other button type) covers the entire Stack and does not have any children(transparent),
+                /// and the user taps the Image, they will think that they tapped the Image, but in reality, they tapped the InkWell.
+                /// so in order to show the Image information in the dashboard instead of the transparent InkWell which has no relevant information,
+                /// we need this check.
+                addTreeIfInsideBounds(node, subTree);
+              }
+            }
           }
         }
+        if (type == UX_TEXT || type == UX_IMAGE) {
+          return;
+        }
       }
-      if (type == UX_FIELD) {
-        final subTree = _inspectTextFieldChild(element);
-        if (subTree != null) {
+    }
+    if (type == UX_FIELD) {
+      final subTree = _inspectTextFieldChild(element);
+      if (subTree != null) {
+        if (element.isRendered() &&
+            element.targetListContainsElement(targetHashList)) {
           addTreeIfInsideBounds(node, subTree);
         }
-        return;
       }
+      return;
     }
     element.visitChildElements((elem) => _inspectDirectChild(node, elem));
   }
@@ -278,7 +302,8 @@ class GestureHandler {
     return buffer.toString();
   }
 
-  void addTreeIfInsideBounds(SummaryTree? root, SummaryTree tree) {
+  void addTreeIfInsideBounds(SummaryTree? root, SummaryTree tree,
+      {bool alwaysAdd = false}) {
     if (root == null) {
       if (tree.type == UX_VIEWGROUP) {
         //there is a case where the absolute root of the summary tree is not a view group. ex. when long pressing/ holding a textfield,
@@ -306,7 +331,7 @@ class GestureHandler {
           }
         }
       }
-      if (isInside) {
+      if (isInside || alwaysAdd) {
         root.subTrees = [
           ...root.subTrees,
           tree,
@@ -369,13 +394,8 @@ class GestureHandler {
     if (leaves.isNotEmpty) {
       try {
         leaf = leaves.firstWhere((node) {
-          return node.hashCode == target?.hashCode;
+          return node.bound.contains(position) && node.value.isNotEmpty;
         });
-        if (leaf.value.isEmpty) {
-          leaf = leaves.firstWhere((node) {
-            return node.bound.contains(position) && node.value.isNotEmpty;
-          });
-        }
       } on StateError {
         leaf = leaves[0];
       }
