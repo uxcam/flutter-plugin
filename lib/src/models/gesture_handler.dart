@@ -247,9 +247,11 @@ class GestureHandler {
       if (_image != null) {
         imageDataString = extractImagePath(_image.image.toString()) ?? "";
       }
-      final _shape = decoration.shape;
-      if (_shape != BoxShape.rectangle) {
-        imageDataString = "";
+      if (imageDataString.isEmpty) {
+        final _shape = decoration.shape;
+        if (_shape != BoxShape.rectangle) {
+          imageDataString = "";
+        }
       }
     } else {
       if ((element.widget as DecoratedBox).decoration is ShapeDecoration) {
