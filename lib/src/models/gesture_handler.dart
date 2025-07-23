@@ -367,9 +367,13 @@ class GestureHandler {
     if (leaves.isNotEmpty) {
       try {
         leaf = leaves.firstWhere((node) {
-          return node.bound.contains(position) &&
-              node.hashCode == target?.hashCode;
+          return node.hashCode == target?.hashCode;
         });
+        if (leaf.value.isEmpty) {
+          leaf = leaves.firstWhere((node) {
+            return node.bound.contains(position) && node.value.isNotEmpty;
+          });
+        }
       } on StateError {
         leaf = leaves[0];
       }
