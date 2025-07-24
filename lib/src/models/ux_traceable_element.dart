@@ -74,6 +74,7 @@ class UxTraceableElement {
   static List<Type> containerTypes = [
     Scaffold,
     ListTile,
+    Stack,
   ];
 
   static List<Type> variableTypes = [

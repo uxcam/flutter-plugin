@@ -76,6 +76,16 @@ class GestureHandler {
           } else {
             if (element.targetListContainsElement(targetHashList)) {
               addTreeIfInsideBounds(node, subTree);
+            } else {
+              if ((targetHashList?.contains(node.hashCode) ?? false) &&
+                  subTree.bound.contains(position)) {
+                /// this is a special case. Consider the scenario: Stack(children:[Image, InkWell])
+                /// if InkWell(or any other button type) covers the entire Stack and does not have any children(transparent),
+                /// and the user taps the Image, they will think that they tapped the Image, but in reality, they tapped the InkWell.
+                /// so in order to show the Image information in the dashboard instead of the transparent InkWell which has no relevant information,
+                /// we need this check.
+                addTreeIfInsideBounds(node, subTree);
+              }
             }
           }
         }
