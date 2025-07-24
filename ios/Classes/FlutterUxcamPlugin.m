@@ -144,7 +144,9 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
         
         CGPoint position = CGPointFromString(pointString);
         
-        [UXCam handleGestureContent:position event:elementResult];
+        if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
+            [UXCam handleGestureContent:position event:elementResult];
+        }
     } else {
         result(nil);
     }
