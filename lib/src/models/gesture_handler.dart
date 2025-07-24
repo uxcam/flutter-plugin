@@ -259,7 +259,7 @@ class GestureHandler {
   String? extractImagePath(String input) {
     final regex = RegExp(r'"([^"]+)"');
     final match = regex.firstMatch(input);
-    return match?.group(1);
+    return match?.group(1) != "null" ? match?.group(1) : null;
   }
 
   String _extractImageStringRepresentation(Element element) {
@@ -394,7 +394,7 @@ class GestureHandler {
     if (leaves.isNotEmpty) {
       try {
         leaf = leaves.firstWhere((node) {
-          return node.bound.contains(position) && node.value.isNotEmpty;
+          return node.bound.contains(position);
         });
       } on StateError {
         leaf = leaves[0];
