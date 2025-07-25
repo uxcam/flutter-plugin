@@ -24,9 +24,9 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
-import com.uxcam.internal.FlutterFacade;
-// import com.uxcam.screenaction.internal.ElementDataRequestListener;
-// import com.uxcam.screenaction.internal.ElementDataResponseListener;
+import com.uxcam.screenaction.internal.DefaultInternalApiFacade;
+import com.uxcam.screenaction.internal.ElementDataRequestListener;
+import com.uxcam.screenaction.internal.ElementDataResponseListener;
 import com.uxcam.screenaction.models.ScreenActionContentCrossPlatform;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
 import com.uxcam.screenshot.model.UXCamBlur;
@@ -95,6 +95,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static Activity activity;
 
     private CrossPlatformDelegate delegate;
+    private DefaultInternalApiFacade flutterFacade;
 
     private int leftPadding;
     private int cutoutTop = 0;
@@ -142,23 +143,23 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             }
         });
 
-        // flutterFacade = UXCam.getFacade();
-        // flutterFacade.setListener(new ElementDataRequestListener() {
-        //     @Override
-        //     public void getElementData(GestureData gestureData, ElementDataResponseListener onResult) {
-        //         try {
-        //             JSONObject obj = new JSONObject();
-        //             obj.put("x", gestureData.x);
-        //             obj.put("y", gestureData.y);
-        //             uxcamMessageChannel.send(obj.toString(), data -> {
-        //                 onResult.onData(data.toString());
-        //             });      
-        //         }catch (JSONException e) {
-        //             e.printStackTrace();
-        //             onResult.onData("data");
-        //         }
-        //     }            
-        // });
+        flutterFacade = UXCam.getFacade();
+        flutterFacade.setListener(new ElementDataRequestListener() {
+            @Override
+            public void getElementData(GestureData gestureData, ElementDataResponseListener onResult) {
+                try {
+                    JSONObject obj = new JSONObject();
+                    obj.put("x", gestureData.x);
+                    obj.put("y", gestureData.y);
+                    uxcamMessageChannel.send(obj.toString(), data -> {
+                        onResult.onData(data.toString());
+                    });      
+                }catch (JSONException e) {
+                    e.printStackTrace();
+                    onResult.onData("data");
+                }
+            }            
+        });
 
         channel.setMethodCallHandler(this);
 
@@ -445,10 +446,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             frameDataMap.put(timestamp,frameData);
             result.success(true);
         } else if ("appendGestureContent".equals(call.method)) {
-            double x = call.argument("x");
-            double y = call.argument("y");
-            String gestureContent = call.argument("data").toString();
-            UXCam.appendGestureContent((float)x, (float)y, gestureContent);
+            float x = call.argument("x");
+            float y = call.argument("y");
+            String gestureContent = call.argument("gestureContent");
+            //delegate.addGestureContent(x,y, gestureContent);
             result.success(true);
         }
         else {

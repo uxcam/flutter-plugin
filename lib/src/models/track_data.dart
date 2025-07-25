@@ -78,6 +78,15 @@ class TrackData {
     return result;
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'class': uiClass,
+      'id': uiId,
+      'value': uiValue,
+      'type': uiType,
+    };
+  }
+
   void showAnalyticsInfo() {
     print("Element bound : $bound");
     print("Element id : $uiId");

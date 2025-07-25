@@ -9,9 +9,6 @@ class UxCam {
   static FlutterUxcamNavigatorObserver? navigationObserver;
   List<TrackData> _trackList = [];
 
-  String _topRoute = "/";
-  String get topRoute => _topRoute;
-
   UxCam() {
     const BasicMessageChannel<Object?> uxCamMessageChannel =
         BasicMessageChannel<Object?>(
@@ -19,35 +16,20 @@ class UxCam {
       StandardMessageCodec(),
     );
     uxCamMessageChannel.setMessageHandler((message) async {
-      print("flat tree:" + _trackList.toString());
-
       final map = jsonDecode(message as String);
       final offset = Offset(
-        (map["x"] as num).toDouble().toFlutter.toDouble(),
-        (map["y"] as num).toDouble().toFlutter.toDouble(),
+        (map["x"] as int).toDouble().toFlutter.toDouble(),
+        (map["y"] as int).toDouble().toFlutter.toDouble(),
       );
-
+      print("messagex: $offset");
       TrackData? _trackData;
       try {
-        _trackData = _trackList.firstWhere((data) {
+        _trackData = _trackList.lastWhere((data) {
           return data.bound.contains(offset);
-        }).copy();
+        });
       } catch (e) {}
       if (_trackData != null) {
-        if (_trackData.route != _topRoute) {
-          return "";
-        }
-
-        if (_trackData.route == "/") {
-          _trackData.route = "root";
-          if (_trackData.uiId != null) {
-            _trackData.uiId = "root_${_trackData.uiClass!}_${_trackData.uiId!}";
-          }
-        } else {
-          _trackData.uiId =
-              "${_trackData.route.replaceAll(' ', '')}_${_trackData.uiClass!}_${_trackData.uiId!}";
-        }
-        print("messagey:" + _trackData.toString());
+        print("messagex: ${_trackData.toString()}");
         return jsonEncode(_trackData.toJson());
       }
       return "";
@@ -56,17 +38,7 @@ class UxCam {
 
   addWidgetDataForTracking(TrackData data) {
     final id = data.uiId ?? "";
-    if (_trackList.indexWhere((item) => item.uiId == id) == -1) {
-      _trackList.add(data);
-    }
-  }
-
-  updateTopRoute(String route) {
-    _topRoute = route;
-    if (_topRoute == "") _topRoute = "/";
-  }
-
-  void removeTrackData() {
-    _trackList.clear();
+    _trackList.removeWhere((item) => item.uiId == id);
+    _trackList.add(data);
   }
 }

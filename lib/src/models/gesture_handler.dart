@@ -128,25 +128,6 @@ class GestureHandler {
       hint = textField.decoration?.hintText ??
           textField.decoration?.labelText ??
           "";
-    } else if (element.widget is TextFormField) {
-      String? hintFromDescendant;
-      element.visitChildElements((child) {
-        if (child.widget is TextField) {
-          final textField = child.widget as TextField;
-          hintFromDescendant =
-              textField.decoration?.hintText ?? textField.decoration?.labelText;
-        } else {
-          child.visitChildElements((child) {
-            if (child.widget is TextField) {
-              final textField = child.widget as TextField;
-              hintFromDescendant = textField.decoration?.hintText ??
-                  textField.decoration?.labelText;
-            }
-          });
-        }
-        ;
-      });
-      hint = hintFromDescendant ?? "";
     }
     subTree = SummaryTree(
       ModalRoute.of(element)?.settings.name ?? "",
