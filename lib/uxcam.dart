@@ -7,57 +7,25 @@ import 'package:flutter_uxcam/src/models/track_data.dart';
 
 class UxCam {
   static FlutterUxcamNavigatorObserver? navigationObserver;
-  List<TrackData> _trackList = [];
-
-  String _topRoute = "/";
-  String get topRoute => _topRoute;
+  final OcclusionEventCollector _collector = OcclusionEventCollector();
 
   UxCam() {
-    const BasicMessageChannel<Object?> uxCamMessageChannel =
-        BasicMessageChannel<Object?>(
-      'uxcam_message_channel',
-      StandardMessageCodec(),
-    );
-    uxCamMessageChannel.setMessageHandler((message) async {
-      print("flat tree:" + _trackList.toString());
-
-      final map = jsonDecode(message as String);
-      final offset = Offset(
-        (map["x"] as num).toDouble().toFlutter.toDouble(),
-        (map["y"] as num).toDouble().toFlutter.toDouble(),
-      );
-
-      TrackData? _trackData;
-      try {
-        _trackData = _trackList.firstWhere((data) {
-          return data.bound.contains(offset);
-        }).copy();
-      } catch (e) {}
-      if (_trackData != null) {
-        if (_trackData.route != _topRoute) {
-          return "";
-        }
-
-        if (_trackData.route == "/") {
-          _trackData.route = "root";
-          if (_trackData.uiId != null) {
-            _trackData.uiId = "root_${_trackData.uiClass!}_${_trackData.uiId!}";
-          }
-        } else {
-          _trackData.uiId =
-              "${_trackData.route.replaceAll(' ', '')}_${_trackData.uiClass!}_${_trackData.uiId!}";
-        }
-        print("messagey:" + _trackData.toString());
-        return jsonEncode(_trackData.toJson());
-      }
-      return "";
+    const BasicMessageChannel<String> occlusionRectsChannel =
+        BasicMessageChannel<String>(
+            "occlusion_rects_coordinates", StringCodec());
+    occlusionRectsChannel.setMessageHandler((event) async {
+      await SchedulerBinding.instance.endOfFrame;
+      final collectedData = await _collector.collectOcclusionRectsFor();
+      final points = _convertOccludeDataToRects(collectedData);
+      return points.toString();
     });
   }
 
-  addWidgetDataForTracking(TrackData data) {
-    final id = data.uiId ?? "";
-    if (_trackList.indexWhere((item) => item.uiId == id) == -1) {
-      _trackList.add(data);
+  List<Map<String, dynamic>> _convertOccludeDataToRects(
+      List<OccludeData> collectedData) {
+    final currentStack = navigationObserver?.screenNames ?? [];
+    if (currentStack.length == 1) {
+      return collectedData.map((e) => e.point.toJson()).toList();
     }
   }
 
