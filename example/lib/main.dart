@@ -49,92 +49,110 @@ class UXCamPage extends StatelessWidget {
     return Scaffold(
       body: ListView(
         children: [
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: true ? Colors.grey : Colors.blue,
-                child: Icon(Icons.abc, color: Colors.white),
-              ),
-              title: Text(
-                "Test",
-                style: TextStyle(
-                  fontWeight: true ? FontWeight.normal : FontWeight.bold,
+          RotatedBox(
+            quarterTurns: -1,
+            child: Row(
+              children: [
+                Text(
+                  'On sale'.toUpperCase(),
+                  style: TextStyle(color: Colors.red, fontSize: 22),
                 ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("message"),
-                  const SizedBox(height: 4),
-                  Text(
-                    "time",
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-              trailing: false
-                  ? null
-                  : const CircleAvatar(
-                      radius: 8,
-                      backgroundColor: Colors.blue,
-                    ),
-              onTap: () {
-                // FlutterUxcam.logEventWithProperties('Notification Tapped',
-                //     {
-                //   'title': title,
-                //   'isRead': isRead,
-                // }
-                // );
-                // Handle notification tap
-              },
+                const SizedBox(
+                  width: 5,
+                ),
+                const Icon(
+                  Icons.place,
+                  color: Colors.red,
+                ),
+              ],
             ),
           ),
-          Text(
-            "This is a smart events demo",
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          Image.asset(
-            "assets/images/testimage.jpg",
-            //semanticLabel: "this is a test image",
-          ),
-          Container(
-            height: 300,
-            decoration: BoxDecoration(
-                image: DecorationImage(
-                    image: AssetImage("assets/images/testimage.jpg"))),
-          ),
-          TextField(
-            decoration: InputDecoration(hintText: "this is a hint"),
-          ),
-          TextFormField(),
-          FeatureSection(
-            title: 'Screen Tagging',
-            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
-            buttonTitle: 'Login',
-          ),
-          TextButton(onPressed: () {}, child: Text("Signup")),
-          ElevatedButton(
-              onPressed: () {
-                showDialog(
-                    context: context,
-                    builder: (_) {
-                      return AlertDialog(
-                        title: const Text('Feature Section'),
-                        content: Text("data"),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Close'),
-                          ),
-                        ],
-                      );
-                    });
-              },
-              child: Text('data')),
+          // Card(
+          //   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          //   child: ListTile(
+          //     leading: CircleAvatar(
+          //       backgroundColor: true ? Colors.grey : Colors.blue,
+          //       child: Icon(Icons.abc, color: Colors.white),
+          //     ),
+          //     title: Text(
+          //       "Test",
+          //       style: TextStyle(
+          //         fontWeight: true ? FontWeight.normal : FontWeight.bold,
+          //       ),
+          //     ),
+          //     subtitle: Column(
+          //       crossAxisAlignment: CrossAxisAlignment.start,
+          //       children: [
+          //         Text("message"),
+          //         const SizedBox(height: 4),
+          //         Text(
+          //           "time",
+          //           style: const TextStyle(
+          //             fontSize: 12,
+          //             color: Colors.grey,
+          //           ),
+          //         ),
+          //       ],
+          //     ),
+          //     trailing: false
+          //         ? null
+          //         : const CircleAvatar(
+          //             radius: 8,
+          //             backgroundColor: Colors.blue,
+          //           ),
+          //     onTap: () {
+          //       // FlutterUxcam.logEventWithProperties('Notification Tapped',
+          //       //     {
+          //       //   'title': title,
+          //       //   'isRead': isRead,
+          //       // }
+          //       // );
+          //       // Handle notification tap
+          //     },
+          //   ),
+          // ),
+          // Text(
+          //   "This is a smart events demo",
+          //   style: Theme.of(context).textTheme.headlineSmall,
+          // ),
+          // Image.asset(
+          //   "assets/images/testimage.jpg",
+          //   //semanticLabel: "this is a test image",
+          // ),
+          // Container(
+          //   height: 300,
+          //   decoration: BoxDecoration(
+          //       image: DecorationImage(
+          //           image: AssetImage("assets/images/testimage.jpg"))),
+          // ),
+          // TextField(
+          //   decoration: InputDecoration(hintText: "this is a hint"),
+          // ),
+          // TextFormField(),
+          // FeatureSection(
+          //   title: 'Screen Tagging',
+          //   onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+          //   buttonTitle: 'Login',
+          // ),
+          // TextButton(onPressed: () {}, child: Text("Signup")),
+          // ElevatedButton(
+          //     onPressed: () {
+          //       showDialog(
+          //           context: context,
+          //           builder: (_) {
+          //             return AlertDialog(
+          //               title: const Text('Feature Section'),
+          //               content: Text("data"),
+          //               actions: [
+          //                 TextButton(
+          //                   onPressed: () => Navigator.of(context).pop(),
+          //                   child: const Text('Close'),
+          //                 ),
+          //               ],
+          //             );
+          //           });
+          //     },
+          //     child: Text('data')),
         ],
       ),
       // body: IndexedStack(
