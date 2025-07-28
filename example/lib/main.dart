@@ -34,9 +34,7 @@ class MyApp extends StatelessWidget {
       initialRoute: "/",
       onGenerateRoute: onGenerateRoute,
       builder: (context, child) {
-        return WidgetCapture(
-          child: child!,
-        );
+        return child!;
       },
     );
   }
