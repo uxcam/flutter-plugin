@@ -59,14 +59,16 @@ class UxCam {
     if (_trackList.indexWhere((item) => item.uiId == id) == -1) {
       _trackList.add(data);
     }
+    if (currentStack.isNotEmpty && currentStack.last == ":popup") {
+      return [];
+    } else {
+      return collectedData.map((e) => e.point.toJson()).toList();
+    }
   }
 
-  updateTopRoute(String route) {
-    _topRoute = route;
-    if (_topRoute == "") _topRoute = "/";
-  }
-
-  void removeTrackData() {
-    _trackList.clear();
+  Future<void> _deferToEndOfEveryFrame() async {
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      await SchedulerBinding.instance.endOfFrame;
+    });
   }
 }
