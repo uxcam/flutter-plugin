@@ -32,7 +32,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
     _uniqueId = UniqueKey();
     _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPersistentFrameCallback((_) async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       registerOcclusionWidget();
       _updatePositionForTopRouteOnly();
     });
@@ -42,10 +42,13 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (!mounted) return;
     Rect rect = Rect.zero;
     if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
-      rect = _widgetKey.globalPaintBounds ?? Rect.zero;
+      rect = _widgetKey.globalPaintBounds!;
     }
     OcclusionWrapperManager()
         .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updatePositionForTopRouteOnly();
+    });
   }
 
   void _updatePositionForTopRouteOnly() {

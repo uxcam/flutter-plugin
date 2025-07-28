@@ -666,4 +666,3 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
 }
-
