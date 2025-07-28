@@ -413,6 +413,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private boolean startWithConfig(Map<String, Object> configMap) {
         try {
             String appKey = (String) configMap.get(USER_APP_KEY);
+            Boolean enableIntegrationLogging = (Boolean) configMap.get(ENABLE_INTEGRATION_LOGGING);
             Boolean enableMultiSessionRecord = (Boolean) configMap.get(ENABLE_MUTLI_SESSION_RECORD);
             Boolean enableCrashHandling = (Boolean) configMap.get(ENABLE_CRASH_HANDLING);
             Boolean enableAutomaticScreenNameTagging = (Boolean) configMap.get(ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING);
@@ -425,6 +426,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
 
             UXConfig.Builder uxConfigBuilder = new UXConfig.Builder(appKey);
+            if (enableIntegrationLogging != null)
+                uxConfigBuilder.enableIntegrationLogging(enableIntegrationLogging);
             if (enableMultiSessionRecord != null)
                 uxConfigBuilder.enableMultiSessionRecord(enableMultiSessionRecord);
             if (enableCrashHandling != null)
