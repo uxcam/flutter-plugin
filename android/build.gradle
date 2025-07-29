@@ -5,7 +5,7 @@ buildscript {
     repositories {
         google()
         jcenter()
-        mavenLocal()
+//        mavenLocal()
     }
 
     dependencies {
@@ -20,7 +20,7 @@ rootProject.allprojects {
         maven {
             url 'https://sdk.uxcam.com/android/'
         }
-        mavenLocal()
+//        mavenLocal()
     }
 }
 
