@@ -67,6 +67,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static final String TYPE_VERSION = "2.6.1";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
+    public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
     public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
     public static final String ENABLE_CRASH_HANDLING = "enableCrashHandling";
     public static final String ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING = "enableAutomaticScreenNameTagging";
