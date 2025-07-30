@@ -260,9 +260,6 @@ class GestureHandler {
       }
     } else {
       if ((element.widget as DecoratedBox).decoration is ShapeDecoration) {
-        final decoration =
-            (element.widget as DecoratedBox).decoration as ShapeDecoration;
-        final _shape = decoration.shape;
         imageDataString = "";
       }
     }
@@ -337,10 +334,6 @@ class GestureHandler {
   void updateTopRoute(String route) {
     _topRoute = route;
     if (_topRoute == "") _topRoute = "/";
-  }
-
-  String _generateUIdFromSummaryTree(SummaryTree tree) {
-    return tree.uiClass + "_" + tree.value;
   }
 
   void sendTrackDataFromSummaryTree() {
