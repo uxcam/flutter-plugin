@@ -136,7 +136,7 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSString *frameData = call.arguments[@"frameData"];
     if (timestamp && frameData) {
         if ([UXCam respondsToSelector:@selector(addFrameData:frameData:)]) {
-            [UXCam addFrameData:timestamp frameData:frameData];
+//            [UXCam addFrameData:timestamp frameData:frameData];
         }
     } else {
         result(nil);
