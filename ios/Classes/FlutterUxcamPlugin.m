@@ -19,9 +19,12 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
 
 typedef void (^OcclusionRectCompletionBlock)(NSArray* _Nonnull rects);
 typedef void (^FrameRenderingCompletionBlock)(BOOL status);
+typedef void (^GestureEventCompletionBlock)(NSString* event);
 
 @interface FlutterUxcamPlugin ()
 @property(nonatomic, strong) FlutterMethodChannel *flutterChannel;
+@property(nonatomic, strong) FlutterBasicMessageChannel *flutterBasicMessageChannel;
+@property (nonatomic, copy) void (^gestureInfoHandler)(NSString* position, void (^completion)(NSString *event));
 @property (nonatomic, copy) void (^occludeRectsRequestHandler)(void (^)(NSArray *));
 @property (nonatomic, copy) void (^pauseForOcclusionNextFrameRequestHandler)(void (^)(BOOL));
 @end
@@ -34,8 +37,23 @@ typedef void (^FrameRenderingCompletionBlock)(BOOL status);
                                      methodChannelWithName:@"flutter_uxcam"
                                      binaryMessenger:[registrar messenger]];
     
+    FlutterBasicMessageChannel* messageChannel = [FlutterBasicMessageChannel
+                                                messageChannelWithName:@"uxcam_message_channel"
+                                                binaryMessenger:[registrar messenger]];
+    
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
     instance.flutterChannel = channel;
+    instance.flutterBasicMessageChannel = messageChannel;
+    
+    // Set the message handler for the basic channel
+        [messageChannel setMessageHandler:^(id  _Nullable message, FlutterReply  _Nonnull callback) {
+            // Handle the message from Dart here
+            NSLog(@"Received message from Dart on uxcam_message_channel: %@", message);
+
+            // Optionally, send a reply back to Dart
+            callback(@"Message received on iOS");
+        }];
+    
     [registrar addMethodCallDelegate:instance channel:channel];
     [UXCam pluginType:@"flutter" version:@"2.6.1"];
 }
@@ -88,6 +106,11 @@ typedef void (^FrameRenderingCompletionBlock)(BOOL status);
     self.occludeRectsRequestHandler = ^(OcclusionRectCompletionBlock completion){
         [weakSelf requestAllRectsFromFlutterWithCompletion: completion];
     };
+    self.gestureInfoHandler = ^(NSString *position, GestureEventCompletionBlock completion) {
+        [weakSelf capturGestureEvent:position completion:completion];
+    };
+    
+    // [UXCam captureGestureEventFor: self.gestureInfoHandler];
     
     [UXCam pauseForOcclusionNextFrameRequestHandler: self.pauseForOcclusionNextFrameRequestHandler];
     [UXCam setOccludeRectsRequestHandler: self.occludeRectsRequestHandler];
@@ -97,18 +120,44 @@ typedef void (^FrameRenderingCompletionBlock)(BOOL status);
     }];
 }
 
+/// params
+/// - position: string from dict with keys x and y representing x and y position
+- (void)capturGestureEvent: (NSString*) position completion:(GestureEventCompletionBlock) completion
+{
+    [self.flutterBasicMessageChannel sendMessage:position reply:^(id  _Nullable reply) {
+        NSString *stringValue = [NSString stringWithFormat:@"%@", reply];
+        completion(stringValue);
+    }];
+}
+
+
+- (void)appendGestureContent:(FlutterMethodCall*)call result:(FlutterResult)result
+{
+    NSNumber *positionX = call.arguments[@"x"];
+    NSNumber *positionY = call.arguments[@"y"];
+    NSDictionary *elementResult = call.arguments[@"data"];
+    
+    NSString *pointString = [NSString stringWithFormat:@"{%@,%@}", positionX, positionY];
+
+    if (positionX && positionY && elementResult) {
+        
+        CGPoint position = CGPointFromString(pointString);
+        
+        if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
+            [UXCam handleGestureContent:position event:elementResult];
+        }
+    } else {
+        result(nil);
+    }
+
+}
+
 - (void)pauseUIRenderingWithCompletion:(FrameRenderingCompletionBlock)completion
 {
     [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodPause
                             arguments:nil
                                result:^(id _Nullable flutterResult) {
-        BOOL status = NO;
-        if ([flutterResult isKindOfClass:[NSNumber class]]) {
-            status = [flutterResult boolValue];
-        }
-        if (completion) {
-            completion(status);
-        }
+        completion([flutterResult boolValue] ?: NO);
     }];
 }
 
