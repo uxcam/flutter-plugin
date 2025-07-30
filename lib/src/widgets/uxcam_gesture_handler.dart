@@ -63,7 +63,8 @@ class _UXCamGestureHandlerState extends State<UXCamGestureHandler> {
 
   void _onTappedAt(BuildContext context, Offset position) {
     final result = HitTestResult();
-    RendererBinding.instance.hitTest(result, position);
+    RendererBinding.instance
+        .hitTestInView(result, position, View.of(context).viewId);
 
     final targetList = result.path
         .where((item) => item is BoxHitTestEntry)
