@@ -431,6 +431,14 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     result(@(status));
 }
 
+- (void)setSessionProperty:(FlutterMethodCall*)call result:(FlutterResult)result
+{
+    NSString* key = call.arguments[@"key"];
+    NSString* value = call.arguments[@"value"];
+    [UXCam setSessionProperty:key value:value];
+    result(nil);
+}
+
 - (void)setUserIdentity:(FlutterMethodCall*)call result:(FlutterResult)result
 {
     NSString* userIdentity = call.arguments[@"key"];
