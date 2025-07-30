@@ -322,10 +322,7 @@ class GestureHandler {
   }
 
   String formatValueToPseudoId(String value) {
-    final input = value
-        .replaceAll(' ', '')
-        // .replaceAll(RegExp(r'[^a-zA-Z_]'), '')
-        .toLowerCase();
+    final input = value.replaceAll(' ', '').toLowerCase();
     return input;
   }
 
@@ -392,7 +389,6 @@ class GestureHandler {
         leaf.bound,
         leaf.route,
         uiValue: leaf.isOccluded ? "" : leaf.value,
-        //uiId: uId,
         uiId: leaf.isOccluded ? "" : leaf.route + generateStringHash(uId),
         uiClass: leaf.isOccluded ? "" : leaf.uiClass,
         uiType: leaf.isOccluded ? UX_UNKOWN : effectiveType,

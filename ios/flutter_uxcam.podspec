@@ -3,7 +3,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'flutter_uxcam'
-  s.version          = '2.6.1'
+  s.version          = '2.6.2'
   s.summary          = 'UXCam flutter plugin.'
   s.description      = <<-DESC
 UXCam flutter plugin
@@ -16,7 +16,7 @@ UXCam flutter plugin
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
   s.static_framework = true
-  s.dependency 'UXCam','~> 3.6.25'
+  s.dependency 'UXCam','~> 3.6.26'
   s.ios.deployment_target = '12.0'
 end
 

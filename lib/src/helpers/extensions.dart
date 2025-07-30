@@ -16,11 +16,6 @@ extension GlobalKeyExtension on GlobalKey {
     if (opacityWidget != null && opacityWidget.opacity == 0) {
       return null;
     }
-    // var offstageWidget =
-    //     currentContext?.findAncestorWidgetOfExactType<Offstage>();
-    // if (offstageWidget != null && offstageWidget.offstage) {
-    //   return null;
-    // }
 
     final renderObject = currentContext?.findRenderObject();
     final translation = renderObject?.getTransformTo(null).getTranslation();
