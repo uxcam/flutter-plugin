@@ -157,7 +157,13 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodPause
                             arguments:nil
                                result:^(id _Nullable flutterResult) {
-        completion([flutterResult boolValue] ?: NO);
+        BOOL status = NO;
+        if ([flutterResult isKindOfClass:[NSNumber class]]) {
+            status = [flutterResult boolValue];
+        }
+        if (completion) {
+            completion(status);
+        }
     }];
 }
 
