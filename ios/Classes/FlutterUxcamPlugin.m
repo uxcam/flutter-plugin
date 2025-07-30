@@ -137,6 +137,8 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     if (timestamp && frameData) {
         if ([UXCam respondsToSelector:@selector(addFrameData:frameData:)]) {
 //            [UXCam addFrameData:timestamp frameData:frameData];
+        } else {
+            result(nil);
         }
     } else {
         result(nil);
@@ -156,7 +158,9 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
         CGPoint position = CGPointFromString(pointString);
         
         if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
-            [UXCam handleGestureContent:position event:elementResult];
+            // [UXCam handleGestureContent:position event:elementResult];
+        } else {
+            result(nil);
         }
     } else {
         result(nil);
