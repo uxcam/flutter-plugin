@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -32,7 +33,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
     _uniqueId = UniqueKey();
     _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    WidgetsBinding.instance.addPersistentFrameCallback((_) async {
       registerOcclusionWidget();
       _updatePositionForTopRouteOnly();
     });
@@ -42,13 +43,10 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (!mounted) return;
     Rect rect = Rect.zero;
     if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
-      rect = _widgetKey.globalPaintBounds!;
+      rect = _widgetKey.globalPaintBounds ?? Rect.zero;
     }
     OcclusionWrapperManager()
         .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updatePositionForTopRouteOnly();
-    });
   }
 
   void _updatePositionForTopRouteOnly() {
@@ -114,6 +112,13 @@ class OccludeWrapperState extends State<OccludeWrapper>
       OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
   }
 
+  void hideOcclusionWidget() {
+    if (!_isWidgetInTopRoute()) {
+      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+          _widgetKey, _widgetKey.globalPaintBounds!);
+    }
+  }
+
   void getOccludePoint(Function(OccludePoint) rect) {
     var occludePoint = OccludePoint(0, 0, 0, 0);
 
@@ -125,10 +130,10 @@ class OccludeWrapperState extends State<OccludeWrapper>
     }
 
     occludePoint = OccludePoint(
-      bound.left.ratioToInt,
-      bound.top.ratioToInt,
-      bound.right.ratioToInt,
-      bound.bottom.ratioToInt,
+      bound.left.toNative,
+      bound.top.toNative,
+      bound.right.toNative,
+      bound.bottom.toNative,
     );
 
     rect(occludePoint);
@@ -143,10 +148,10 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (bound == null) return;
 
     occludePoint = OccludePoint(
-      bound.left.ratioToInt,
-      bound.top.ratioToInt,
-      bound.right.ratioToInt,
-      bound.bottom.ratioToInt,
+      bound.left.toNative,
+      bound.top.toNative,
+      bound.right.toNative,
+      bound.bottom.toNative,
     );
 
     FlutterUxcam.occludeRectWithCoordinates(
@@ -156,53 +161,14 @@ class OccludeWrapperState extends State<OccludeWrapper>
       occludePoint.bottomRightY,
     );
   }
-}
 
-extension GlobalKeyExtension on GlobalKey {
-  Rect? get globalPaintBounds {
-    var visibilityWidget =
-        currentContext?.findAncestorWidgetOfExactType<Visibility>();
-    if (visibilityWidget != null && !visibilityWidget.visible) {
-      return null;
+  bool _isWidgetInTopRoute() {
+    if (!mounted) return false;
+    try {
+      ModalRoute? modalRoute = ModalRoute.of(context);
+      return modalRoute != null && modalRoute.isCurrent && modalRoute.isActive;
+    } on FlutterError {
+      return false;
     }
-    var opacityWidget =
-        currentContext?.findAncestorWidgetOfExactType<Opacity>();
-    if (opacityWidget != null && opacityWidget.opacity == 0) {
-      return null;
-    }
-
-    final renderObject = currentContext?.findRenderObject();
-    final translation = renderObject?.getTransformTo(null).getTranslation();
-    if (translation != null && renderObject?.paintBounds != null) {
-      final offset = Offset(translation.x, translation.y);
-      final bounds = renderObject!.paintBounds.shift(offset);
-      return bounds;
-    } else {
-      return null;
-    }
-  }
-
-  bool isWidgetVisible() {
-    if (currentContext != null) {
-      if (!currentContext!.mounted) return false;
-      try {
-        ModalRoute? modalRoute = ModalRoute.of(currentContext!);
-        return modalRoute != null &&
-            modalRoute.isCurrent &&
-            modalRoute.isActive;
-      } on FlutterError {
-        return false;
-      }
-    }
-    return false;
-  }
-}
-
-extension UtilIntExtension on double {
-  int get ratioToInt {
-    final bool isAndroid = Platform.isAndroid;
-    final double pixelRatio =
-        PlatformDispatcher.instance.views.first.devicePixelRatio;
-    return (this * (isAndroid ? pixelRatio : 1.0)).toInt();
   }
 }

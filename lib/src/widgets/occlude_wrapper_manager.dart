@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
 
 class OcclusionWrapperItem {
@@ -38,10 +39,10 @@ class OcclusionWrapperManager {
   void add(int timeStamp, GlobalKey key, Rect rect) {
     rects.remove(key);
     rects[key] = OccludePoint(
-      rect.left.ratioToInt,
-      rect.top.ratioToInt,
-      rect.right.ratioToInt,
-      rect.bottom.ratioToInt,
+      rect.left.toNative,
+      rect.top.toNative,
+      rect.right.toNative,
+      rect.bottom.toNative,
     );
 
     List<Map<String, dynamic>> rectList = [];
@@ -106,10 +107,10 @@ class OcclusionWrapperManager {
     if (bound == null) return occludePoint;
 
     occludePoint = OccludePoint(
-      bound.left.ratioToInt,
-      bound.top.ratioToInt,
-      bound.right.ratioToInt,
-      bound.bottom.ratioToInt,
+      bound.left.toNative,
+      bound.top.toNative,
+      bound.right.toNative,
+      bound.bottom.toNative,
     );
 
     return occludePoint;

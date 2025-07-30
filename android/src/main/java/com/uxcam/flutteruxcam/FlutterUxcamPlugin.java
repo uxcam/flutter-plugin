@@ -64,9 +64,10 @@ import java.util.TreeMap;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.6.1";
+    private static final String TYPE_VERSION = "2.7.0";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
+    public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
     public static final String ENABLE_MUTLI_SESSION_RECORD = "enableMultiSessionRecord";
     public static final String ENABLE_CRASH_HANDLING = "enableCrashHandling";
     public static final String ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING = "enableAutomaticScreenNameTagging";
@@ -102,10 +103,11 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
                 final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
-        final BasicMessageChannel<Object> occlusionRectsChannel = new BasicMessageChannel<>(
+        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
                 binding.getBinaryMessenger(),
-                "occlusion_rects_coordinates",
+                "uxcam_message_channel",
                 StandardMessageCodec.INSTANCE);
+                
         delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
 
@@ -404,6 +406,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             String frameData = call.argument("frameData");
             frameDataMap.put(timestamp,frameData);
             result.success(true);
+        } else if ("appendGestureContent".equals(call.method)) {
+            double x = call.argument("x");
+            double y = call.argument("y");
+            String gestureContent = call.argument("data").toString();
+            UXCam.appendGestureContent((float)x, (float)y, gestureContent);
+            result.success(true);
         }
         else {
             result.notImplemented();
@@ -413,6 +421,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private boolean startWithConfig(Map<String, Object> configMap) {
         try {
             String appKey = (String) configMap.get(USER_APP_KEY);
+            Boolean enableIntegrationLogging = (Boolean) configMap.get(ENABLE_INTEGRATION_LOGGING);
             Boolean enableMultiSessionRecord = (Boolean) configMap.get(ENABLE_MUTLI_SESSION_RECORD);
             Boolean enableCrashHandling = (Boolean) configMap.get(ENABLE_CRASH_HANDLING);
             Boolean enableAutomaticScreenNameTagging = (Boolean) configMap.get(ENABLE_AUTOMATIC_SCREEN_NAME_TAGGING);
@@ -425,6 +434,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
 
             UXConfig.Builder uxConfigBuilder = new UXConfig.Builder(appKey);
+            if (enableIntegrationLogging != null)
+                uxConfigBuilder.enableIntegrationLogging(enableIntegrationLogging);
             if (enableMultiSessionRecord != null)
                 uxConfigBuilder.enableMultiSessionRecord(enableMultiSessionRecord);
             if (enableCrashHandling != null)
