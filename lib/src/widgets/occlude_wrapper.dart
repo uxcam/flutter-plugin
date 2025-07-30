@@ -114,7 +114,6 @@ class OccludeWrapperState extends State<OccludeWrapper>
 
   void hideOcclusionWidget() {
     if (!_isWidgetInTopRoute()) {
-      //OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
       OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
           _widgetKey, _widgetKey.globalPaintBounds!);
     }
