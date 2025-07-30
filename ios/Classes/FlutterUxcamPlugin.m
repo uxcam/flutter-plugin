@@ -55,7 +55,7 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
         }];
     
     [registrar addMethodCallDelegate:instance channel:channel];
-    [UXCam pluginType:@"flutter" version:@"2.6.2"];
+    [UXCam pluginType:@"flutter" version:@"2.7.0"];
 }
 
 // The handler method - this is the entry point from the Dart code
