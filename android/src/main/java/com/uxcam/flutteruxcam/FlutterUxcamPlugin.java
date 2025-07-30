@@ -103,10 +103,11 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
                 final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
-        final BasicMessageChannel<Object> occlusionRectsChannel = new BasicMessageChannel<>(
+        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
                 binding.getBinaryMessenger(),
-                "occlusion_rects_coordinates",
+                "uxcam_message_channel",
                 StandardMessageCodec.INSTANCE);
+                
         delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
 
@@ -404,6 +405,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             long timestamp = call.argument("timestamp");
             String frameData = call.argument("frameData");
             frameDataMap.put(timestamp,frameData);
+            result.success(true);
+        } else if ("appendGestureContent".equals(call.method)) {
+            double x = call.argument("x");
+            double y = call.argument("y");
+            String gestureContent = call.argument("data").toString();
+            UXCam.appendGestureContent((float)x, (float)y, gestureContent);
             result.success(true);
         }
         else {
