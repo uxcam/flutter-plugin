@@ -136,9 +136,10 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSString *frameData = call.arguments[@"frameData"];
     if (timestamp && frameData) {
         if ([UXCam respondsToSelector:@selector(addFrameData:frameData:)]) {
-//            [UXCam addFrameData:timestamp frameData:frameData];
-        } else {
+            // [UXCam addFrameData:timestamp frameData:frameData];
             result(nil);
+        } else {
+            result(FlutterMethodNotImplemented);
         }
     } else {
         result(nil);
@@ -159,8 +160,9 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
         
         if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
             // [UXCam handleGestureContent:position event:elementResult];
-        } else {
             result(nil);
+        } else {
+            result(FlutterMethodNotImplemented);
         }
     } else {
         result(nil);
