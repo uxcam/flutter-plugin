@@ -136,14 +136,20 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSString *frameData = call.arguments[@"frameData"];
     if (timestamp && frameData) {
         if ([UXCam respondsToSelector:@selector(addFrameData:frameData:)]) {
-            // [UXCam addFrameData:timestamp frameData:frameData];
-            result(nil);
+            NSMethodSignature *signature = [UXCam methodSignatureForSelector:@selector(addFrameData:frameData:)];
+            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+            [invocation setTarget:UXCam.class];
+            [invocation setSelector:@selector(addFrameData:frameData:)];
+            [invocation setArgument:&timestamp atIndex:2]; // First argument
+            [invocation setArgument:&frameData atIndex:3]; // Second argument
+            [invocation invoke];
         } else {
-            result(FlutterMethodNotImplemented);
+            NSLog(@"UXCam: addFrameData:frameData: method not available in current SDK version");
         }
     } else {
-        result(nil);
+        NSLog(@"UXCam: Flutter sensitive info not available");
     }
+    result(nil);
 }
 
 - (void)appendGestureContent:(FlutterMethodCall*)call result:(FlutterResult)result
@@ -155,19 +161,23 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSString *pointString = [NSString stringWithFormat:@"{%@,%@}", positionX, positionY];
 
     if (positionX && positionY && elementResult) {
-        
         CGPoint position = CGPointFromString(pointString);
-        
         if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
-            // [UXCam handleGestureContent:position event:elementResult];
-            result(nil);
+            NSMethodSignature *signature = [UXCam methodSignatureForSelector:@selector(handleGestureContent:event:)];
+            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+            [invocation setTarget:UXCam.class];
+            [invocation setSelector:@selector(handleGestureContent:event:)];
+            [invocation setArgument:&position atIndex:2]; // First argument (CGPoint)
+            [invocation setArgument:&elementResult atIndex:3]; // Second argument (NSDictionary*)
+            [invocation invoke];
         } else {
-            result(FlutterMethodNotImplemented);
+            NSLog(@"UXCam: handleGestureContent:event: method not available in current SDK version");
         }
     } else {
-        result(nil);
+        NSLog(@"UXCam: Flutter gesture info not available");
     }
 
+    result(nil);
 }
 
 - (void)pauseUIRenderingWithCompletion:(FrameRenderingCompletionBlock)completion
