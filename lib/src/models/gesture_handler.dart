@@ -30,36 +30,37 @@ class GestureHandler {
     SummaryTree? node = parent;
 
     if (type == UX_VIEWGROUP) {
-      node = SummaryTree(
-        ModalRoute.of(element)?.settings.name ?? "",
-        element.widget.runtimeType.toString(),
-        UX_VIEWGROUP,
-        element.renderObject?.hashCode ?? 0,
-        bound: element.getEffectiveBounds(),
-        isViewGroup: true,
-        isOccluded:
-            element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
-      );
       if (element.isRendered() &&
           element.targetListContainsElement(targetHashList)) {
-        addTreeIfInsideBounds(parent, node);
+        final viewGroupNode = SummaryTree(
+          ModalRoute.of(element)?.settings.name ?? "",
+          element.widget.runtimeType.toString(),
+          UX_VIEWGROUP,
+          element.renderObject?.hashCode ?? 0,
+          bound: element.getEffectiveBounds(),
+          isViewGroup: true,
+          isOccluded:
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
+        );
+        addTreeIfInsideBounds(parent, viewGroupNode);
+        node = viewGroupNode;
       }
     }
     if (type == UX_BUTTON) {
-      final subTree = _inspectButtonChild(element);
-      if (subTree != null) {
-        if (element.isRendered() &&
-            element.targetListContainsElement(targetHashList)) {
+      if (element.isRendered() &&
+          element.targetListContainsElement(targetHashList)) {
+        final subTree = _inspectButtonChild(element);
+        if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
           node = subTree;
         }
       }
     }
     if (type == UX_COMPOUND) {
-      final subTree = _inspectInteractiveChild(element);
-      if (subTree != null) {
-        if (element.isRendered() &&
-            element.targetListContainsElement(targetHashList)) {
+      if (element.isRendered() &&
+          element.targetListContainsElement(targetHashList)) {
+        final subTree = _inspectInteractiveChild(element);
+        if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
           node = subTree;
         }
@@ -67,37 +68,31 @@ class GestureHandler {
     }
 
     if (type == UX_TEXT || type == UX_IMAGE || type == UX_DECOR) {
-      final subTree = _inspectNonInteractiveChild(element);
-      if (subTree != null) {
-        if (element.isRendered()) {
-          if (node?.type == UX_BUTTON) {
+      if (element.isRendered()) {
+        if (node?.type == UX_BUTTON) {
+          final subTree = _inspectNonInteractiveChild(element);
+          if (subTree != null) {
             addTreeIfInsideBounds(node, subTree, alwaysAdd: true);
-          } else {
-            if (element.targetListContainsElement(targetHashList)) {
-              addTreeIfInsideBounds(node, subTree);
-            } else {
-              if ((targetHashList?.contains(node.hashCode) ?? false) &&
-                  subTree.bound.contains(position)) {
-                /// this is a special case. Consider the scenario: Stack(children:[Image, InkWell])
-                /// if InkWell(or any other button type) covers the entire Stack and does not have any children(transparent),
-                /// and the user taps the Image, they will think that they tapped the Image, but in reality, they tapped the InkWell.
-                /// so in order to show the Image information in the dashboard instead of the transparent InkWell which has no relevant information,
-                /// we need this check.
-                addTreeIfInsideBounds(node, subTree);
-              }
+            if (type == UX_TEXT || type == UX_IMAGE) {
+              return;
             }
           }
-        }
-        if (type == UX_TEXT || type == UX_IMAGE) {
-          return;
+        } else if (element.targetListContainsElement(targetHashList)) {
+          final subTree = _inspectNonInteractiveChild(element);
+          if (subTree != null) {
+            addTreeIfInsideBounds(node, subTree);
+            if (type == UX_TEXT || type == UX_IMAGE) {
+              return;
+            }
+          }
         }
       }
     }
     if (type == UX_FIELD) {
-      final subTree = _inspectTextFieldChild(element);
-      if (subTree != null) {
-        if (element.isRendered() &&
-            element.targetListContainsElement(targetHashList)) {
+      if (element.isRendered() &&
+          element.targetListContainsElement(targetHashList)) {
+        final subTree = _inspectTextFieldChild(element);
+        if (subTree != null) {
           addTreeIfInsideBounds(node, subTree);
         }
       }
@@ -387,7 +382,6 @@ class GestureHandler {
         isSensitive: leaf.isOccluded,
       );
 
-      print("messagex:" + trackData.toString());
       FlutterUxcam.appendGestureContent(position, trackData);
     }
   }
