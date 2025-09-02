@@ -145,3 +145,31 @@ extension ElementX on Element {
     return sibling;
   }
 }
+
+extension OptimizedElementX on Element {
+  static final Map<int, Rect> _boundsCache = {};
+  
+  Rect getEffectiveBoundsOptimized() {
+    final hashCode = renderObject?.hashCode ?? 0;
+    if (hashCode == 0) return Rect.zero;
+    
+    final cached = _boundsCache[hashCode];
+    if (cached != null) return cached;
+    
+    if (renderObject is RenderBox) {
+      final renderBox = renderObject as RenderBox;
+      if (!renderBox.hasSize) return Rect.zero;
+      
+      final translation = renderBox.getTransformTo(null).getTranslation();
+      final bounds = renderBox.paintBounds.shift(Offset(translation.x, translation.y));
+      
+      // Cache with size limit
+      if (_boundsCache.length > 100) {
+        _boundsCache.clear();
+      }
+      _boundsCache[hashCode] = bounds;
+      return bounds;
+    }
+    return Rect.zero;
+  }
+}
