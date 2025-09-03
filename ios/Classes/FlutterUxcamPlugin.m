@@ -17,8 +17,6 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 static const NSString *FlutterChanelCallBackMethodPause = @"pauseRendering";
 static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllOcclusionRects";
 
-typedef void (^OcclusionRectCompletionBlock)(NSArray* _Nonnull rects);
-typedef void (^FrameRenderingCompletionBlock)(BOOL status);
 typedef void (^GestureEventCompletionBlock)(NSString* event);
 
 @interface FlutterUxcamPlugin ()
@@ -42,6 +40,7 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
                                                 binaryMessenger:[registrar messenger]];
     
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
+
     instance.flutterChannel = channel;
     instance.flutterBasicMessageChannel = messageChannel;
     
@@ -56,6 +55,9 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     
     [registrar addMethodCallDelegate:instance channel:channel];
     [UXCam pluginType:@"flutter" version:@"2.7.0"];
+    
+    [UXCam attachFlutterPluginWithChannel:channel];
+//    [UXCam attachFlutterPluginWithChannel:messageChannel];
 }
 
 // The handler method - this is the entry point from the Dart code
@@ -100,20 +102,9 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     [self updateConfiguration:config withDict:configDict];
     
     __weak FlutterUxcamPlugin *weakSelf = self;
-    self.pauseForOcclusionNextFrameRequestHandler = ^(FrameRenderingCompletionBlock completion) {
-        [weakSelf pauseUIRenderingWithCompletion: completion];
-    };
-    self.occludeRectsRequestHandler = ^(OcclusionRectCompletionBlock completion){
-        [weakSelf requestAllRectsFromFlutterWithCompletion: completion];
-    };
     self.gestureInfoHandler = ^(NSString *position, GestureEventCompletionBlock completion) {
         [weakSelf capturGestureEvent:position completion:completion];
     };
-    
-    // [UXCam captureGestureEventFor: self.gestureInfoHandler];
-    
-    [UXCam pauseForOcclusionNextFrameRequestHandler: self.pauseForOcclusionNextFrameRequestHandler];
-    [UXCam setOccludeRectsRequestHandler: self.occludeRectsRequestHandler];
     
     [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
         result(@(started));
@@ -180,36 +171,6 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     result(nil);
 }
 
-- (void)pauseUIRenderingWithCompletion:(FrameRenderingCompletionBlock)completion
-{
-    [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodPause
-                            arguments:nil
-                               result:^(id _Nullable flutterResult) {
-        BOOL status = NO;
-        if ([flutterResult isKindOfClass:[NSNumber class]]) {
-            status = [flutterResult boolValue];
-        }
-        if (completion) {
-            completion(status);
-        }
-    }];
-}
-
-- (void)requestAllRectsFromFlutterWithCompletion:(OcclusionRectCompletionBlock)completion {
-    
-    [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodResumeWithData
-                            arguments:nil
-                               result:^(id _Nullable flutterResult) {
-        if ([flutterResult isKindOfClass:[NSArray class]]) {
-            NSArray *response = (NSArray *)flutterResult;
-            NSArray *parsedRect = [self getRectsFromJson:response];
-            completion([parsedRect copy]);
-        } else {
-            completion(@[]);
-        }
-    }];
-}
-
 -(NSArray*) getRectsFromJson:(NSArray*)jsonArray {
     NSMutableArray<NSArray<NSNumber*> *> *parsedRect = [NSMutableArray array];
     for (NSDictionary *rectdict in jsonArray) {
@@ -270,10 +231,8 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSNumber *height = @(y1.integerValue - y0.integerValue);
     
     NSArray<NSArray<NSNumber*>*> *coordinates = @[@[x0, y0, width, height]];
-    
-    [UXCam occludeRectsOnNextFrame:coordinates];
-    
-    result(nil);
+
+    result(coordinates);
 }
 
 - (void)updateConfiguration:(FlutterMethodCall*)call result:(FlutterResult)result
@@ -637,11 +596,13 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSDictionary* properties = call.arguments[@"properties"];
     if (eventName.length>0 && [properties isKindOfClass:NSDictionary.class])
     {
-        [UXCam reportBugEvent:eventName properties:properties];
+        NSException *exception = [[NSException alloc] initWithName:eventName reason:nil userInfo:nil];
+        [UXCam reportExceptionEvent:exception properties:properties];
     }
     else
     {
-        [UXCam reportBugEvent:eventName properties:nil];
+        NSException *exception = [[NSException alloc] initWithName:eventName reason:nil userInfo:nil];
+        [UXCam reportExceptionEvent:exception properties:nil];
     }
     result(nil);
 }
