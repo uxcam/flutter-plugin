@@ -25,6 +25,8 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
 @property (nonatomic, copy) void (^gestureInfoHandler)(NSString* position, void (^completion)(NSString *event));
 @property (nonatomic, copy) void (^occludeRectsRequestHandler)(void (^)(NSArray *));
 @property (nonatomic, copy) void (^pauseForOcclusionNextFrameRequestHandler)(void (^)(BOOL));
+// Whether plugin bridge is attached to native or not
+@property(nonatomic, assign) BOOL didAttachBridge;
 @end
 
 @implementation FlutterUxcamPlugin
@@ -56,8 +58,10 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     [registrar addMethodCallDelegate:instance channel:channel];
     [UXCam pluginType:@"flutter" version:@"2.7.0"];
     
-    [UXCam attachFlutterPluginWithChannel:channel];
-//    [UXCam attachFlutterPluginWithChannel:messageChannel];
+    // Trigger early, non-blocking bridge attachment; actual assignment may occur shortly after
+//    instance.didAttachBridge = [UXCam attachFlutterPluginWithChannel:instance.flutterChannel basicChannel:instance.flutterBasicMessageChannel];
+        
+    
 }
 
 // The handler method - this is the entry point from the Dart code
@@ -105,6 +109,12 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     self.gestureInfoHandler = ^(NSString *position, GestureEventCompletionBlock completion) {
         [weakSelf capturGestureEvent:position completion:completion];
     };
+    
+    // Attach bridge if not already attached
+    if (!self.didAttachBridge) {
+        BOOL isAttached = [UXCam attachFlutterPluginWithChannel:self.flutterChannel basicChannel:self.flutterBasicMessageChannel];
+        self.didAttachBridge = isAttached;
+    }
     
     [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
         result(@(started));
