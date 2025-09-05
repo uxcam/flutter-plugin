@@ -17,12 +17,9 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 static const NSString *FlutterChanelCallBackMethodPause = @"pauseRendering";
 static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllOcclusionRects";
 
-typedef void (^GestureEventCompletionBlock)(NSString* event);
-
 @interface FlutterUxcamPlugin ()
 @property(nonatomic, strong) FlutterMethodChannel *flutterChannel;
 @property(nonatomic, strong) FlutterBasicMessageChannel *flutterBasicMessageChannel;
-@property (nonatomic, copy) void (^gestureInfoHandler)(NSString* position, void (^completion)(NSString *event));
 @property (nonatomic, copy) void (^occludeRectsRequestHandler)(void (^)(NSArray *));
 @property (nonatomic, copy) void (^pauseForOcclusionNextFrameRequestHandler)(void (^)(BOOL));
 // Whether plugin bridge is attached to native or not
@@ -57,11 +54,7 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     
     [registrar addMethodCallDelegate:instance channel:channel];
     [UXCam pluginType:@"flutter" version:@"2.7.0"];
-    
-    // Trigger early, non-blocking bridge attachment; actual assignment may occur shortly after
-//    instance.didAttachBridge = [UXCam attachFlutterPluginWithChannel:instance.flutterChannel basicChannel:instance.flutterBasicMessageChannel];
-        
-    
+
 }
 
 // The handler method - this is the entry point from the Dart code
@@ -105,11 +98,6 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     UXCamConfiguration *config = [[UXCamConfiguration alloc] initWithAppKey:appKey];
     [self updateConfiguration:config withDict:configDict];
     
-    __weak FlutterUxcamPlugin *weakSelf = self;
-    self.gestureInfoHandler = ^(NSString *position, GestureEventCompletionBlock completion) {
-        [weakSelf capturGestureEvent:position completion:completion];
-    };
-    
     // Attach bridge if not already attached
     if (!self.didAttachBridge) {
         BOOL isAttached = [UXCam attachFlutterPluginWithChannel:self.flutterChannel basicChannel:self.flutterBasicMessageChannel];
@@ -121,14 +109,13 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     }];
 }
 
-/// params
-/// - position: string from dict with keys x and y representing x and y position
-- (void)capturGestureEvent: (NSString*) position completion:(GestureEventCompletionBlock) completion
+- (void)attachBridge:(FlutterMethodCall*)call result:(FlutterResult)result
 {
-    [self.flutterBasicMessageChannel sendMessage:position reply:^(id  _Nullable reply) {
-        NSString *stringValue = [NSString stringWithFormat:@"%@", reply];
-        completion(stringValue);
-    }];
+     if (!self.didAttachBridge) {
+        BOOL isAttached = [UXCam attachFlutterPluginWithChannel:self.flutterChannel basicChannel:self.flutterBasicMessageChannel];
+        self.didAttachBridge = isAttached;
+    }
+    result(nil);
 }
 
 - (void)addFrameData:(FlutterMethodCall*)call result:(FlutterResult)result
