@@ -56,7 +56,7 @@ class _UXCamGestureHandlerState extends State<UXCamGestureHandler> {
   Widget build(BuildContext context) {
     return Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: (details) => _onTappedAt(context, details.localPosition),
+      onPointerUp: (details) => _onTappedAt(context, details.localPosition),
       child: widget.child,
     );
   }
