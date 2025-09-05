@@ -37,6 +37,10 @@ class OccludeWrapperState extends State<OccludeWrapper>
       registerOcclusionWidget();
       _updatePositionForTopRouteOnly();
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    try { await FlutterUxcam.attachBridge(); } catch (_) {}
+   });
   }
 
   void _updatePosition() {
