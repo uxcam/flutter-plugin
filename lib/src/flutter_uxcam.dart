@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -37,6 +36,10 @@ class FlutterUxcam {
         'startWithConfiguration', {"config": config.toJson()});
 
     return status!;
+  }
+
+  static Future<void> attachBridge() async {
+    await _channel.invokeMethod('attachBridge');
   }
 
   /// This call is available only for IOS portion of the SDK so not sure will work on Android.
