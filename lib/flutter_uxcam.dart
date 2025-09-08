@@ -10,7 +10,7 @@ export 'src/models/uxcam_config.dart';
 export 'src/models/ux_ai_text_occlusion.dart';
 export './src/widgets/occlude_wrapper.dart';
 export './src/widgets/occlude2.dart';
-export './src/widgets/uxcam_gesture_handler.dart';
+export './src/widgets/uxcam_handler.dart';
 export './src/widgets/uxcam_overlay.dart';
 export './src/widgets/route_overlay.dart';
 export './uxcam.dart';
