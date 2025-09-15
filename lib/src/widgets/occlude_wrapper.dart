@@ -33,14 +33,13 @@ class OccludeWrapperState extends State<OccludeWrapper>
     _uniqueId = UniqueKey();
     _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPersistentFrameCallback((_) async {
+    // Register widget after first frame is built
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       registerOcclusionWidget();
       _updatePositionForTopRouteOnly();
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
     try { await FlutterUxcam.attachBridge(); } catch (_) {}
-   });
+    });
   }
 
   void _updatePosition() {
@@ -72,6 +71,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
     return VisibilityDetector(
       key: _uniqueId,
       onVisibilityChanged: (VisibilityInfo visibilityInfo) {
+        if (!mounted) return;
         final visibilityFraction = visibilityInfo.visibleFraction;
         if (visibilityFraction == 0) {
           //hideOcclusionWidget();
@@ -105,6 +105,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void registerOcclusionWidget() {
+    if (!mounted) return;
     var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
     OcclusionWrapperManager().registerOcclusionWrapper(item);
     OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
