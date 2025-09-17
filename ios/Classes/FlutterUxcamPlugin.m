@@ -45,8 +45,6 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
     
     // Set the message handler for the basic channel
         [messageChannel setMessageHandler:^(id  _Nullable message, FlutterReply  _Nonnull callback) {
-            // Handle the message from Dart here
-            NSLog(@"Received message from Dart on uxcam_message_channel: %@", message);
 
             // Optionally, send a reply back to Dart
             callback(@"Message received on iOS");
@@ -134,9 +132,7 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
         } else {
             NSLog(@"UXCam: addFrameData:frameData: method not available in current SDK version");
         }
-    } else {
-        NSLog(@"UXCam: Flutter sensitive info not available");
-    }
+    } 
     result(nil);
 }
 
@@ -161,9 +157,7 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
         } else {
             NSLog(@"UXCam: handleGestureContent:event: method not available in current SDK version");
         }
-    } else {
-        NSLog(@"UXCam: Flutter gesture info not available");
-    }
+    } 
 
     result(nil);
 }
