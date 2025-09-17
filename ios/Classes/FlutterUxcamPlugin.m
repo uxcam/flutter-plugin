@@ -161,7 +161,7 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
         CGPoint position = CGPointFromString(pointString);
         
         if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
-            // [UXCam handleGestureContent:position event:elementResult];
+            [UXCam handleGestureContent:position event:elementResult];
             result(nil);
         } else {
             result(FlutterMethodNotImplemented);
