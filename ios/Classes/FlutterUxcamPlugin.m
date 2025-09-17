@@ -118,6 +118,8 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
         result(@(started));
     }];
+
+    [UXCam attachFlutterPluginWithChannel:self.flutterChannel basicChannel:self.flutterBasicMessageChannel];
 }
 
 /// params
