@@ -112,8 +112,8 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     
     // [UXCam captureGestureEventFor: self.gestureInfoHandler];
     
-    [UXCam pauseForOcclusionNextFrameRequestHandler: self.pauseForOcclusionNextFrameRequestHandler];
-    [UXCam setOccludeRectsRequestHandler: self.occludeRectsRequestHandler];
+    // [UXCam pauseForOcclusionNextFrameRequestHandler: self.pauseForOcclusionNextFrameRequestHandler];
+    // [UXCam setOccludeRectsRequestHandler: self.occludeRectsRequestHandler];
     
     [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
         result(@(started));
