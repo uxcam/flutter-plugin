@@ -217,13 +217,10 @@ class OcclusionWrapperManager {
     
     // Only restart timer if interval changed significantly (>10ms difference)
     if ((clampedInterval.inMilliseconds - _currentUpdateInterval.inMilliseconds).abs() > 10) {
-      final oldInterval = _currentUpdateInterval.inMilliseconds;
       _currentUpdateInterval = clampedInterval;
       _restartTimerWithNewInterval();
       
-      // Debug info (can be removed in production)
-      print('UXCam: Timer interval adjusted from ${oldInterval}ms to ${clampedInterval.inMilliseconds}ms '
-            '(native avg: ${averageNativeInterval.inMilliseconds}ms)');
+
     }
   }
   
