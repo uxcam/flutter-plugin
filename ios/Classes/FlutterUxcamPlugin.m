@@ -134,18 +134,7 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
 
 - (void)addFrameData:(FlutterMethodCall*)call result:(FlutterResult)result
 {
-    NSNumber *timestamp = call.arguments[@"timestamp"];
-    NSString *frameData = call.arguments[@"frameData"];
-    if (timestamp && frameData) {
-        if ([UXCam respondsToSelector:@selector(addFrameData:frameData:)]) {
-            // [UXCam addFrameData:timestamp frameData:frameData];
-            result(nil);
-        } else {
-            result(FlutterMethodNotImplemented);
-        }
-    } else {
-        result(nil);
-    }
+    result(nil);
 }
 
 - (void)appendGestureContent:(FlutterMethodCall*)call result:(FlutterResult)result
@@ -157,15 +146,8 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSString *pointString = [NSString stringWithFormat:@"{%@,%@}", positionX, positionY];
 
     if (positionX && positionY && elementResult) {
-        
         CGPoint position = CGPointFromString(pointString);
-        
-        if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
-            // [UXCam handleGestureContent:position event:elementResult];
-            result(nil);
-        } else {
-            result(FlutterMethodNotImplemented);
-        }
+        [UXCam handleGestureContent:position event:elementResult];
     } else {
         result(nil);
     }
