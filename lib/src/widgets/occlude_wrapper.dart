@@ -34,10 +34,13 @@ class OccludeWrapperState extends State<OccludeWrapper>
     _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
     // Register widget after first frame is built
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    WidgetsBinding.instance.addPersistentFrameCallback((_) async {
       if (!mounted) return;
       registerOcclusionWidget();
       _updatePositionForTopRouteOnly();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
     try { await FlutterUxcam.attachBridge(); } catch (_) {}
     });
   }
