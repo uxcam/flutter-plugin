@@ -77,13 +77,6 @@ class TrackData {
     };
     return result;
   }
-
-  void showAnalyticsInfo() {
-    print("Element bound : $bound");
-    print("Element id : $uiId");
-    print("Element value : $uiValue");
-    print("Element type : $uiType");
-  }
 }
 
 class SummaryTree {

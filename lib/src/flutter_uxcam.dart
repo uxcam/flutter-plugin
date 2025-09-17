@@ -38,6 +38,14 @@ class FlutterUxcam {
     return status!;
   }
 
+  static Future<void> attachBridge() async {
+    if (Platform.isIOS) {
+      await _channel.invokeMethod('attachBridge');
+    } else {
+      return;
+    }
+  }
+
   /// This call is available only for IOS portion of the SDK so not sure will work on Android.
   static Future<FlutterUxConfig> configurationForUXCam() async {
     final Map<String, dynamic>? json =

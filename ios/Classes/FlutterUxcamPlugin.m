@@ -17,16 +17,13 @@ static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 static const NSString *FlutterChanelCallBackMethodPause = @"pauseRendering";
 static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllOcclusionRects";
 
-typedef void (^OcclusionRectCompletionBlock)(NSArray* _Nonnull rects);
-typedef void (^FrameRenderingCompletionBlock)(BOOL status);
-typedef void (^GestureEventCompletionBlock)(NSString* event);
-
 @interface FlutterUxcamPlugin ()
 @property(nonatomic, strong) FlutterMethodChannel *flutterChannel;
 @property(nonatomic, strong) FlutterBasicMessageChannel *flutterBasicMessageChannel;
-@property (nonatomic, copy) void (^gestureInfoHandler)(NSString* position, void (^completion)(NSString *event));
 @property (nonatomic, copy) void (^occludeRectsRequestHandler)(void (^)(NSArray *));
 @property (nonatomic, copy) void (^pauseForOcclusionNextFrameRequestHandler)(void (^)(BOOL));
+// Whether plugin bridge is attached to native or not
+@property(nonatomic, assign) BOOL didAttachBridge;
 @end
 
 @implementation FlutterUxcamPlugin
@@ -42,20 +39,20 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
                                                 binaryMessenger:[registrar messenger]];
     
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
+
     instance.flutterChannel = channel;
     instance.flutterBasicMessageChannel = messageChannel;
     
     // Set the message handler for the basic channel
         [messageChannel setMessageHandler:^(id  _Nullable message, FlutterReply  _Nonnull callback) {
-            // Handle the message from Dart here
-            NSLog(@"Received message from Dart on uxcam_message_channel: %@", message);
 
             // Optionally, send a reply back to Dart
             callback(@"Message received on iOS");
         }];
     
     [registrar addMethodCallDelegate:instance channel:channel];
-    [UXCam pluginType:@"flutter" version:@"2.7.0"];
+    [UXCam pluginType:@"flutter" version:@"2.7.1"];
+
 }
 
 // The handler method - this is the entry point from the Dart code
@@ -99,35 +96,24 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     UXCamConfiguration *config = [[UXCamConfiguration alloc] initWithAppKey:appKey];
     [self updateConfiguration:config withDict:configDict];
     
-    __weak FlutterUxcamPlugin *weakSelf = self;
-    self.pauseForOcclusionNextFrameRequestHandler = ^(FrameRenderingCompletionBlock completion) {
-        [weakSelf pauseUIRenderingWithCompletion: completion];
-    };
-    self.occludeRectsRequestHandler = ^(OcclusionRectCompletionBlock completion){
-        [weakSelf requestAllRectsFromFlutterWithCompletion: completion];
-    };
-    self.gestureInfoHandler = ^(NSString *position, GestureEventCompletionBlock completion) {
-        [weakSelf capturGestureEvent:position completion:completion];
-    };
-    
-    // [UXCam captureGestureEventFor: self.gestureInfoHandler];
-    
-    [UXCam pauseForOcclusionNextFrameRequestHandler: self.pauseForOcclusionNextFrameRequestHandler];
-    [UXCam setOccludeRectsRequestHandler: self.occludeRectsRequestHandler];
+    // Attach bridge if not already attached
+    if (!self.didAttachBridge) {
+        BOOL isAttached = [UXCam attachFlutterPluginWithChannel:self.flutterChannel basicChannel:self.flutterBasicMessageChannel];
+        self.didAttachBridge = isAttached;
+    }
     
     [UXCam startWithConfiguration:config completionBlock:^(BOOL started) {
         result(@(started));
     }];
 }
 
-/// params
-/// - position: string from dict with keys x and y representing x and y position
-- (void)capturGestureEvent: (NSString*) position completion:(GestureEventCompletionBlock) completion
+- (void)attachBridge:(FlutterMethodCall*)call result:(FlutterResult)result
 {
-    [self.flutterBasicMessageChannel sendMessage:position reply:^(id  _Nullable reply) {
-        NSString *stringValue = [NSString stringWithFormat:@"%@", reply];
-        completion(stringValue);
-    }];
+     if (!self.didAttachBridge) {
+        BOOL isAttached = [UXCam attachFlutterPluginWithChannel:self.flutterChannel basicChannel:self.flutterBasicMessageChannel];
+        self.didAttachBridge = isAttached;
+    }
+    result(nil);
 }
 
 - (void)addFrameData:(FlutterMethodCall*)call result:(FlutterResult)result
@@ -136,14 +122,18 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSString *frameData = call.arguments[@"frameData"];
     if (timestamp && frameData) {
         if ([UXCam respondsToSelector:@selector(addFrameData:frameData:)]) {
-            // [UXCam addFrameData:timestamp frameData:frameData];
-            result(nil);
+            NSMethodSignature *signature = [UXCam methodSignatureForSelector:@selector(addFrameData:frameData:)];
+            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+            [invocation setTarget:UXCam.class];
+            [invocation setSelector:@selector(addFrameData:frameData:)];
+            [invocation setArgument:&timestamp atIndex:2]; // First argument
+            [invocation setArgument:&frameData atIndex:3]; // Second argument
+            [invocation invoke];
         } else {
-            result(FlutterMethodNotImplemented);
+            NSLog(@"UXCam: addFrameData:frameData: method not available in current SDK version");
         }
-    } else {
-        result(nil);
-    }
+    } 
+    result(nil);
 }
 
 - (void)appendGestureContent:(FlutterMethodCall*)call result:(FlutterResult)result
@@ -155,49 +145,21 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSString *pointString = [NSString stringWithFormat:@"{%@,%@}", positionX, positionY];
 
     if (positionX && positionY && elementResult) {
-        
         CGPoint position = CGPointFromString(pointString);
-        
         if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
-            // [UXCam handleGestureContent:position event:elementResult];
-            result(nil);
+            NSMethodSignature *signature = [UXCam methodSignatureForSelector:@selector(handleGestureContent:event:)];
+            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+            [invocation setTarget:UXCam.class];
+            [invocation setSelector:@selector(handleGestureContent:event:)];
+            [invocation setArgument:&position atIndex:2]; // First argument (CGPoint)
+            [invocation setArgument:&elementResult atIndex:3]; // Second argument (NSDictionary*)
+            [invocation invoke];
         } else {
-            result(FlutterMethodNotImplemented);
+            NSLog(@"UXCam: handleGestureContent:event: method not available in current SDK version");
         }
-    } else {
-        result(nil);
-    }
+    } 
 
-}
-
-- (void)pauseUIRenderingWithCompletion:(FrameRenderingCompletionBlock)completion
-{
-    [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodPause
-                            arguments:nil
-                               result:^(id _Nullable flutterResult) {
-        BOOL status = NO;
-        if ([flutterResult isKindOfClass:[NSNumber class]]) {
-            status = [flutterResult boolValue];
-        }
-        if (completion) {
-            completion(status);
-        }
-    }];
-}
-
-- (void)requestAllRectsFromFlutterWithCompletion:(OcclusionRectCompletionBlock)completion {
-    
-    [self.flutterChannel invokeMethod:FlutterChanelCallBackMethodResumeWithData
-                            arguments:nil
-                               result:^(id _Nullable flutterResult) {
-        if ([flutterResult isKindOfClass:[NSArray class]]) {
-            NSArray *response = (NSArray *)flutterResult;
-            NSArray *parsedRect = [self getRectsFromJson:response];
-            completion([parsedRect copy]);
-        } else {
-            completion(@[]);
-        }
-    }];
+    result(nil);
 }
 
 -(NSArray*) getRectsFromJson:(NSArray*)jsonArray {
@@ -260,10 +222,8 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSNumber *height = @(y1.integerValue - y0.integerValue);
     
     NSArray<NSArray<NSNumber*>*> *coordinates = @[@[x0, y0, width, height]];
-    
-    [UXCam occludeRectsOnNextFrame:coordinates];
-    
-    result(nil);
+
+    result(coordinates);
 }
 
 - (void)updateConfiguration:(FlutterMethodCall*)call result:(FlutterResult)result
@@ -627,11 +587,13 @@ typedef void (^GestureEventCompletionBlock)(NSString* event);
     NSDictionary* properties = call.arguments[@"properties"];
     if (eventName.length>0 && [properties isKindOfClass:NSDictionary.class])
     {
-        [UXCam reportBugEvent:eventName properties:properties];
+        NSException *exception = [[NSException alloc] initWithName:eventName reason:nil userInfo:nil];
+        [UXCam reportExceptionEvent:exception properties:properties];
     }
     else
     {
-        [UXCam reportBugEvent:eventName properties:nil];
+        NSException *exception = [[NSException alloc] initWithName:eventName reason:nil userInfo:nil];
+        [UXCam reportExceptionEvent:exception properties:nil];
     }
     result(nil);
 }
