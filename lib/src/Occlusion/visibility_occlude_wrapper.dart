@@ -15,14 +15,14 @@ class OccludeWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (Platform.isAndroid) {
-    return  SpecialWidget(
+    if (Platform.isIOS) {
+      return OccludeWrapperOld(
         key: key,
         child: child,
       );
-    } 
-    if (Platform.isIOS) {
-      return OccludeWrapperOld(
+    }
+    else {
+      return  SpecialWidget(
         key: key,
         child: child,
       );
