@@ -1,0 +1,29 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_uxcam (2.7.1):
+    - Flutter
+    - UXCam (~> 3.7.1)
+  - UXCam (3.7.1)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_uxcam (from `.symlinks/plugins/flutter_uxcam/ios`)
+
+SPEC REPOS:
+  trunk:
+    - UXCam
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_uxcam:
+    :path: ".symlinks/plugins/flutter_uxcam/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_uxcam: 25f82d98bc56b74744844434efebaf4af72150b5
+  UXCam: 234480ad241d52d792f006b0c78e7d31ec42fc37
+
+PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
+
+COCOAPODS: 1.16.2
