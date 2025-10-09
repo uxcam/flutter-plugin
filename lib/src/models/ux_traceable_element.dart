@@ -9,6 +9,7 @@ const UX_BUTTON = 1;
 const UX_FIELD = 2;
 const UX_COMPOUND = 3;
 const UX_VIEWGROUP = 5;
+const UX_OCCLUDE_WRAPPER = 77;
 
 class UxTraceableElement {
   /// Static list of user defined types

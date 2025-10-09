@@ -9,19 +9,19 @@ import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
-class OccludeWrapper extends StatefulWidget {
+class OccludeWrapperOld extends StatefulWidget {
   final Widget child;
 
-  const OccludeWrapper({
+  const OccludeWrapperOld({
     Key? key,
     required this.child,
   }) : super(key: key);
 
   @override
-  State<OccludeWrapper> createState() => OccludeWrapperState();
+  State<OccludeWrapperOld> createState() => OccludeWrapperState();
 }
 
-class OccludeWrapperState extends State<OccludeWrapper>
+class OccludeWrapperState extends State<OccludeWrapperOld>
     with WidgetsBindingObserver {
   late OccludePoint occludePoint;
   late final GlobalKey _widgetKey;
@@ -34,15 +34,23 @@ class OccludeWrapperState extends State<OccludeWrapper>
     _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
     // Register widget after first frame is built
-    WidgetsBinding.instance.addPersistentFrameCallback((_) async {
-      if (!mounted) return;
-      registerOcclusionWidget();
-      _updatePositionForTopRouteOnly();
-    });
+    if (Platform.isIOS) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try { await FlutterUxcam.attachBridge(); } catch (_) {}
+        if (!mounted) return;
+        registerOcclusionWidget();
+      });
+    } else {
+      WidgetsBinding.instance.addPersistentFrameCallback((_) async {
+        if (!mounted) return;
+        _updatePositionForTopRouteOnly();
+      });
+    }
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-    try { await FlutterUxcam.attachBridge(); } catch (_) {}
-    });
+  void _updatePositionForTopRouteOnly() {
+    if (!mounted) return;
+    _updatePosition();
   }
 
   void _updatePosition() {
@@ -55,24 +63,22 @@ class OccludeWrapperState extends State<OccludeWrapper>
         .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
   }
 
-  void _updatePositionForTopRouteOnly() {
-    if (!mounted) return;
-    _updatePosition();
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    OcclusionWrapperManager()
+    if (Platform.isIOS) {
+      OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    } else {
+      OcclusionWrapperManager()
         .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return VisibilityDetector(
-      key: _uniqueId,
+      key: _widgetKey,
       onVisibilityChanged: (VisibilityInfo visibilityInfo) {
         if (!mounted) return;
         final visibilityFraction = visibilityInfo.visibleFraction;
@@ -109,15 +115,20 @@ class OccludeWrapperState extends State<OccludeWrapper>
 
   void registerOcclusionWidget() {
     if (!mounted) return;
-    var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
-    OcclusionWrapperManager().registerOcclusionWrapper(item);
-    OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+    if (Platform.isIOS) {
+      var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
+      OcclusionWrapperManager().registerOcclusionWrapper(item);
+    } else {
+      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
         _widgetKey, _widgetKey.globalPaintBounds ?? Rect.zero);
+    }
+    
   }
 
   void unRegisterOcclusionWidget() {
-    if (Platform.isIOS)
+    if (Platform.isIOS) {
       OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    }
   }
 
   void hideOcclusionWidget() {

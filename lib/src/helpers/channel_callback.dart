@@ -3,6 +3,8 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_uxcam/src/Occlusion/speical_manager.dart';
+import 'package:flutter_uxcam/src/Occlusion/visibility_manager.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -16,8 +18,12 @@ class ChannelCallback {
   static bool _preventRender = false;
   static List<Map<String, dynamic>> _cachedData = [];
   static bool _isFrameDeferred = false;
+  static final _manager = SpecialWidgetManager();
 
   static Future<void> handleChannelCallBacks(MethodChannel channel) async {
+    _manager.addListener(() {
+      _cachedData = _handleRequestData();
+    });
 
     VisibilityDetectorController.instance.updateInterval = Duration(seconds: 1);
     channel.setMethodCallHandler((MethodCall call) async {
@@ -120,6 +126,14 @@ class ChannelCallback {
     var instance = OcclusionWrapperManager();
     var rects = instance.fetchOcclusionRects();
     return rects;
+
+    // var rects = _manager.latestVisibleBounds;
+    // var list = rects.map((e) => e.toOccludePoint().toJson());
+    // return list.toList();
+
+    // var instance = VisibilityManager.instance;
+    // var rects = instance.fetchOcclusionRects();
+    // return rects;
   }
 
   static Future<bool> hasFrameEnded() async {
