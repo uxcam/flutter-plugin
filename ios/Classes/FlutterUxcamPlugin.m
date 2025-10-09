@@ -118,21 +118,7 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
 
 - (void)addFrameData:(FlutterMethodCall*)call result:(FlutterResult)result
 {
-    NSNumber *timestamp = call.arguments[@"timestamp"];
-    NSString *frameData = call.arguments[@"frameData"];
-    if (timestamp && frameData) {
-        if ([UXCam respondsToSelector:@selector(addFrameData:frameData:)]) {
-            NSMethodSignature *signature = [UXCam methodSignatureForSelector:@selector(addFrameData:frameData:)];
-            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-            [invocation setTarget:UXCam.class];
-            [invocation setSelector:@selector(addFrameData:frameData:)];
-            [invocation setArgument:&timestamp atIndex:2]; // First argument
-            [invocation setArgument:&frameData atIndex:3]; // Second argument
-            [invocation invoke];
-        } else {
-            NSLog(@"UXCam: addFrameData:frameData: method not available in current SDK version");
-        }
-    } 
+    //  As no frame data is needed for iOS
     result(nil);
 }
 
@@ -146,17 +132,7 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
 
     if (positionX && positionY && elementResult) {
         CGPoint position = CGPointFromString(pointString);
-        if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
-            NSMethodSignature *signature = [UXCam methodSignatureForSelector:@selector(handleGestureContent:event:)];
-            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-            [invocation setTarget:UXCam.class];
-            [invocation setSelector:@selector(handleGestureContent:event:)];
-            [invocation setArgument:&position atIndex:2]; // First argument (CGPoint)
-            [invocation setArgument:&elementResult atIndex:3]; // Second argument (NSDictionary*)
-            [invocation invoke];
-        } else {
-            NSLog(@"UXCam: handleGestureContent:event: method not available in current SDK version");
-        }
+        [UXCam handleGestureContent:position event:elementResult];
     } 
 
     result(nil);
