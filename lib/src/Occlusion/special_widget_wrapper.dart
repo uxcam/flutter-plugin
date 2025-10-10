@@ -41,7 +41,6 @@ class _SpecialWidgetState extends State<SpecialWidget> {
         _manager.onVisibilityChanged(_globalKey, info.visibleFraction > 0);
       },
       child: RepaintBoundary(
-        key: _globalKey,
         child: widget.child,
       ),
     );
