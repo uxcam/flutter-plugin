@@ -31,8 +31,7 @@ import 'package:flutter_uxcam/src/widgets/uxcam_app_builder.dart';
 /// This is mandatory if want to use smart event feature.
 
 class UXCamHandler extends StatefulWidget {
-  const UXCamHandler(
-      {Key? key, required this.child, this.types = const []})
+  const UXCamHandler({Key? key, required this.child, this.types = const []})
       : super(key: key);
 
   final Widget child;
@@ -58,8 +57,7 @@ class _UXCamHandlerState extends State<UXCamHandler> {
       builder: uxcamAppBuilder,
       home: Listener(
         behavior: HitTestBehavior.translucent,
-        onPointerDown: (details) =>
-            _onTappedAt(context, details.localPosition),
+        onPointerDown: (details) => _onTappedAt(context, details.localPosition),
         child: widget.child,
       ),
     );
@@ -86,6 +84,7 @@ class _UXCamHandlerState extends State<UXCamHandler> {
 /// Deprecated: use [UXCamHandler] instead.
 @Deprecated('UXCamGestureHandler is deprecated. Use UXCamHandler instead.')
 class UXCamGestureHandler extends UXCamHandler {
-  const UXCamGestureHandler({Key? key, required Widget child, List<Type> types = const []})
+  const UXCamGestureHandler(
+      {Key? key, required Widget child, List<Type> types = const []})
       : super(key: key, child: child, types: types);
 }

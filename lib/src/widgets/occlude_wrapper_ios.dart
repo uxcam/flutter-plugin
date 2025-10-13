@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -9,19 +8,19 @@ import 'package:flutter_uxcam/src/models/occlude_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
-class OccludeWrapperOld extends StatefulWidget {
+class OccludeWrapperIos extends StatefulWidget {
   final Widget child;
 
-  const OccludeWrapperOld({
+  const OccludeWrapperIos({
     Key? key,
     required this.child,
   }) : super(key: key);
 
   @override
-  State<OccludeWrapperOld> createState() => OccludeWrapperState();
+  State<OccludeWrapperIos> createState() => OccludeWrapperState();
 }
 
-class OccludeWrapperState extends State<OccludeWrapperOld>
+class OccludeWrapperState extends State<OccludeWrapperIos>
     with WidgetsBindingObserver {
   late OccludePoint occludePoint;
   late final GlobalKey _widgetKey;
@@ -34,44 +33,19 @@ class OccludeWrapperState extends State<OccludeWrapperOld>
     _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
     // Register widget after first frame is built
-    if (Platform.isIOS) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        try { await FlutterUxcam.attachBridge(); } catch (_) {}
-        if (!mounted) return;
-        registerOcclusionWidget();
-      });
-    } else {
-      WidgetsBinding.instance.addPersistentFrameCallback((_) async {
-        if (!mounted) return;
-        _updatePositionForTopRouteOnly();
-      });
-    }
-  }
-
-  void _updatePositionForTopRouteOnly() {
-    if (!mounted) return;
-    _updatePosition();
-  }
-
-  void _updatePosition() {
-    if (!mounted) return;
-    Rect rect = Rect.zero;
-    if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
-      rect = _widgetKey.globalPaintBounds ?? Rect.zero;
-    }
-    OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await FlutterUxcam.attachBridge();
+      } catch (_) {}
+      if (!mounted) return;
+      registerOcclusionWidget();
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    if (Platform.isIOS) {
-      OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    } else {
-      OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
-    }
+    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
     super.dispose();
   }
 
@@ -115,20 +89,12 @@ class OccludeWrapperState extends State<OccludeWrapperOld>
 
   void registerOcclusionWidget() {
     if (!mounted) return;
-    if (Platform.isIOS) {
-      var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
-      OcclusionWrapperManager().registerOcclusionWrapper(item);
-    } else {
-      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-        _widgetKey, _widgetKey.globalPaintBounds ?? Rect.zero);
-    }
-    
+    var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
+    OcclusionWrapperManager().registerOcclusionWrapper(item);
   }
 
   void unRegisterOcclusionWidget() {
-    if (Platform.isIOS) {
-      OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    }
+    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
   }
 
   void hideOcclusionWidget() {

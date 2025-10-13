@@ -128,6 +128,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
                     ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
                     delegate.createScreenshotFromCollectedRects(result);
+                    Log.d("framedata", result.toString());
                 } else {
                     delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
                 }
@@ -405,6 +406,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             long timestamp = call.argument("timestamp");
             String frameData = call.argument("frameData");
             frameDataMap.put(timestamp,frameData);
+            Log.d("screendata", frameDataMap.toString());
             result.success(true);
         } else if ("appendGestureContent".equals(call.method)) {
             double x = call.argument("x");

@@ -20,14 +20,14 @@ class MyApp extends StatelessWidget {
 
     // Configuration
     FlutterUxConfig config = FlutterUxConfig(
-      userAppKey: 'UXCAM_API_KEY',
+      userAppKey: '9snkhyr501o0nqr-us',
       // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
       enableAutomaticScreenNameTagging: false,
     );
 
     FlutterUxcam.startWithConfiguration(config);
 
-    return UXCamGestureHandler(child: const MaterialApp(home: UXCamPage()));
+    return UXCamHandler(child: const MaterialApp(home: UXCamPage()));
   }
 }
 
@@ -96,9 +96,11 @@ class FeatureSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineSmall,
+        OccludeWrapper(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
         ),
         ElevatedButton(
           onPressed: onPressed,
