@@ -33,27 +33,22 @@ class OccludeWrapperState extends State<OccludeWrapperAndroid>
     _uniqueId = UniqueKey();
     _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
-    // Register widget after first frame is built
-    WidgetsBinding.instance.addPersistentFrameCallback((_) async {
-      if (!mounted) return;
-      _updatePositionForTopRouteOnly();
-    });
   }
 
-  void _updatePositionForTopRouteOnly() {
-    if (!mounted) return;
-    _updatePosition();
-  }
+  // void _updatePositionForTopRouteOnly() {
+  //   if (!mounted) return;
+  //   _updatePosition();
+  // }
 
-  void _updatePosition() {
-    if (!mounted) return;
-    Rect rect = Rect.zero;
-    if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
-      rect = _widgetKey.globalPaintBounds ?? Rect.zero;
-    }
-    OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
-  }
+  // void _updatePosition() {
+  //   if (!mounted) return;
+  //   Rect rect = Rect.zero;
+  //   if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
+  //     rect = _widgetKey.globalPaintBounds ?? Rect.zero;
+  //   }
+  //   OcclusionWrapperManager()
+  //       .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
+  // }
 
   @override
   void dispose() {

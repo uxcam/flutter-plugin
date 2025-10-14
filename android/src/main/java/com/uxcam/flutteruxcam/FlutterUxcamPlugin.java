@@ -99,41 +99,49 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private boolean hasNotch = false;
     private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
     private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
+    ArrayList<Rect> cachedResult = new ArrayList<Rect>();
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
-                final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
-        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
+        final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
+        final BasicMessageChannel<String> uxcamMessageChannel = new BasicMessageChannel<String>(
                 binding.getBinaryMessenger(),
                 "uxcam_message_channel",
-                StandardMessageCodec.INSTANCE);
+                StringCodec.INSTANCE);
                 
         delegate = UXCam.getDelegate();
         delegate.setListener(new OcclusionRectRequestListener() {
 
             @Override
-            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
-                int offset = 50;  
-                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-offset);
-                Long deletebeforeTimestamp = frameDataMap.lowerKey(startTimeStamp-offset - 10);
-                if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
-                    effectiveStartTimestamp = frameDataMap.firstKey();
-                }
-                Long effectiveEndTimestamp;
-                try {
-                    effectiveEndTimestamp = frameDataMap.lastKey();
-                } catch (Exception e) {
-                    effectiveEndTimestamp = null;
-                }
-                if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
-                    ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                    delegate.createScreenshotFromCollectedRects(result);
-                    Log.d("framedata", result.toString());
-                } else {
-                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
-                }
+            public void processOcclusionRectsForCurrentFrame() {
+                //tell flutter to start collecting bounds
+                frameDataMap.clear();
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    uxcamMessageChannel.send("initialize", reply -> {
+                        delegate.initializeScreenshot();
+                    });
+                });
+            }
+
+            @Override
+            public void stopOcclusionRectsForCurrentFrame(long startTimeStamp) {
+                //tell flutter to start collecting bounds
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    uxcamMessageChannel.send("stop", reply -> {
+                        ArrayList<Rect> result = combineRectDataIfSimilar();
+                        cachedResult.addAll(result);
+                        if(cachedResult.size() > 1) {
+                            Rect union = cachedResult.get(0);
+                            union.union(cachedResult.get(1));
+                            cachedResult.clear();
+                            cachedResult.addAll(result);
+                        } 
+                        delegate.createScreenshotFromCollectedRects(cachedResult);
+                    });
+                });
             }
         });
+
         channel.setMethodCallHandler(this);
 
     }
@@ -406,7 +414,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             long timestamp = call.argument("timestamp");
             String frameData = call.argument("frameData");
             frameDataMap.put(timestamp,frameData);
-            Log.d("screendata", frameDataMap.toString());
             result.success(true);
         } else if ("appendGestureContent".equals(call.method)) {
             double x = call.argument("x");
@@ -561,72 +568,32 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     }
 
-    private ArrayList<Rect> combineRectDataIfSimilar(Long start, Long end) {
+    private ArrayList<Rect> combineRectDataIfSimilar() {
+ 
+        ArrayList<Rect> result = new ArrayList<Rect>();
 
-        HashMap<String, JSONArray> widgetDataByKey = new HashMap<>();
-
-        Map<Long, String> effectiveFrameMap = frameDataMap.subMap(start, true, end, true);
-
-        for (Map.Entry<Long, String> entry : effectiveFrameMap.entrySet()) {
+        for (Map.Entry<Long, String> entry : frameDataMap.entrySet()) {
             try {
                 String frameData = entry.getValue();
                 JSONArray list = new JSONArray(frameData);
                 for(int i = 0 ; i < list.length(); i++){
-                    JSONObject obj = list.getJSONObject(i);
-                    String key = obj.optString("key");
-                    JSONArray values;
-                    if(widgetDataByKey.containsKey(key)){
-                        values = widgetDataByKey.get(key);
-                    } else {
-                        values = new JSONArray();
+                    JSONObject obj = list.optJSONObject(i).optJSONObject("point");
+                    if (obj != null) {
+                        Rect rect = new Rect();
+                        if(leftPadding!=0) {
+                            rect.left = obj.optInt("x0") + leftPadding;
+                            rect.right = obj.optInt("x1") + leftPadding;
+                        } else {
+                            rect.left = obj.optInt("x0");
+                            rect.right = obj.optInt("x1");
+                        }
+                        rect.top = obj.optInt("y0");
+                        rect.bottom = obj.optInt("y1");
+                        result.add(rect);
                     }
-                    values.put(obj);
-                    widgetDataByKey.put(key, values);
                 }
             } catch (JSONException e) {
                 Log.e(TAG, "Error parsing JSON", e);
-            }
-        }
-        
-        ArrayList<Rect> result = new ArrayList<Rect>();
-        for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
-            String key = entry.getKey();
-            if (!keyVisibilityMap.containsKey(key)) {
-                keyVisibilityMap.put(key, 0);
-            }
-            JSONArray values = entry.getValue();
-            Rect output = new Rect();
-            boolean isVisible = false;
-            for (int i = 0; i < values.length(); i++) {
-                JSONObject obj = values.optJSONObject(i).optJSONObject("point");
-                if (obj != null) {
-                    Rect rect = new Rect();
-                    if(leftPadding!=0) {
-                        rect.left = obj.optInt("x0") + leftPadding;
-                        rect.right = obj.optInt("x1") + leftPadding;
-                    } else {
-                        rect.left = obj.optInt("x0");
-                        rect.right = obj.optInt("x1");
-                    }
-                    rect.top = obj.optInt("y0");
-                    rect.bottom = obj.optInt("y1");
-                    output.union(rect);
-                    isVisible = isVisible || values.optJSONObject(i).optBoolean("isVisible");
-
-                    if(isVisible) {
-                        keyVisibilityMap.put(key, 0);
-                    } else {
-                        keyVisibilityMap.put(key, keyVisibilityMap.get(key)+1);
-                    }
-
-                }
-            }
-            if(keyVisibilityMap.get(key) < 2) {
-                output.left = output.left-15;
-                output.right = output.right+15;
-                output.top = output.top-25;
-                output.bottom = output.bottom+25;
-                result.add(output);
             }
         }
         return result;

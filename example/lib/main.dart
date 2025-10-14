@@ -71,6 +71,36 @@ class UXCamPage extends StatelessWidget {
             }),
             buttonTitle: 'Custom Event with Property',
           ),
+          FeatureSection(
+            title: 'Screen Tagging',
+            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+            buttonTitle: 'Tag Screen',
+          ),
+          FeatureSection(
+            title: 'Setting User Identity44444',
+            occlude: true,
+            onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
+            buttonTitle: 'Set User Identity',
+          ),
+          FeatureSection(
+            title: 'Setting User Property',
+            onPressed: () => FlutterUxcam.setUserProperty(
+                'userPropKeyString', 'valueString'),
+            buttonTitle: 'Set User Property',
+          ),
+          FeatureSection(
+            title: 'Custom Event',
+            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+            buttonTitle: 'Custom Event',
+          ),
+          FeatureSection(
+            title: 'Custom Event With Properties',
+            onPressed: () =>
+                FlutterUxcam.logEventWithProperties('Custom Event', {
+              'Property 1': 12345,
+            }),
+            buttonTitle: 'Custom Event with Property',
+          ),
         ],
       ),
     );
@@ -83,25 +113,32 @@ class FeatureSection extends StatelessWidget {
   final String title;
   final OnFeatureButtonPressed onPressed;
   final String buttonTitle;
+  final bool occlude;
 
-  const FeatureSection({
-    Key? key,
-    required this.title,
-    required this.onPressed,
-    required this.buttonTitle,
-  }) : super(key: key);
+  const FeatureSection(
+      {Key? key,
+      required this.title,
+      required this.onPressed,
+      required this.buttonTitle,
+      this.occlude = false})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        OccludeWrapper(
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-        ),
+        occlude
+            ? OccludeWrapper(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              )
+            : Text(
+                title,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
         ElevatedButton(
           onPressed: onPressed,
           child: Text(buttonTitle),

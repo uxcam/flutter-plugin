@@ -8,7 +8,7 @@ class OccludeData {
 
   @override
   String toString() {
-    return 'OccludeData( point: $point)';
+    return 'OccludeData(key: $key, point: $point)';
   }
 
   Map<String, dynamic> toJson() {

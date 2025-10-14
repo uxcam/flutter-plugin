@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
@@ -36,16 +38,22 @@ class OcclusionWrapperManager {
 
   final occlusionRects = <UniqueKey, OccludePoint>{};
   final rects = <GlobalKey, OccludePoint>{};
-  
+
   Timer? _updateTimer;
-  Duration _currentUpdateInterval = const Duration(milliseconds: 100);
-  
+  Duration _currentUpdateInterval = const Duration(milliseconds: 10);
+
+  bool _continueUpdate = false;
+  void continueUpdate(bool status) {
+    _continueUpdate = status;
+  }
+
   // Track native call frequency for dynamic timer adjustment
   final List<DateTime> _nativeCallTimestamps = [];
   static const int _maxCallHistory = 5;
   static const Duration _minInterval = Duration(milliseconds: 100); // ~10fps
   static const Duration _maxInterval = Duration(milliseconds: 1000); // ~fps
-  static const Duration _defaultInterval = Duration(milliseconds: 100); // ~10fps
+  static const Duration _defaultInterval =
+      Duration(milliseconds: 100); // ~10fps
 
   void add(int timeStamp, GlobalKey key, Rect rect) {
     rects.remove(key);
@@ -57,42 +65,52 @@ class OcclusionWrapperManager {
     );
     // Timer is managed by registration/unregistration lifecycle
   }
-  
+
   void _startUpdateTimerIfNeeded() {
     if (_updateTimer == null && items.isNotEmpty) {
       _updateTimer = Timer.periodic(_currentUpdateInterval, (_) {
-        _sendRectsToNative();
+        //_sendRectsToNative();
       });
     }
   }
-  
+
   void _restartTimerWithNewInterval() {
     if (_updateTimer != null && items.isNotEmpty) {
       _stopUpdateTimer();
       _startUpdateTimerIfNeeded();
     }
   }
-  
+
   void _stopUpdateTimer() {
     _nativeCallTimestamps.clear();
     _updateTimer?.cancel();
     _updateTimer = null;
   }
-  
+
   void _sendRectsToNative() {
     if (rects.isEmpty) {
       _stopUpdateTimer();
       return;
     }
-    
+
     // Clean up rects for keys that are no longer registered
     _cleanupUnregisteredRects();
-    
+
     if (rects.isEmpty) {
       _stopUpdateTimer();
       return;
     }
-    
+
+    for (final item in items) {
+      final rect = item.key.globalPaintBounds ?? Rect.zero;
+      rects[item.key] = OccludePoint(
+        rect.left.toNative,
+        rect.top.toNative,
+        rect.right.toNative,
+        rect.bottom.toNative,
+      );
+    }
+
     List<Map<String, dynamic>> rectList = [];
     rects.forEach((key, value) {
       if (key.isWidgetVisible()) {
@@ -104,14 +122,15 @@ class OcclusionWrapperManager {
         rectList.add(rectData);
       }
     });
-    
+
     // Always send to native since native doesn't cache/store the data
     // Native side needs fresh data every time for proper occlusion tracking
     if (Platform.isAndroid && rectList.isNotEmpty) {
-      FlutterUxcam.addFrameData(DateTime.now().millisecondsSinceEpoch, jsonEncode(rectList));
+      FlutterUxcam.addFrameData(
+          DateTime.now().millisecondsSinceEpoch, jsonEncode(rectList));
     }
   }
-  
+
   void _cleanupUnregisteredRects() {
     final registeredKeys = items.map((item) => item.key).toSet();
     rects.removeWhere((key, _) => !registeredKeys.contains(key));
@@ -119,6 +138,66 @@ class OcclusionWrapperManager {
 
   void clearOcclusionRects() {
     occlusionRects.clear();
+  }
+
+  List<Map<String, dynamic>> rectList = [];
+  List<OccludeData> data = [];
+
+  void initialize() {
+    _startUpdate();
+  }
+
+  void _startUpdate() {
+    WidgetsBinding.instance.addPersistentFrameCallback((_) {
+      if (_continueUpdate) {
+        rectList.clear();
+        for (final item in items) {
+          final rect = item.key.globalPaintBounds ?? Rect.zero;
+          data.add(
+            OccludeData(
+              item.key,
+              OccludePoint(
+                rect.left.toNative,
+                rect.top.toNative,
+                rect.right.toNative,
+                rect.bottom.toNative,
+              ),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  void stop() {
+    Map<GlobalKey, List<OccludeData>> dataByKey =
+        groupBy(data, (occludeData) => occludeData.key);
+    dataByKey.forEach((key, pointGroup) {
+      Rect output = Rect.zero;
+      pointGroup.forEach((point) {
+        OccludePoint operand = point.point;
+        if (output != Rect.zero) {
+          output = union(output, operand.toRect());
+        } else {
+          output = operand.toRect();
+        }
+      });
+      Map<String, dynamic> rectData = {
+        "point": {
+          "x0": output.topLeft.dx,
+          "y0": output.topLeft.dy,
+          "x1": output.bottomRight.dx - 30,
+          "y1": output.bottomRight.dy,
+        },
+      };
+      rectList.add(rectData);
+    });
+
+    if (Platform.isAndroid && rectList.isNotEmpty) {
+      String output = jsonEncode(rectList);
+      FlutterUxcam.addFrameData(DateTime.now().millisecondsSinceEpoch, output);
+      data.clear();
+    }
   }
 
   bool containsWidgetByKey(GlobalKey key) {
@@ -132,8 +211,20 @@ class OcclusionWrapperManager {
   void registerOcclusionWrapper(OcclusionWrapperItem item) {
     if (!items.contains(item)) {
       items.add(item);
+      final rect = item.key.globalPaintBounds ?? Rect.zero;
+      data.add(
+        OccludeData(
+          item.key,
+          OccludePoint(
+            rect.left.toNative,
+            rect.top.toNative,
+            rect.right.toNative,
+            rect.bottom.toNative,
+          ),
+        ),
+      );
       // Start timer when first widget is registered
-      _startUpdateTimerIfNeeded();
+      //_startUpdateTimerIfNeeded();
     }
   }
 
@@ -141,19 +232,20 @@ class OcclusionWrapperManager {
   void unRegisterOcclusionWrapper(UniqueKey id) {
     if (items.isNotEmpty) {
       // Find the wrapper to get its key before removing
-      final wrapperToRemove = items.where((wrapper) => wrapper.id == id).firstOrNull;
-      
+      final wrapperToRemove =
+          items.where((wrapper) => wrapper.id == id).firstOrNull;
+
       items.removeWhere((wrapper) => wrapper.id == id);
-      
+
       // Remove the corresponding rect entry
       if (wrapperToRemove != null) {
         rects.remove(wrapperToRemove.key);
       }
-      
+
       if (occlusionRects.containsKey(id)) {
         occlusionRects.removeWhere((key, _) => key == id);
       }
-      
+
       // Stop timer if no more items
       if (items.isEmpty) {
         _stopUpdateTimer();
@@ -174,7 +266,7 @@ class OcclusionWrapperManager {
     _recordNativeCall();
     return items.map((wrapper) => getOccludePoint(wrapper.key)).toList();
   }
-  
+
   void _recordNativeCall() {
     // don't record if we have too many calls
     if (_nativeCallTimestamps.length >= _maxCallHistory) {
@@ -182,55 +274,50 @@ class OcclusionWrapperManager {
     }
     final now = DateTime.now();
     _nativeCallTimestamps.add(now);
-    
+
     // Adjust timer interval based on native call frequency
     _adjustTimerInterval();
   }
-  
+
   void _adjustTimerInterval() {
     if (_nativeCallTimestamps.length < 2) return; // Need some history
-    
+
     // Calculate average interval between native calls
     final recentCalls = _nativeCallTimestamps.take(_maxCallHistory).toList();
     if (recentCalls.length < 2) return;
-    
+
     Duration totalDuration = Duration.zero;
     for (int i = 1; i < recentCalls.length; i++) {
       totalDuration += recentCalls[i].difference(recentCalls[i - 1]);
     }
-    
+
     final averageNativeInterval = Duration(
-      milliseconds: totalDuration.inMilliseconds ~/ (recentCalls.length - 1)
-    );
-    
-    final targetInterval = Duration(
-      milliseconds: (averageNativeInterval.inMilliseconds).round()
-    );
-    
+        milliseconds: totalDuration.inMilliseconds ~/ (recentCalls.length - 1));
+
+    final targetInterval =
+        Duration(milliseconds: (averageNativeInterval.inMilliseconds).round());
+
     // Clamp to reasonable bounds
     final clampedInterval = Duration(
-      milliseconds: targetInterval.inMilliseconds.clamp(
-        _minInterval.inMilliseconds,
-        _maxInterval.inMilliseconds
-      )
-    );
-    
+        milliseconds: targetInterval.inMilliseconds
+            .clamp(_minInterval.inMilliseconds, _maxInterval.inMilliseconds));
+
     // Only restart timer if interval changed significantly (>10ms difference)
-    if ((clampedInterval.inMilliseconds - _currentUpdateInterval.inMilliseconds).abs() > 10) {
+    if ((clampedInterval.inMilliseconds - _currentUpdateInterval.inMilliseconds)
+            .abs() >
+        10) {
       _currentUpdateInterval = clampedInterval;
       _restartTimerWithNewInterval();
-      
-
     }
   }
-  
+
   /// Reset timer interval to default (useful for testing or manual reset)
   void resetTimerInterval() {
     _nativeCallTimestamps.clear();
     _currentUpdateInterval = _defaultInterval;
     _restartTimerWithNewInterval();
   }
-  
+
   /// Get current timer interval (for debugging/monitoring)
   Duration get currentTimerInterval => _currentUpdateInterval;
 
@@ -249,5 +336,14 @@ class OcclusionWrapperManager {
     );
 
     return occludePoint;
+  }
+
+  Rect union(Rect a, Rect b) {
+    return Rect.fromLTRB(
+      math.min(a.left, b.left),
+      math.min(a.top, b.top),
+      math.max(a.right, b.right),
+      math.max(a.bottom, b.bottom),
+    );
   }
 }
