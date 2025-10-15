@@ -43,6 +43,8 @@ import android.util.DisplayMetrics;
 import android.view.Display;
 import android.util.Log;
 
+import android.view.View;
+import android.view.ViewGroup;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.graphics.Insets;
@@ -59,6 +61,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import androidx.annotation.NonNull;
 import java.util.TreeMap;
+
 
 /**
  * FlutterUxcamPlugin
@@ -127,18 +130,26 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 //tell flutter to start collecting bounds
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     uxcamMessageChannel.send("stop", reply -> {
-                        ArrayList<Rect> formattedRects = new ArrayList<Rect>();
-                        if(formattedRects!=null) {
+                        if(reply.toString().equals("true")) {
+                            Log.d("occlude-data-output", frameDataMap.toString());
+                            ArrayList<Rect> formattedRects = new ArrayList<Rect>();
                             Map<String, Rect> result = combineRectDataIfSimilar();
                             for (Map.Entry<String, Rect> entry : result.entrySet()) {
                                 formattedRects.add(entry.getValue());
                             }
-                            delegate.createScreenshotFromCollectedRects(formattedRects);
-                            if(!frameDataMap.isEmpty()) {
-                                cachedResult = frameDataMap;
+                            if(formattedRects.size() > 0) {
+                                delegate.createScreenshotFromCollectedRects(formattedRects);
+                                Log.d("occlude-data-output", formattedRects.toString());
+                                if(!frameDataMap.isEmpty()) {
+                                    cachedResult = frameDataMap;
+                                }
+                            } else {
+                                delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                                Log.d("occlude-data-output", formattedRects.toString());
                             }
                         } else {
-                            delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                            //the last screenshot is not stable, discard it
+                            delegate.invalidateUnstableScreenshot();
                         }
                     });
                 }, 500); 
@@ -146,7 +157,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         });
 
         channel.setMethodCallHandler(this);
-
     }
 
     @Override
@@ -201,6 +211,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             }
             return ViewCompat.onApplyWindowInsets(v, insets);
         });
+
     }
 
     @Override
@@ -634,9 +645,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 Log.d("occlude-data-error", "Error parsing JSON", e);
                 return null;
         }
-
-        Log.d("occlude-data-output", result.toString());
-        Log.d("occlude-data-output", "----------------------");
         return result;
     }
 
