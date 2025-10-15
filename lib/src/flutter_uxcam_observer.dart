@@ -1,5 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 
 /// Here using NavigatorObserver instead of [RouteObserver] because
@@ -22,6 +24,12 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
   /// current one.
   final List<String> _screenNames = [];
   List<String> get screenNames => _screenNames;
+
+  /// Cache the last tagged screen name to avoid redundant method channel calls
+  String? _lastTaggedScreenName;
+
+  /// Timer for debouncing screen name tagging to avoid excessive calls
+  Timer? _debounceTimer;
 
   Animation<double>? _transitionAnimation;
   Animation<double>? get transitionAnimation => _transitionAnimation;
@@ -76,15 +84,45 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
   /// This function will just perform operation for setting [taggingScreen] and
   /// depeding on the value of  [taggingScreen] will either discard or perform
   /// [FlutterUxcam.tagScreenName] operation.
+  /// 
+  /// Optimized for Impeller performance by:
+  /// 1. Avoiding unnecessary list copies
+  /// 2. Caching last tagged screen name to prevent redundant calls
+  /// 3. Deferring method channel calls to post-frame callback
+  /// 4. Debouncing rapid navigation events
   void setAndTaggingScreenName() {
-    String taggingScreen = '';
-    List<String> currentStackNames = List.from(_screenNames);
-    if (currentStackNames.isNotEmpty) {
-      taggingScreen = currentStackNames.last;
+    // Cancel any pending debounce timer
+    _debounceTimer?.cancel();
+    
+    // Get the current screen name without creating a list copy
+    final String taggingScreen = _screenNames.isNotEmpty ? _screenNames.last : '';
+    
+    // Skip if empty, starts with ":", or is the same as last tagged screen
+    if (taggingScreen.isEmpty || 
+        taggingScreen.startsWith(":") || 
+        taggingScreen == _lastTaggedScreenName) {
+      return;
     }
-    if (taggingScreen.isNotEmpty && !taggingScreen.startsWith(":")) {
-      FlutterUxcam.tagScreenName(taggingScreen);
-    }
+    
+    // Debounce rapid navigation events (50ms window)
+    _debounceTimer = Timer(const Duration(milliseconds: 50), () {
+      // Double-check the screen name hasn't changed during debounce
+      final currentScreen = _screenNames.isNotEmpty ? _screenNames.last : '';
+      if (currentScreen == taggingScreen && currentScreen != _lastTaggedScreenName) {
+        // Defer the method channel call until after the current frame
+        // This prevents blocking the navigation animation
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          FlutterUxcam.tagScreenName(taggingScreen);
+        });
+        _lastTaggedScreenName = taggingScreen;
+      }
+    });
+  }
+
+  /// Cleanup method to cancel any pending timers
+  void dispose() {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
   }
 
   bool isPopupOnTop() {

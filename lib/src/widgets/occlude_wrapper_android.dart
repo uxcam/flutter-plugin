@@ -77,7 +77,7 @@ class OccludeWrapperState extends State<OccludeWrapperAndroid>
         }
       },
       child: Container(
-        //key: _widgetKey,
+        key: GlobalKey(),
         child: widget.child,
       ),
     );
