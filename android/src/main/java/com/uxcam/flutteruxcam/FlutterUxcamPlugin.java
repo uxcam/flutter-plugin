@@ -141,7 +141,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                             delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
                         }
                     });
-                }, 400); 
+                }, 500); 
             }
         });
 

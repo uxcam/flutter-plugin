@@ -143,32 +143,44 @@ class OcclusionWrapperManager {
   List<OccludeData> data = [];
 
   void initialize() {
-    _startUpdate();
+    _updateRects();
   }
 
-  void _startUpdate() {
-    WidgetsBinding.instance.addPersistentFrameCallback((_) {
-      if (_continueUpdate) {
-        rectList.clear();
-        for (final item in items) {
-          final rect = item.key.globalPaintBounds ?? Rect.zero;
-          data.add(
-            OccludeData(
-              item.key,
-              OccludePoint(
-                rect.left.toNative,
-                rect.top.toNative,
-                rect.right.toNative,
-                rect.bottom.toNative,
-              ),
-            ),
-          );
-        }
-      }
-    });
+  void _updateRects() {
+    rectList.clear();
+    for (final item in items) {
+      final rect = item.key.globalPaintBounds ?? Rect.zero;
+      data.add(
+        OccludeData(
+          item.key,
+          OccludePoint(
+            rect.left.toNative,
+            rect.top.toNative,
+            rect.right.toNative,
+            rect.bottom.toNative,
+          ),
+        ),
+      );
+    }
   }
 
   void stop() {
+    rectList.clear();
+    for (final item in items) {
+      final rect = item.key.globalPaintBounds ?? Rect.zero;
+      data.add(
+        OccludeData(
+          item.key,
+          OccludePoint(
+            rect.left.toNative,
+            rect.top.toNative,
+            rect.right.toNative,
+            rect.bottom.toNative,
+          ),
+        ),
+      );
+    }
+
     Map<GlobalKey, List<OccludeData>> dataByKey =
         groupBy(data, (occludeData) => occludeData.key);
     Map<String, String> resultMap = {};
