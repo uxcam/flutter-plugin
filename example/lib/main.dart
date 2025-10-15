@@ -64,7 +64,8 @@ class UXCamPage extends StatelessWidget {
             buttonTitle: 'Custom Event',
           ),
           FeatureSection(
-            title: 'Custom Event With Properties',
+            title: 'Custom Event With Properties4444',
+            occlude: true,
             onPressed: () =>
                 FlutterUxcam.logEventWithProperties('Custom Event', {
               'Property 1': 12345,

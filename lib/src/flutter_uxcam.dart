@@ -457,10 +457,9 @@ class FlutterUxcam {
     });
   }
 
-  static Future<void> addFrameData(int timestamp, String frameData) async {
+  static Future<void> addFrameData(Map<String, String> data) async {
     await _channel.invokeMethod<void>("addFrameData", {
-      "timestamp": timestamp,
-      "frameData": frameData,
+      "payload": data,
     });
   }
 

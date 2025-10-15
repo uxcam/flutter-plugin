@@ -126,8 +126,7 @@ class OcclusionWrapperManager {
     // Always send to native since native doesn't cache/store the data
     // Native side needs fresh data every time for proper occlusion tracking
     if (Platform.isAndroid && rectList.isNotEmpty) {
-      FlutterUxcam.addFrameData(
-          DateTime.now().millisecondsSinceEpoch, jsonEncode(rectList));
+      //FlutterUxcam.addFrameData(key.toString(), jsonEncode(rectList));
     }
   }
 
@@ -172,6 +171,7 @@ class OcclusionWrapperManager {
   void stop() {
     Map<GlobalKey, List<OccludeData>> dataByKey =
         groupBy(data, (occludeData) => occludeData.key);
+    Map<String, String> resultMap = {};
     dataByKey.forEach((key, pointGroup) {
       Rect output = Rect.zero;
       pointGroup.forEach((point) {
@@ -186,16 +186,16 @@ class OcclusionWrapperManager {
         "point": {
           "x0": output.topLeft.dx,
           "y0": output.topLeft.dy,
-          "x1": output.bottomRight.dx - 30,
+          "x1": output.bottomRight.dx,
           "y1": output.bottomRight.dy,
         },
       };
-      rectList.add(rectData);
+      String result = jsonEncode(rectData);
+      resultMap[key.toString()] = result;
     });
 
-    if (Platform.isAndroid && rectList.isNotEmpty) {
-      String output = jsonEncode(rectList);
-      FlutterUxcam.addFrameData(DateTime.now().millisecondsSinceEpoch, output);
+    if (Platform.isAndroid) {
+      FlutterUxcam.addFrameData(resultMap);
       data.clear();
     }
   }
