@@ -33,16 +33,23 @@ class OccludeWrapperState extends State<OccludeWrapper>
     _uniqueId = UniqueKey();
     _widgetKey = GlobalKey();
     WidgetsBinding.instance.addObserver(this);
-    // Register widget after first frame is built
-    WidgetsBinding.instance.addPersistentFrameCallback((_) async {
-      if (!mounted) return;
-      registerOcclusionWidget();
-      _updatePositionForTopRouteOnly();
-    });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-    try { await FlutterUxcam.attachBridge(); } catch (_) {}
-    });
+    // Register widget after first frame is built
+    if (Platform.isAndroid) {
+      WidgetsBinding.instance.addPersistentFrameCallback((_) async {
+        if (!mounted) return;
+        registerOcclusionWidget();
+        _updatePositionForTopRouteOnly();
+      });
+    } 
+    if (Platform.isIOS) {
+      // For iOS, we need to register the widget after the first frame
+        if (!mounted) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          try { await FlutterUxcam.attachBridge(); } catch (_) {}
+        });
+    }
+    
   }
 
   void _updatePosition() {
@@ -63,9 +70,14 @@ class OccludeWrapperState extends State<OccludeWrapper>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    OcclusionWrapperManager()
+    if (Platform.isIOS) {
+      OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    }
+    if (Platform.isAndroid) {
+      OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+      OcclusionWrapperManager()
         .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
+    }
     super.dispose();
   }
 
@@ -111,13 +123,14 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (!mounted) return;
     var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
     OcclusionWrapperManager().registerOcclusionWrapper(item);
-    OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+    if (Platform.isAndroid) {
+      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
         _widgetKey, _widgetKey.globalPaintBounds ?? Rect.zero);
+    }
   }
 
   void unRegisterOcclusionWidget() {
-    if (Platform.isIOS)
-      OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
+    OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
   }
 
   void hideOcclusionWidget() {

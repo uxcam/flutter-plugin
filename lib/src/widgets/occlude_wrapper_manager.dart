@@ -168,6 +168,11 @@ class OcclusionWrapperManager {
     var json = occlusionPoints.map((rect) => rect.toJson()).toList();
     return json;
   }
+  bool hasOcclusionRects() {
+    var occlusionPoints = getOccludePoints();
+    bool check = occlusionPoints.length > 0;
+    return check;
+  }
 
   List<OccludePoint> getOccludePoints() {
     // Track this call from native to measure frequency
