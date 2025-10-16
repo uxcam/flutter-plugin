@@ -39,6 +39,13 @@ class ChannelCallback {
 
 
   static Future<bool> _pauseRendering() async {
+
+    if (!_checkOcclusions()) { // No occlusions, skip pausing
+      _isRenderingPaused = false;
+      _preventRender = false;
+      return false;
+    }
+
     if (_isRenderingPaused) {
       VisibilityDetectorController.instance.notifyNow();
       return true;
@@ -120,6 +127,13 @@ class ChannelCallback {
     var instance = OcclusionWrapperManager();
     var rects = instance.fetchOcclusionRects();
     return rects;
+  }
+
+  /// This method checks the occlusionWrapper Rects as list.
+  static bool _checkOcclusions() {
+    var instance = OcclusionWrapperManager();
+    var check = instance.hasOcclusionRects();
+    return check;
   }
 
   static Future<bool> hasFrameEnded() async {
