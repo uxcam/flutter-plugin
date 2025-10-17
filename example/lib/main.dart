@@ -27,7 +27,14 @@ class MyApp extends StatelessWidget {
 
     FlutterUxcam.startWithConfiguration(config);
 
-    return UXCamGestureHandler(child: const MaterialApp(home: UXCamPage()));
+    return MaterialApp(
+      home: UXCamPage(),
+      builder: (context, child) {
+        return UxcamOverlay(
+          child: child!,
+        );
+      },
+    );
   }
 }
 
@@ -42,6 +49,35 @@ class UXCamPage extends StatelessWidget {
         padding: const EdgeInsets.all(8.0),
         children: [
           /// 1. Tagging Screen Manually
+          FeatureSection(
+            title: 'Screen Tagging',
+            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+            buttonTitle: 'Tag Screen',
+          ),
+          FeatureSection(
+            title: 'Setting User Identity',
+            onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
+            buttonTitle: 'Set User Identity',
+          ),
+          FeatureSection(
+            title: 'Setting User Property',
+            onPressed: () => FlutterUxcam.setUserProperty(
+                'userPropKeyString', 'valueString'),
+            buttonTitle: 'Set User Property',
+          ),
+          FeatureSection(
+            title: 'Custom Event',
+            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+            buttonTitle: 'Custom Event',
+          ),
+          FeatureSection(
+            title: 'Custom Event With Properties',
+            onPressed: () =>
+                FlutterUxcam.logEventWithProperties('Custom Event', {
+              'Property 1': 12345,
+            }),
+            buttonTitle: 'Custom Event with Property',
+          ),
           FeatureSection(
             title: 'Screen Tagging',
             onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
