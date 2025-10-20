@@ -64,6 +64,7 @@ class UXCamPage extends StatelessWidget {
             onPressed: () => FlutterUxcam.setUserProperty(
                 'userPropKeyString', 'valueString'),
             buttonTitle: 'Set User Property',
+            occlude: true,
           ),
           FeatureSection(
             title: 'Custom Event',
@@ -119,12 +120,14 @@ class FeatureSection extends StatelessWidget {
   final String title;
   final OnFeatureButtonPressed onPressed;
   final String buttonTitle;
+  final bool occlude;
 
   const FeatureSection({
     Key? key,
     required this.title,
     required this.onPressed,
     required this.buttonTitle,
+    this.occlude = false,
   }) : super(key: key);
 
   @override
@@ -132,12 +135,17 @@ class FeatureSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Occlude(
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-        ),
+        occlude
+            ? Occlude(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              )
+            : Text(
+                title,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
         ElevatedButton(
           onPressed: onPressed,
           child: Text(buttonTitle),

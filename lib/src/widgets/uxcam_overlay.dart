@@ -22,18 +22,23 @@ class UxcamOverlay extends StatelessWidget {
               animation: BoundsTracker.instance,
               builder: (context, _) {
                 // Access all tracked rects
-                print("object");
                 final rects = BoundsTracker.instance.rects.values.toList();
                 if (rects.isEmpty) {
                   return SizedBox.shrink();
                 } else {
-                  return Container(
-                    width: 100,
-                    height: 500,
-                    child: Text(
-                      rects.map((e) => e.toString()).join('\n'),
-                      style: TextStyle(fontSize: 8),
-                    ),
+                  final colors = rects
+                      .map((rect) => encodeRect(rect))
+                      .expand((e) => e)
+                      .toList();
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: colors
+                        .map((color) => Container(
+                              width: 10,
+                              height: 10,
+                              color: color,
+                            ))
+                        .toList(),
                   );
                 }
               },
