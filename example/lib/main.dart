@@ -16,16 +16,16 @@ class MyApp extends StatelessWidget {
     // and better management.
 
     // Confirm that you have user permission for screen recording
-    FlutterUxcam.optIntoSchematicRecordings();
+    // FlutterUxcam.optIntoSchematicRecordings();
 
-    // Configuration
-    FlutterUxConfig config = FlutterUxConfig(
-      userAppKey: 'UXCAM_API_KEY',
-      // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
-      enableAutomaticScreenNameTagging: false,
-    );
+    // // Configuration
+    // FlutterUxConfig config = FlutterUxConfig(
+    //   userAppKey: 'UXCAM_API_KEY',
+    //   // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
+    //   enableAutomaticScreenNameTagging: false,
+    // );
 
-    FlutterUxcam.startWithConfiguration(config);
+    // FlutterUxcam.startWithConfiguration(config);
 
     return MaterialApp(
       home: UXCamPage(),
@@ -132,9 +132,11 @@ class FeatureSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineSmall,
+        Occlude(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
         ),
         ElevatedButton(
           onPressed: onPressed,

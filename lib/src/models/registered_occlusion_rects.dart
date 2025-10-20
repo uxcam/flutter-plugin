@@ -7,16 +7,16 @@ class RegisteredOcclusionRectsMap<GlobalKey, Rect> extends ChangeNotifier {
 
   void add(GlobalKey key, Size size, Offset position) {
     _map[key] = (position & size) as Rect;
-    notifyListeners();
+    //notifyListeners();
   }
 
   void remove(GlobalKey key) {
     _map.remove(key);
-    notifyListeners();
+    //notifyListeners();
   }
 
   void clear() {
     _map.clear();
-    notifyListeners();
+    //notifyListeners();
   }
 }
