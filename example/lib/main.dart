@@ -19,13 +19,13 @@ class MyApp extends StatelessWidget {
     // FlutterUxcam.optIntoSchematicRecordings();
 
     // // Configuration
-    // FlutterUxConfig config = FlutterUxConfig(
-    //   userAppKey: 'UXCAM_API_KEY',
-    //   // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
-    //   enableAutomaticScreenNameTagging: false,
-    // );
+    FlutterUxConfig config = FlutterUxConfig(
+      userAppKey: '9snkhyr501o0nqr-us',
+      // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
+      enableAutomaticScreenNameTagging: false,
+    );
 
-    // FlutterUxcam.startWithConfiguration(config);
+    FlutterUxcam.startWithConfiguration(config);
 
     return MaterialApp(
       home: UXCamPage(),

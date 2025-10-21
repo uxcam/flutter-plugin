@@ -43,6 +43,8 @@ import android.util.DisplayMetrics;
 import android.view.Display;
 import android.util.Log;
 
+import android.view.View;
+import android.view.ViewGroup;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.graphics.Insets;
@@ -60,11 +62,12 @@ import org.json.JSONException;
 import androidx.annotation.NonNull;
 import java.util.TreeMap;
 
+
 /**
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.7.0";
+    private static final String TYPE_VERSION = "2.7.1";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
@@ -97,44 +100,63 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private int cutoutBottom = 0;
     private Insets systemBars = Insets.NONE;
     private boolean hasNotch = false;
-    private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
-    private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
+    private Map<String, Object> frameDataMap = new HashMap<String, Object>();
+    private Map<String, Object> cachedResult = new HashMap<String, Object>();
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
-                final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
-        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
+        final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
+        final BasicMessageChannel<String> uxcamMessageChannel = new BasicMessageChannel<String>(
                 binding.getBinaryMessenger(),
                 "uxcam_message_channel",
-                StandardMessageCodec.INSTANCE);
+                StringCodec.INSTANCE);
                 
         delegate = UXCam.getDelegate();
-        delegate.setListener(new OcclusionRectRequestListener() {
+        // delegate.setListener(new OcclusionRectRequestListener() {
 
-            @Override
-            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
-                int offset = 50;  
-                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-offset);
-                Long deletebeforeTimestamp = frameDataMap.lowerKey(startTimeStamp-offset - 10);
-                if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
-                    effectiveStartTimestamp = frameDataMap.firstKey();
-                }
-                Long effectiveEndTimestamp;
-                try {
-                    effectiveEndTimestamp = frameDataMap.lastKey();
-                } catch (Exception e) {
-                    effectiveEndTimestamp = null;
-                }
-                if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
-                    ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                    delegate.createScreenshotFromCollectedRects(result);
-                } else {
-                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
-                }
-            }
-        });
+        //     @Override
+        //     public void processOcclusionRectsForCurrentFrame() {
+        //         //tell flutter to start collecting bounds
+        //         //frameDataMap.clear();
+        //         new Handler(Looper.getMainLooper()).post(() -> {
+        //             uxcamMessageChannel.send("initialize", reply -> {
+        //                 delegate.initializeScreenshot();
+        //             });
+        //         });
+        //     }
+
+        //     @Override
+        //     public void stopOcclusionRectsForCurrentFrame(long startTimeStamp) {
+        //         //tell flutter to start collecting bounds
+        //         new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        //             uxcamMessageChannel.send("stop", reply -> {
+        //                 if(reply.toString().equals("true")) {
+        //                     Log.d("occlude-data-output", frameDataMap.toString());
+        //                     ArrayList<Rect> formattedRects = new ArrayList<Rect>();
+        //                     Map<String, Rect> result = combineRectDataIfSimilar();
+        //                     for (Map.Entry<String, Rect> entry : result.entrySet()) {
+        //                         formattedRects.add(entry.getValue());
+        //                     }
+        //                     if(formattedRects.size() > 0) {
+        //                         delegate.createScreenshotFromCollectedRects(formattedRects);
+        //                         Log.d("occlude-data-output", formattedRects.toString());
+        //                         if(!frameDataMap.isEmpty()) {
+        //                             cachedResult = frameDataMap;
+        //                         }
+        //                     } else {
+        //                         delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+        //                         Log.d("occlude-data-output", formattedRects.toString());
+        //                     }
+        //                 } else {
+        //                     //the last screenshot is not stable, discard it
+        //                     delegate.invalidateUnstableScreenshot();
+        //                 }
+        //             });
+        //         }, 500); 
+        //     }
+        // });
+
         channel.setMethodCallHandler(this);
-
     }
 
     @Override
@@ -189,6 +211,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             }
             return ViewCompat.onApplyWindowInsets(v, insets);
         });
+
     }
 
     @Override
@@ -402,9 +425,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             UXCam.removeOcclusion(occlusion);
             result.success(true);
         } else if ("addFrameData".equals(call.method)) {
-            long timestamp = call.argument("timestamp");
-            String frameData = call.argument("frameData");
-            frameDataMap.put(timestamp,frameData);
+            Map<String, Object> payload = call.argument("payload");
+            frameDataMap = payload;
+            Log.d("occlusion-data", payload.toString());
             result.success(true);
         } else if ("appendGestureContent".equals(call.method)) {
             double x = call.argument("x");
@@ -559,76 +582,70 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     }
 
-    private ArrayList<Rect> combineRectDataIfSimilar(Long start, Long end) {
+    private Map<String, Rect> combineRectDataIfSimilar() {
+ 
+        Map<String, Rect> result = new HashMap<String, Rect>();
+        Log.d("occlude-data", "cachedc:"+cachedResult.toString());
+        Log.d("occlude-data", "cachedi:"+frameDataMap.toString());
 
-        HashMap<String, JSONArray> widgetDataByKey = new HashMap<>();
-
-        Map<Long, String> effectiveFrameMap = frameDataMap.subMap(start, true, end, true);
-
-        for (Map.Entry<Long, String> entry : effectiveFrameMap.entrySet()) {
-            try {
-                String frameData = entry.getValue();
-                JSONArray list = new JSONArray(frameData);
-                for(int i = 0 ; i < list.length(); i++){
-                    JSONObject obj = list.getJSONObject(i);
-                    String key = obj.optString("key");
-                    JSONArray values;
-                    if(widgetDataByKey.containsKey(key)){
-                        values = widgetDataByKey.get(key);
+        try {
+            if(frameDataMap.isEmpty()) {
+                for (Map.Entry<String, Object> entry : cachedResult.entrySet()) {
+                    JSONObject json = new JSONObject((String)entry.getValue()).optJSONObject("point");
+                    if(json!=null) {
+                        Rect rect = new Rect();
+                        rect.left = json.optInt("x0");
+                        rect.right = json.optInt("x1");
+                        rect.top = json.optInt("y0");
+                        rect.bottom = json.optInt("y1");
+                        result.put(entry.getKey(), rect);
                     } else {
-                        values = new JSONArray();
+                        throw new JSONException("no point data");
                     }
-                    values.put(obj);
-                    widgetDataByKey.put(key, values);
                 }
-            } catch (JSONException e) {
-                Log.e(TAG, "Error parsing JSON", e);
-            }
-        }
-        
-        ArrayList<Rect> result = new ArrayList<Rect>();
-        for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
-            String key = entry.getKey();
-            if (!keyVisibilityMap.containsKey(key)) {
-                keyVisibilityMap.put(key, 0);
-            }
-            JSONArray values = entry.getValue();
-            Rect output = new Rect();
-            boolean isVisible = false;
-            for (int i = 0; i < values.length(); i++) {
-                JSONObject obj = values.optJSONObject(i).optJSONObject("point");
-                if (obj != null) {
-                    Rect rect = new Rect();
-                    if(leftPadding!=0) {
-                        rect.left = obj.optInt("x0") + leftPadding;
-                        rect.right = obj.optInt("x1") + leftPadding;
+            } else {
+            for (Map.Entry<String, Object> entry : frameDataMap.entrySet()) {
+                String key = entry.getKey();
+                if (cachedResult.containsKey(key)) {
+                    JSONObject json1 = new JSONObject((String)entry.getValue()).optJSONObject("point");
+                    JSONObject json2 = new JSONObject((String)cachedResult.get(key)).optJSONObject("point");
+                    if(json1!=null && json2!=null) {
+                        Rect operand1 = new Rect();
+                        operand1.left = json1.optInt("x0");
+                        operand1.right = json1.optInt("x1");
+                        operand1.top = json1.optInt("y0");
+                        operand1.bottom = json1.optInt("y1");
+                        Rect operand2 = new Rect();
+                        operand2.left = json2.optInt("x0");
+                        operand2.right = json2.optInt("x1");
+                        operand2.top = json2.optInt("y0");
+                        operand2.bottom = json2.optInt("y1");
+                        Rect union = operand1;
+                        union.union(operand2);
+                        result.put(key, union);
                     } else {
-                        rect.left = obj.optInt("x0");
-                        rect.right = obj.optInt("x1");
+                        throw new JSONException("no point data");
                     }
-                    rect.top = obj.optInt("y0");
-                    rect.bottom = obj.optInt("y1");
-                    output.union(rect);
-                    isVisible = isVisible || values.optJSONObject(i).optBoolean("isVisible");
-
-                    if(isVisible) {
-                        keyVisibilityMap.put(key, 0);
+                } else {
+                    JSONObject json = new JSONObject((String)entry.getValue()).optJSONObject("point");
+                    if(json!=null) {
+                        Rect rect = new Rect();
+                        rect.left = json.optInt("x0");
+                        rect.right = json.optInt("x1");
+                        rect.top = json.optInt("y0");
+                        rect.bottom = json.optInt("y1");
+                        result.put(key, rect);
                     } else {
-                        keyVisibilityMap.put(key, keyVisibilityMap.get(key)+1);
+                        throw new JSONException("no point data");
                     }
-
                 }
             }
-            if(keyVisibilityMap.get(key) < 2) {
-                output.left = output.left-15;
-                output.right = output.right+15;
-                output.top = output.top-25;
-                output.bottom = output.bottom+25;
-                result.add(output);
             }
+        } catch (JSONException e) {
+                Log.d("occlude-data-error", "Error parsing JSON", e);
+                return null;
         }
         return result;
     }
 
 }
-

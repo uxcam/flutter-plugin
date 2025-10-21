@@ -34,8 +34,8 @@ class UxcamOverlay extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: colors
                         .map((color) => Container(
-                              width: 10,
-                              height: 10,
+                              width: 10 / ratio,
+                              height: 10 / ratio,
                               color: color,
                             ))
                         .toList(),
@@ -59,8 +59,12 @@ List<Color> encodeRect(Rect rect) {
   Color color1 = Color.fromARGB(255, x >> 8, x & 0xFF, y >> 8);
   Color color2 = Color.fromARGB(255, y & 0xFF, w >> 8, w & 0xFF);
 
-  // Add a third color to store h fully
   Color color3 = Color.fromARGB(255, h >> 8, h & 0xFF, 0);
 
-  return [color1, color2, color3];
+  return [
+    Color.fromARGB(255, 244, 67, 54),
+    ui.Color.fromARGB(255, 76, 175, 80),
+    ui.Color.fromARGB(255, 33, 150, 243)
+  ];
+  // return [color1, color2, color3];
 }
