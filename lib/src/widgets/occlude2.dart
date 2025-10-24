@@ -18,8 +18,6 @@ class Occlude extends SingleChildRenderObjectWidget {
 class OccludeBox extends RenderProxyBox {
   OccludeBox();
 
-  Rect? _lastRect;
-
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
@@ -35,43 +33,16 @@ class OccludeBox extends RenderProxyBox {
 
 class BoundsTracker extends ChangeNotifier {
   static final BoundsTracker instance = BoundsTracker._();
-  double? devicePixelRatio;
-  BoundsTracker._() {
-    devicePixelRatio = PlatformDispatcher.instance.views.first.devicePixelRatio;
-    SchedulerBinding.instance.addPersistentFrameCallback(_onPostFrame);
-  }
+  BoundsTracker._();
 
-  final Map<RenderBox, Rect> _rects = {};
-  Map<RenderBox, Rect> get rects => Map.unmodifiable(_rects);
+  final List<RenderBox> _occludedBoxes = [];
+  List<RenderBox> get occludedBoxes => List.unmodifiable(_occludedBoxes);
 
   void register(RenderBox box) {
-    _rects[box] = Rect.zero;
+    _occludedBoxes.add(box);
   }
 
   void unRegister(RenderBox box) {
-    _rects.remove(box);
-  }
-
-  void _onPostFrame(Duration timeStamp) {
-    bool hasChanges = false;
-    for (final entry in _rects.entries) {
-      final box = entry.key;
-      if (!box.attached) continue;
-      final topLeft =
-          box.localToGlobal(Offset.zero) * (devicePixelRatio ?? 1.0);
-      final bottomRight =
-          box.localToGlobal(Offset(box.size.width, box.size.height)) *
-              (devicePixelRatio ?? 1.0);
-      final rect = Rect.fromPoints(topLeft, bottomRight);
-      final oldRect = entry.value;
-      if (oldRect != rect) {
-        _rects[box] = rect;
-        hasChanges = true;
-      }
-      if (hasChanges) {
-        print("gathered-rects: $_rects");
-        notifyListeners();
-      }
-    }
+    _occludedBoxes.remove(box);
   }
 }
