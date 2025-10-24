@@ -16,9 +16,10 @@ class UxcamOverlay extends StatefulWidget {
 }
 
 class _UxcamOverlayState extends State<UxcamOverlay> {
-  GlobalKey scr = GlobalKey();
+  GlobalKey rootViewkey = GlobalKey();
   final eventChannel = EventChannel('screenshot_event');
   StreamSubscription? _screenshotSubscription;
+  int frameNumber = 0;
 
   @override
   void initState() {
@@ -33,22 +34,29 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: widget.child,
-      key: scr,
+      key: rootViewkey,
     );
   }
 
   captureAppContent() async {
-    final boundary =
-        scr.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    final boundary = rootViewkey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
     final image = await boundary?.toImage();
     final byteData = await image?.toByteData(format: ImageByteFormat.png);
     final imageBytes = byteData?.buffer.asUint8List();
 
     if (imageBytes != null) {
       final directory = await getApplicationDocumentsDirectory();
+      final Directory screenshotDir =
+          Directory('${directory.path}/screenshots');
+      if (!await screenshotDir.exists()) {
+        await screenshotDir.create(recursive: true);
+      }
       final imagePath =
-          await File('${directory.path}/container_image.png').create();
+          await File('${screenshotDir.path}/frame_number_${frameNumber}.png')
+              .create();
       await imagePath.writeAsBytes(imageBytes);
+      frameNumber += 1;
     }
   }
 

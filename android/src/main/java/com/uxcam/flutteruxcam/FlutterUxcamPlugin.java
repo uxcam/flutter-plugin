@@ -13,7 +13,7 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.StandardMessageCodec;
 import io.flutter.plugin.common.BasicMessageChannel.MessageHandler;
-import io.flutter.plugin.common.BasicMessageChannel;
+import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.BasicMessageChannel.Reply;
 import io.flutter.plugin.common.StringCodec;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
@@ -23,7 +23,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
-import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
+import com.uxcam.screenshot.screenshotTaker.FlutterScreenshotListener;
 import com.uxcam.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
@@ -66,7 +66,7 @@ import java.util.TreeMap;
 /**
  * FlutterUxcamPlugin
  */
-public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
+public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware, EventChannel.StreamHandler {
     private static final String TYPE_VERSION = "2.7.1";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
@@ -94,6 +94,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static Activity activity;
 
     private CrossPlatformDelegate delegate;
+    private EventChannel.EventSink eventSink;
 
     private int leftPadding;
     private int cutoutTop = 0;
@@ -106,57 +107,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
         final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
-        final BasicMessageChannel<String> uxcamMessageChannel = new BasicMessageChannel<String>(
-                binding.getBinaryMessenger(),
-                "uxcam_message_channel",
-                StringCodec.INSTANCE);
+        EventChannel screenshotChannel = new EventChannel(binding.getBinaryMessenger(), "screenshot_event");
                 
         delegate = UXCam.getDelegate();
-        // delegate.setListener(new OcclusionRectRequestListener() {
-
-        //     @Override
-        //     public void processOcclusionRectsForCurrentFrame() {
-        //         //tell flutter to start collecting bounds
-        //         //frameDataMap.clear();
-        //         new Handler(Looper.getMainLooper()).post(() -> {
-        //             uxcamMessageChannel.send("initialize", reply -> {
-        //                 delegate.initializeScreenshot();
-        //             });
-        //         });
-        //     }
-
-        //     @Override
-        //     public void stopOcclusionRectsForCurrentFrame(long startTimeStamp) {
-        //         //tell flutter to start collecting bounds
-        //         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-        //             uxcamMessageChannel.send("stop", reply -> {
-        //                 if(reply.toString().equals("true")) {
-        //                     Log.d("occlude-data-output", frameDataMap.toString());
-        //                     ArrayList<Rect> formattedRects = new ArrayList<Rect>();
-        //                     Map<String, Rect> result = combineRectDataIfSimilar();
-        //                     for (Map.Entry<String, Rect> entry : result.entrySet()) {
-        //                         formattedRects.add(entry.getValue());
-        //                     }
-        //                     if(formattedRects.size() > 0) {
-        //                         delegate.createScreenshotFromCollectedRects(formattedRects);
-        //                         Log.d("occlude-data-output", formattedRects.toString());
-        //                         if(!frameDataMap.isEmpty()) {
-        //                             cachedResult = frameDataMap;
-        //                         }
-        //                     } else {
-        //                         delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
-        //                         Log.d("occlude-data-output", formattedRects.toString());
-        //                     }
-        //                 } else {
-        //                     //the last screenshot is not stable, discard it
-        //                     delegate.invalidateUnstableScreenshot();
-        //                 }
-        //             });
-        //         }, 500); 
-        //     }
-        // });
 
         channel.setMethodCallHandler(this);
+        screenshotChannel.setStreamHandler(this);
     }
 
     @Override
@@ -439,6 +395,28 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         else {
             result.notImplemented();
         }
+    }
+
+    @Override
+    public void onListen(Object arguments, EventChannel.EventSink events) {
+        this.eventSink = events;
+        delegate.setListener(new FlutterScreenshotListener() {
+            @Override
+            public void captureAppContent(int frameNumber) {
+                Log.d("screenshot-event", "Listening for screenshot events");
+                if (eventSink != null) {
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        eventSink.success(frameNumber);
+                 });
+                    
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onCancel(Object arguments) {
+        eventSink = null;
     }
 
     private boolean startWithConfig(Map<String, Object> configMap) {
