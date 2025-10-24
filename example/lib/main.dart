@@ -61,7 +61,7 @@ class UXCamPage extends StatelessWidget {
             buttonTitle: 'Set User Identity',
           ),
           FeatureSection(
-            title: 'Setting User Property',
+            title: 'Setting User Property**',
             onPressed: () => FlutterUxcam.setUserProperty(
                 'userPropKeyString', 'valueString'),
             buttonTitle: 'Set User Property',

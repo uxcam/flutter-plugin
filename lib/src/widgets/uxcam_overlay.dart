@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'dart:ui';
+import 'dart:developer' as dev;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/src/widgets/occlude2.dart';
@@ -23,7 +24,6 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
   final eventChannel = EventChannel('screenshot_event');
   StreamSubscription? _screenshotSubscription;
   int frameNumber = 0;
-  double? devicePixelRatio;
 
   @override
   void initState() {
@@ -50,27 +50,24 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
   }
 
   _captureAppContent() async {
+    if (!mounted) return;
     await WidgetsBinding.instance.endOfFrame;
-    if (devicePixelRatio == null) {
-      devicePixelRatio = View.of(rootViewkey.currentContext!).devicePixelRatio;
-    }
-    final boundary = rootViewkey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
+
+    final context = rootViewkey.currentContext;
+    double devicePixelRatio = View.of(context!).devicePixelRatio;
+
+    final boundary = context.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null || !boundary.attached) return;
 
-    final image = await boundary.toImage(pixelRatio: devicePixelRatio ?? 1.0);
+    final _occlusionRects = _getOcclusionRects(boundary, devicePixelRatio);
+    final image = await boundary.toImage(pixelRatio: devicePixelRatio);
     final ui.PictureRecorder recorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(recorder);
-
-    final Paint paint = Paint();
-    canvas.drawImage(image, Offset.zero, paint);
+    canvas.drawImage(image, Offset.zero, Paint());
 
     final Paint rectPaint = Paint()
       ..color = Colors.red
       ..style = PaintingStyle.fill;
-
-    final _occlusionRects = _getOcclusionRects(
-        boundary, Size(image.width.toDouble(), image.height.toDouble()));
     for (final rect in _occlusionRects) {
       canvas.drawRect(rect, rectPaint);
     }
@@ -100,29 +97,22 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
   }
 
   List<Rect> _getOcclusionRects(
-      RenderRepaintBoundary boundary, Size imageSize) {
+      RenderRepaintBoundary boundary, double devicePixelRatio) {
     List<Rect> occlusionBounds = [];
-    final boxesToOccclude = BoundsTracker.instance.occludedBoxes;
+    final boxesToOccclude = BoundsTracker.instance.occludedBoxes.toList();
     for (final box in boxesToOccclude) {
       if (!box.attached || !box.hasSize) continue;
       final Matrix4 m = box.getTransformTo(boundary);
       final Rect rLogical =
           MatrixUtils.transformRect(m, Offset.zero & box.size);
       Rect rPx = Rect.fromLTWH(
-        rLogical.left * (devicePixelRatio ?? 1.0),
-        rLogical.top * (devicePixelRatio ?? 1.0),
-        rLogical.width * (devicePixelRatio ?? 1.0),
-        rLogical.height * (devicePixelRatio ?? 1.0),
+        rLogical.left * devicePixelRatio,
+        rLogical.top * devicePixelRatio,
+        rLogical.width * devicePixelRatio,
+        rLogical.height * devicePixelRatio,
       );
 
-      occlusionBounds.add(
-        Rect.fromLTWH(
-          rPx.left.clamp(0.0, imageSize.width),
-          rPx.top.clamp(0.0, imageSize.height),
-          (rPx.width).clamp(0.0, imageSize.width),
-          (rPx.height).clamp(0.0, imageSize.height),
-        ),
-      );
+      occlusionBounds.add(rPx);
     }
     return occlusionBounds;
   }
