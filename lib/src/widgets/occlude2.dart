@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:developer' as developer;
@@ -33,7 +35,9 @@ class OccludeBox extends RenderProxyBox {
 
 class BoundsTracker extends ChangeNotifier {
   static final BoundsTracker instance = BoundsTracker._();
+  double? devicePixelRatio;
   BoundsTracker._() {
+    devicePixelRatio = PlatformDispatcher.instance.views.first.devicePixelRatio;
     SchedulerBinding.instance.addPersistentFrameCallback(_onPostFrame);
   }
 
@@ -53,9 +57,11 @@ class BoundsTracker extends ChangeNotifier {
     for (final entry in _rects.entries) {
       final box = entry.key;
       if (!box.attached) continue;
-      final topLeft = box.localToGlobal(Offset.zero);
+      final topLeft =
+          box.localToGlobal(Offset.zero) * (devicePixelRatio ?? 1.0);
       final bottomRight =
-          box.localToGlobal(Offset(box.size.width, box.size.height));
+          box.localToGlobal(Offset(box.size.width, box.size.height)) *
+              (devicePixelRatio ?? 1.0);
       final rect = Rect.fromPoints(topLeft, bottomRight);
       final oldRect = entry.value;
       if (oldRect != rect) {
@@ -63,6 +69,7 @@ class BoundsTracker extends ChangeNotifier {
         hasChanges = true;
       }
       if (hasChanges) {
+        print("gathered-rects: $_rects");
         notifyListeners();
       }
     }

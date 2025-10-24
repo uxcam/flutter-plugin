@@ -93,7 +93,6 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
 
   List<Rect> _getOcclusionRects() {
     final rects = BoundsTracker.instance.rects.values.toList();
-    print("gathered-rects: $rects");
     return rects;
   }
 
