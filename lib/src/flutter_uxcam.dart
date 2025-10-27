@@ -489,6 +489,10 @@ class FlutterUxcam {
   static void clearUserDefinedTypes() {
     UxTraceableElement.clearUserDefinedTypes();
   }
+
+  static void sendFrameScreenshot(Uint8List imageBytes) async {
+    _channel.invokeMethod<void>("sendFrameScreenshot", imageBytes);
+  }
 }
 
 List<Map<String, String>> getStackTraceElements(StackTrace stackTrace) {

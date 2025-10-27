@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
 
     // // Configuration
     FlutterUxConfig config = FlutterUxConfig(
-      userAppKey: '9snkhyr501o0nqr-us',
+      userAppKey: 'n5ctt823s8qihkk-us',
       // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
       enableAutomaticScreenNameTagging: false,
     );
@@ -49,10 +49,102 @@ class UXCamPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(8.0),
         children: [
+          FeatureSection(
+            title: 'Interactive Demo Screen',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const InteractiveDemoPage(),
+                ),
+              );
+            },
+            buttonTitle: 'Go to Interactive Demo',
+          ),
+          FeatureSection(
+            title: 'Spinning Colored Box',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SpinningBoxPage(),
+                ),
+              );
+            },
+            buttonTitle: 'Open Spinning Box',
+          ),
+          FeatureSection(
+            title: 'Open Dialog',
+            onPressed: () async {
+              await showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Hello'),
+                  content: const Text('This is a dialog.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            buttonTitle: 'Show Dialog',
+          ),
+          FeatureSection(
+            title: 'Open Bottom Sheet',
+            onPressed: () async {
+              await showModalBottomSheet(
+                context: context,
+                builder: (_) => Container(
+                  padding: const EdgeInsets.all(16),
+                  height: 200,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bottom Sheet',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text('This is a modal bottom sheet.'),
+                      const Spacer(),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Close'),
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              );
+            },
+            buttonTitle: 'Show Bottom Sheet',
+          ),
+
           /// 1. Tagging Screen Manually
           FeatureSection(
             title: 'Screen Tagging',
-            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+            onPressed: () {
+              FlutterUxcam.tagScreenName('Example Screen');
+              showModalBottomSheet(
+                  context: context,
+                  builder: (_) {
+                    return Builder(
+                      builder: (context) => Container(
+                        height: 100,
+                        color: Colors.white,
+                        child: Center(
+                          child: Text(
+                            'Screen Tagged as "Example Screen"',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                        ),
+                      ),
+                    );
+                  });
+            },
             buttonTitle: 'Tag Screen',
           ),
           FeatureSection(
@@ -137,7 +229,7 @@ class FeatureSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         occlude
-            ? Occlude(
+            ? OccludeWrapper2(
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -153,6 +245,115 @@ class FeatureSection extends StatelessWidget {
         ),
         const Divider(),
       ],
+    );
+  }
+}
+
+class InteractiveDemoPage extends StatefulWidget {
+  const InteractiveDemoPage({Key? key}) : super(key: key);
+
+  @override
+  State<InteractiveDemoPage> createState() => _InteractiveDemoPageState();
+}
+
+class _InteractiveDemoPageState extends State<InteractiveDemoPage> {
+  final List<bool> _switchStates = List<bool>.filled(20, false);
+  double _sliderValue = 0.3;
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Interactive Demo')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: _controller,
+            decoration: const InputDecoration(
+              labelText: 'Type something',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              OccludeWrapper2(
+                child: Text(
+                  'Adjust value: ${_sliderValue.toStringAsFixed(2)}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Slider(
+                value: _sliderValue,
+                onChanged: (v) => setState(() => _sliderValue = v),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...List.generate(
+            _switchStates.length,
+            (i) => SwitchListTile(
+              title: Text('Interactive Switch #${i + 1}'),
+              value: _switchStates[i],
+              onChanged: (v) => setState(() => _switchStates[i] = v),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SpinningBoxPage extends StatefulWidget {
+  const SpinningBoxPage({Key? key}) : super(key: key);
+
+  @override
+  State<SpinningBoxPage> createState() => _SpinningBoxPageState();
+}
+
+class _SpinningBoxPageState extends State<SpinningBoxPage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Spinning Colored Box')),
+      body: Center(
+        child: RotationTransition(
+          turns: _controller,
+          child: Container(
+            width: 150,
+            height: 150,
+            decoration: BoxDecoration(
+              color: Colors.primaries.first,
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

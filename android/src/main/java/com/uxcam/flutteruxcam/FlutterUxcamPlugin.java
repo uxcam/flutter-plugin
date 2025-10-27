@@ -391,6 +391,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             String gestureContent = call.argument("data").toString();
             UXCam.appendGestureContent((float)x, (float)y, gestureContent);
             result.success(true);
+        } else if ("sendFrameScreenshot".equals(call.method)) {
+            byte[] bytes = (byte[]) call.arguments;
+            delegate.sendFlutterScreenshot(bytes);
+            result.success(true);
         }
         else {
             result.notImplemented();

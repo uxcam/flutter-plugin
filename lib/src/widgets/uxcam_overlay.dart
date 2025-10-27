@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'dart:developer' as dev;
 
 import 'package:flutter/services.dart';
+import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/widgets/occlude2.dart';
 import 'package:flutter_uxcam/src/widgets/pixel_grid_overlay.dart';
 import 'package:path_provider/path_provider.dart';
@@ -30,21 +31,14 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     super.initState();
     _screenshotSubscription =
         eventChannel.receiveBroadcastStream().listen((event) {
-      _captureAppContent();
+      //_captureAppContent();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
-      child: Stack(
-        children: [
-          widget.child,
-          PixelGridOverlay(
-            pixelSize: (1 / MediaQuery.of(context).devicePixelRatio) * 50,
-          )
-        ],
-      ),
+      child: widget.child,
       key: rootViewkey,
     );
   }
@@ -54,6 +48,18 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     await WidgetsBinding.instance.endOfFrame;
 
     final context = rootViewkey.currentContext;
+
+    // final navigator = Navigator.of(context!, rootNavigator: true);
+    // final overlayState = navigator.overlay;
+    // if (overlayState == null) return null;
+
+    // // Get the last (topmost) OverlayEntry
+    // final entries = overlayState.widget.initialEntries ?? [];
+    // if (entries.isEmpty) return null;
+
+    // OverlayEntry.child is usually a Page or route content
+    //final topEntry = entries.last;
+
     double devicePixelRatio = View.of(context!).devicePixelRatio;
 
     final boundary = context.findRenderObject() as RenderRepaintBoundary?;
@@ -79,16 +85,8 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     final imageBytes = byteData?.buffer.asUint8List();
 
     if (imageBytes != null) {
-      final directory = await getApplicationDocumentsDirectory();
-      final Directory screenshotDir =
-          Directory('${directory.path}/screenshots');
-      if (!await screenshotDir.exists()) {
-        await screenshotDir.create(recursive: true);
-      }
-      final imagePath =
-          await File('${screenshotDir.path}/frame_number_${frameNumber}.png')
-              .create();
-      await imagePath.writeAsBytes(imageBytes);
+      //_persistScreenshotsForDebugging(imageBytes);
+      FlutterUxcam.sendFrameScreenshot(imageBytes);
       frameNumber += 1;
     }
 
@@ -96,10 +94,28 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     finalImage.dispose();
   }
 
+  bool _isBoxVisibleOnScreen(RenderBox box, RenderRepaintBoundary root) {
+    if (!box.attached || !box.hasSize) return false;
+
+    RenderObject? current = box;
+    while (current != null) {
+      if (current is RenderOffstage && current.offstage) return false;
+      if (current is RenderOpacity && current.opacity == 0.0) return false;
+      current = current.parent;
+    }
+
+    final Matrix4 m = box.getTransformTo(root);
+    final Rect rectLogical =
+        MatrixUtils.transformRect(m, Offset.zero & box.size);
+    final Rect viewportLogical = Offset.zero & root.size;
+    final Rect visible = rectLogical.intersect(viewportLogical);
+    return !visible.isEmpty && visible.width > 0 && visible.height > 0;
+  }
+
   List<Rect> _getOcclusionRects(
       RenderRepaintBoundary boundary, double devicePixelRatio) {
     List<Rect> occlusionBounds = [];
-    final boxesToOccclude = BoundsTracker.instance.occludedBoxes.toList();
+    final boxesToOccclude = BoundsTracker.instance.occludedBoxes(boundary);
     for (final box in boxesToOccclude) {
       if (!box.attached || !box.hasSize) continue;
       final Matrix4 m = box.getTransformTo(boundary);
@@ -115,6 +131,18 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
       occlusionBounds.add(rPx);
     }
     return occlusionBounds;
+  }
+
+  _persistScreenshotsForDebugging(Uint8List imageBytes) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final Directory screenshotDir = Directory('${directory.path}/screenshots');
+    if (!await screenshotDir.exists()) {
+      await screenshotDir.create(recursive: true);
+    }
+    final imagePath =
+        await File('${screenshotDir.path}/frame_number_${frameNumber}.png')
+            .create();
+    await imagePath.writeAsBytes(imageBytes);
   }
 
   @override
