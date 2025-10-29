@@ -31,7 +31,7 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     super.initState();
     _screenshotSubscription =
         eventChannel.receiveBroadcastStream().listen((event) {
-      //_captureAppContent();
+      _captureAppContent();
     });
   }
 
@@ -85,7 +85,7 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     final imageBytes = byteData?.buffer.asUint8List();
 
     if (imageBytes != null) {
-      //_persistScreenshotsForDebugging(imageBytes);
+      _persistScreenshotsForDebugging(imageBytes);
       FlutterUxcam.sendFrameScreenshot(imageBytes);
       frameNumber += 1;
     }
@@ -115,7 +115,7 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
   List<Rect> _getOcclusionRects(
       RenderRepaintBoundary boundary, double devicePixelRatio) {
     List<Rect> occlusionBounds = [];
-    final boxesToOccclude = BoundsTracker.instance.occludedBoxes(boundary);
+    final boxesToOccclude = BoundsTracker.instance.occludedBoxes();
     for (final box in boxesToOccclude) {
       if (!box.attached || !box.hasSize) continue;
       final Matrix4 m = box.getTransformTo(boundary);

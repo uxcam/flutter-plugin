@@ -229,7 +229,7 @@ class FeatureSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         occlude
-            ? OccludeWrapper2(
+            ? Occlude(
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -285,7 +285,7 @@ class _InteractiveDemoPageState extends State<InteractiveDemoPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              OccludeWrapper2(
+              Occlude(
                 child: Text(
                   'Adjust value: ${_sliderValue.toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.titleMedium,
