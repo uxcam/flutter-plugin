@@ -1,37 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-// class OccludeWrapper2 extends StatefulWidget {
-//   final Widget child;
-//   const OccludeWrapper2({Key? key, required this.child}) : super(key: key);
+class OccludeWrapper2 extends StatefulWidget {
+  final Widget child;
+  const OccludeWrapper2({Key? key, required this.child}) : super(key: key);
 
-//   @override
-//   State<OccludeWrapper2> createState() => _OccludeWrapper2State();
-// }
+  @override
+  State<OccludeWrapper2> createState() => _OccludeWrapper2State();
+}
 
-// class _OccludeWrapper2State extends State<OccludeWrapper2> {
-//   @override
-//   void initState() {
-//     super.initState();
-//     WidgetsBinding.instance.addPostFrameCallback((_) {
-//       final overlayState = Navigator.of(context, rootNavigator: true).overlay;
-//       if (overlayState != null) {
-//         overlayState.context.visitChildElements((element) {
-//           if (element.widget.runtimeType.toString() == '_Theater') {
-//             element.visitChildElements((child) {
-//               print('Overlay entry: ${child.widget.runtimeType}');
-//             });
-//           }
-//         });
-//       }
-//     });
-//   }
+class _OccludeWrapper2State extends State<OccludeWrapper2> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final routeId = ModalRoute.of(context).hashCode;
+    });
+  }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Occlude(child: widget.child);
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    return Occlude(child: widget.child);
+  }
+}
 
 class Occlude extends SingleChildRenderObjectWidget {
   const Occlude({Key? key, Widget? child}) : super(key: key, child: child);
@@ -88,7 +79,6 @@ class BoundsTracker extends ChangeNotifier {
     //       }
     //     }
     //   }
-
     //   for (final rect in occupiedRegions) {
     //     final hitTestResult = HitTestResult();
     //     WidgetsBinding.instance.hitTest(hitTestResult, rect.center);

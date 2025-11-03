@@ -12,4 +12,5 @@ export './src/widgets/occlude_wrapper.dart';
 export './src/widgets/occlude2.dart';
 export './src/widgets/uxcam_gesture_handler.dart';
 export './src/widgets/uxcam_overlay.dart';
+export './src/widgets/route_overlay.dart';
 export './uxcam.dart';

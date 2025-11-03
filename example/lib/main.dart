@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 
 void main() {
@@ -20,21 +20,19 @@ class MyApp extends StatelessWidget {
     // FlutterUxcam.optIntoSchematicRecordings();
 
     // // Configuration
-    FlutterUxConfig config = FlutterUxConfig(
-      userAppKey: 'n5ctt823s8qihkk-us',
-      // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
-      enableAutomaticScreenNameTagging: false,
-    );
+    // FlutterUxConfig config = FlutterUxConfig(
+    //   userAppKey: 'n5ctt823s8qihkk-us',
+    //   // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
+    //   enableAutomaticScreenNameTagging: false,
+    // );
 
-    FlutterUxcam.startWithConfiguration(config);
+    // FlutterUxcam.startWithConfiguration(config);
 
     return MaterialApp(
+      builder: (context, child) => UxcamOverlay(
+        child: child!,
+      ),
       home: UXCamPage(),
-      builder: (context, child) {
-        return UxcamOverlay(
-          child: child!,
-        );
-      },
     );
   }
 }
@@ -229,7 +227,7 @@ class FeatureSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         occlude
-            ? Occlude(
+            ? OccludeWrapper2(
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -269,6 +267,11 @@ class _InteractiveDemoPageState extends State<InteractiveDemoPage> {
 
   @override
   Widget build(BuildContext context) {
+    final _overlayState = RouteOverlay.of(context);
+    _overlayState.entries.forEach((entry) {
+      // For debugging purposes, print overlay entries
+      print('Overlay Entry: ${entry.runtimeType}');
+    });
     return Scaffold(
       appBar: AppBar(title: const Text('Interactive Demo')),
       body: ListView(

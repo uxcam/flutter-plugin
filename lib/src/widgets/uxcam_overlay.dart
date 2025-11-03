@@ -1,16 +1,11 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' as ui;
-import 'dart:ui';
-import 'dart:developer' as dev;
 
-import 'package:flutter/services.dart';
-import 'package:flutter_uxcam/flutter_uxcam.dart';
-import 'package:flutter_uxcam/src/widgets/occlude2.dart';
-import 'package:flutter_uxcam/src/widgets/pixel_grid_overlay.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:path_provider/path_provider.dart';
 
 class UxcamOverlay extends StatefulWidget {
   final Widget child;
@@ -48,6 +43,9 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     await WidgetsBinding.instance.endOfFrame;
 
     final context = rootViewkey.currentContext;
+    if (context == null) return;
+    final entries = RouteOverlay.maybeOf(context)?.entries ?? [];
+    // print(entries);
 
     // final navigator = Navigator.of(context!, rootNavigator: true);
     // final overlayState = navigator.overlay;
@@ -60,38 +58,38 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     // OverlayEntry.child is usually a Page or route content
     //final topEntry = entries.last;
 
-    double devicePixelRatio = View.of(context!).devicePixelRatio;
+    // double devicePixelRatio = View.of(context!).devicePixelRatio;
 
-    final boundary = context.findRenderObject() as RenderRepaintBoundary?;
-    if (boundary == null || !boundary.attached) return;
+    // final boundary = context.findRenderObject() as RenderRepaintBoundary?;
+    // if (boundary == null || !boundary.attached) return;
 
-    final _occlusionRects = _getOcclusionRects(boundary, devicePixelRatio);
-    final image = await boundary.toImage(pixelRatio: devicePixelRatio);
-    final ui.PictureRecorder recorder = ui.PictureRecorder();
-    final Canvas canvas = Canvas(recorder);
-    canvas.drawImage(image, Offset.zero, Paint());
+    // final _occlusionRects = _getOcclusionRects(boundary, devicePixelRatio);
+    // final image = await boundary.toImage(pixelRatio: devicePixelRatio);
+    // final ui.PictureRecorder recorder = ui.PictureRecorder();
+    // final Canvas canvas = Canvas(recorder);
+    // canvas.drawImage(image, Offset.zero, Paint());
 
-    final Paint rectPaint = Paint()
-      ..color = Colors.red
-      ..style = PaintingStyle.fill;
-    for (final rect in _occlusionRects) {
-      canvas.drawRect(rect, rectPaint);
-    }
+    // final Paint rectPaint = Paint()
+    //   ..color = Colors.red
+    //   ..style = PaintingStyle.fill;
+    // for (final rect in _occlusionRects) {
+    //   canvas.drawRect(rect, rectPaint);
+    // }
 
-    final ui.Image finalImage =
-        await recorder.endRecording().toImage(image.width, image.height);
+    // final ui.Image finalImage =
+    //     await recorder.endRecording().toImage(image.width, image.height);
 
-    final byteData = await finalImage.toByteData(format: ImageByteFormat.png);
-    final imageBytes = byteData?.buffer.asUint8List();
+    // final byteData = await finalImage.toByteData(format: ImageByteFormat.png);
+    // final imageBytes = byteData?.buffer.asUint8List();
 
-    if (imageBytes != null) {
-      _persistScreenshotsForDebugging(imageBytes);
-      FlutterUxcam.sendFrameScreenshot(imageBytes);
-      frameNumber += 1;
-    }
+    // if (imageBytes != null) {
+    //   _persistScreenshotsForDebugging(imageBytes);
+    //   FlutterUxcam.sendFrameScreenshot(imageBytes);
+    //   frameNumber += 1;
+    // }
 
-    image.dispose();
-    finalImage.dispose();
+    // image.dispose();
+    // finalImage.dispose();
   }
 
   bool _isBoxVisibleOnScreen(RenderBox box, RenderRepaintBoundary root) {
