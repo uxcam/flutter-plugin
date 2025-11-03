@@ -4,6 +4,11 @@ import 'dart:ui' as ui;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/widgets/occlude2.dart';
+import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +21,11 @@ class UxcamOverlay extends StatefulWidget {
 
   @override
   State<UxcamOverlay> createState() => _UxcamOverlayState();
+  
+  /// Static method to capture app content from channel callback
+  static Future<Uint8List?> captureAppContent() async {
+    return await _UxcamOverlayState.captureAppContent();
+  }
 }
 
 class _UxcamOverlayState extends State<UxcamOverlay> {
@@ -23,10 +33,14 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
   final eventChannel = EventChannel('screenshot_event');
   StreamSubscription? _screenshotSubscription;
   int frameNumber = 0;
+  
+  // Static reference to access instance from channel callback
+  static _UxcamOverlayState? _instance;
 
   @override
   void initState() {
     super.initState();
+    _instance = this;
     _screenshotSubscription =
         eventChannel.receiveBroadcastStream().listen((event) {
       _captureAppContent();
@@ -41,16 +55,32 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     );
   }
 
-  _captureAppContent() async {
-    if (!mounted) return;
+  Future<Uint8List?> _captureAppContent() async {
+    if (!mounted) return null;
     await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(Duration.zero);
+    await WidgetsBinding.instance.endOfFrame;
+
+    final context = rootViewkey.currentContext;
+    if (context == null) return null;
+
+    // final navigator = Navigator.of(context!, rootNavigator: true);
+    // final overlayState = navigator.overlay;
+    // if (overlayState == null) return null;
+
+    // // Get the last (topmost) OverlayEntry
+    // final entries = overlayState.widget.initialEntries ?? [];
+    // if (entries.isEmpty) return null;
+
+    // OverlayEntry.child is usually a Page or route content
+    //final topEntry = entries.last;
     await Future<void>.delayed(Duration.zero);
     await WidgetsBinding.instance.endOfFrame;
 
     double devicePixelRatio = View.of(context).devicePixelRatio;
 
     final boundary = context.findRenderObject() as RenderRepaintBoundary?;
-    if (boundary == null || !boundary.attached) return;
+    if (boundary == null || !boundary.attached) return null;
 
     final _occlusionRects = _getOcclusionRects(boundary, devicePixelRatio);
     final image = await boundary.toImage(pixelRatio: devicePixelRatio);
@@ -68,10 +98,12 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     final ui.Image finalImage =
         await recorder.endRecording().toImage(image.width, image.height);
 
+    ChannelCallback.cachedImage = finalImage;
+
     final byteData = await finalImage.toByteData(format: ImageByteFormat.png);
     final imageBytes = byteData?.buffer.asUint8List();
 
-    if (imageBytes != null) {
+    if (Platform.isAndroid && imageBytes != null) {
       if (kDebugMode) {
         _persistScreenshotsForDebugging(imageBytes);
       }
@@ -79,8 +111,16 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
       frameNumber += 1;
     }
 
+    print(WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio);
     image.dispose();
     finalImage.dispose();
+    
+    return imageBytes;
+  }
+
+  static Future<Uint8List?> captureAppContent() async {
+    if (_instance == null || !_instance!.mounted) return null;
+    return await _instance!._captureAppContent();
   }
 
   List<Rect> _getOcclusionRects(
@@ -119,6 +159,9 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
 
   @override
   void dispose() {
+    if (_instance == this) {
+      _instance = null;
+    }
     _screenshotSubscription?.cancel();
     super.dispose();
   }

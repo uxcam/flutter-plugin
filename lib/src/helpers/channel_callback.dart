@@ -1,14 +1,16 @@
-
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
+import 'package:flutter_uxcam/src/widgets/uxcam_overlay.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class FlutterChannelCallBackName {
   static const pause = "pauseRendering";
   static const resumeWithData = "requestAllOcclusionRects";
+  static const requestOccludedImage = "requestOccludedImage";
 }
 
 class ChannelCallback {
@@ -16,6 +18,12 @@ class ChannelCallback {
   static bool _preventRender = false;
   static List<Map<String, dynamic>> _cachedData = [];
   static bool _isFrameDeferred = false;
+  static bool _hasSeenFirstFrame = false;
+
+  static ui.Image? cachedImage;
+  
+  // Track pending frame resumption
+  static Completer<void>? _pendingFrameCompletion;
 
   static Future<void> handleChannelCallBacks(MethodChannel channel) async {
 
@@ -27,17 +35,61 @@ class ChannelCallback {
           await _resumeRendering();
           return json;
         } else if (call.method == FlutterChannelCallBackName.pause) {
-          var status = await _pauseRendering();
-          return status;
+          final completer = Completer<bool>();
+          scheduleMicrotask(() async {
+            try {
+              final status = await _pauseRendering();
+              if (!completer.isCompleted) {
+                completer.complete(status);
+              }
+            } catch (e) {
+              if (!completer.isCompleted) {
+                completer.complete(false);
+              }
+            }
+          });
+          return await completer.future.timeout(
+            const Duration(milliseconds: 100),
+            onTimeout: () => false,
+          );
+        } else if (call.method == FlutterChannelCallBackName.requestOccludedImage) {
+          final completer = Completer<Uint8List?>();
+          scheduleMicrotask(() async {
+            try {
+              final image = await _requestOccludedImage();
+              if (!completer.isCompleted) {
+                completer.complete(image);
+              }
+            } catch (e) {
+              if (!completer.isCompleted) {
+                completer.complete(null);
+              }
+            }
+          });
+          return await completer.future;
         }
         return null;
       } catch (e) {
         return null;
       }
     });
+    
+    // Track first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _hasSeenFirstFrame = true;
+    });
   }
 
+  static Future<Uint8List?> _requestOccludedImage() async {
+    try {
+      final imageBytes = await UxcamOverlay.captureAppContent();
+      return imageBytes;
+    } catch (e) {
+      return null;
+    }
+  }
 
+  /// Pause rendering without deferring frames - only for analytics capture
   static Future<bool> _pauseRendering() async {
     if (_isRenderingPaused) {
       VisibilityDetectorController.instance.notifyNow();
