@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -22,7 +23,6 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
   final eventChannel = EventChannel('screenshot_event');
   StreamSubscription? _screenshotSubscription;
   int frameNumber = 0;
-  Route? _topRoute;
 
   @override
   void initState() {
@@ -43,6 +43,8 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
 
   _captureAppContent() async {
     if (!mounted) return;
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(Duration.zero);
     await WidgetsBinding.instance.endOfFrame;
 
     double devicePixelRatio = View.of(context).devicePixelRatio;
@@ -70,7 +72,9 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     final imageBytes = byteData?.buffer.asUint8List();
 
     if (imageBytes != null) {
-      _persistScreenshotsForDebugging(imageBytes);
+      if (kDebugMode) {
+        _persistScreenshotsForDebugging(imageBytes);
+      }
       FlutterUxcam.sendFrameScreenshot(imageBytes);
       frameNumber += 1;
     }
@@ -79,29 +83,12 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     finalImage.dispose();
   }
 
-  bool _isBoxVisibleOnScreen(RenderBox box, RenderRepaintBoundary root) {
-    if (!box.attached || !box.hasSize) return false;
-
-    RenderObject? current = box;
-    while (current != null) {
-      if (current is RenderOffstage && current.offstage) return false;
-      if (current is RenderOpacity && current.opacity == 0.0) return false;
-      current = current.parent;
-    }
-
-    final Matrix4 m = box.getTransformTo(root);
-    final Rect rectLogical =
-        MatrixUtils.transformRect(m, Offset.zero & box.size);
-    final Rect viewportLogical = Offset.zero & root.size;
-    final Rect visible = rectLogical.intersect(viewportLogical);
-    return !visible.isEmpty && visible.width > 0 && visible.height > 0;
-  }
-
   List<Rect> _getOcclusionRects(
       RenderRepaintBoundary boundary, double devicePixelRatio) {
     List<Rect> occlusionBounds = [];
     final boxesToOccclude = BoundsTracker.instance.occludedBoxes();
-    for (final box in boxesToOccclude) {
+    for (final renderObject in boxesToOccclude) {
+      final box = renderObject as RenderBox;
       if (!box.attached || !box.hasSize) continue;
       final Matrix4 m = box.getTransformTo(boundary);
       final Rect rLogical =
