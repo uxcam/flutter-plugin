@@ -64,19 +64,6 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     final context = rootViewkey.currentContext;
     if (context == null) return null;
 
-    // final navigator = Navigator.of(context!, rootNavigator: true);
-    // final overlayState = navigator.overlay;
-    // if (overlayState == null) return null;
-
-    // // Get the last (topmost) OverlayEntry
-    // final entries = overlayState.widget.initialEntries ?? [];
-    // if (entries.isEmpty) return null;
-
-    // OverlayEntry.child is usually a Page or route content
-    //final topEntry = entries.last;
-    await Future<void>.delayed(Duration.zero);
-    await WidgetsBinding.instance.endOfFrame;
-
     double devicePixelRatio = View.of(context).devicePixelRatio;
 
     final boundary = context.findRenderObject() as RenderRepaintBoundary?;
