@@ -22,6 +22,7 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
   final eventChannel = EventChannel('screenshot_event');
   StreamSubscription? _screenshotSubscription;
   int frameNumber = 0;
+  Route? _topRoute;
 
   @override
   void initState() {

@@ -11,6 +11,21 @@ class OccludeWrapper2 extends StatefulWidget {
 
 class _OccludeWrapper2State extends State<OccludeWrapper2> {
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      if (route.isCurrent && route.isActive) {
+        //this widget is visible
+        BoundsTracker.instance.updateRouteHistory(route.hashCode);
+      } else {
+        //this widget is no longer visible
+        BoundsTracker.instance.popTopRoute();
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Occlude(
       child: widget.child,
@@ -55,17 +70,22 @@ class BoundsTracker extends ChangeNotifier {
   BoundsTracker._();
 
   final List<OccludeBox> _occludedBoxes = [];
+
+  final Map<OccludeBox, bool> _boxVisibility = {};
+
+  void updateBoxVisibility(OccludeBox box, bool isVisible) {
+    _boxVisibility[box] = isVisible;
+  }
+
   List<OccludeBox> occludedBoxes() {
     if (_occludedBoxes.isNotEmpty) {
-      final reversed = _occludedBoxes.reversed.toList();
-      final lastBox = reversed.first;
-      final topMostRouteId = lastBox.routeId;
-      return _occludedBoxes
+      final filtered = _occludedBoxes
           .where((OccludeBox box) {
-            return box.routeId == topMostRouteId;
+            return box.routeId == getTopRoute();
           })
           .cast<OccludeBox>()
           .toList();
+      return filtered;
     }
     return List.unmodifiable(_occludedBoxes);
   }

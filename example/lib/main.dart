@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 
@@ -32,6 +33,9 @@ class MyApp extends StatelessWidget {
       builder: (context, child) => UxcamOverlay(
         child: child!,
       ),
+      routes: {
+        '/pageview': (_) => const PageViewDemoPage(),
+      },
       home: UXCamPage(),
     );
   }
@@ -57,6 +61,13 @@ class UXCamPage extends StatelessWidget {
               );
             },
             buttonTitle: 'Go to Interactive Demo',
+          ),
+          FeatureSection(
+            title: 'PageView with Random Text',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/pageview');
+            },
+            buttonTitle: 'Open PageView',
           ),
           FeatureSection(
             title: 'Spinning Colored Box',
@@ -87,6 +98,19 @@ class UXCamPage extends StatelessWidget {
               );
             },
             buttonTitle: 'Show Dialog',
+          ),
+          FeatureSection(
+            title: 'Setting User Property**',
+            onPressed: () => FlutterUxcam.setUserProperty(
+                'userPropKeyString', 'valueString'),
+            buttonTitle: 'Set User Property',
+            occlude: true,
+          ),
+          FeatureSection(
+            title: 'Custom Event**',
+            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+            buttonTitle: 'Custom Event',
+            occlude: true,
           ),
           FeatureSection(
             title: 'Open Bottom Sheet',
@@ -149,19 +173,6 @@ class UXCamPage extends StatelessWidget {
             title: 'Setting User Identity',
             onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
             buttonTitle: 'Set User Identity',
-          ),
-          FeatureSection(
-            title: 'Setting User Property**',
-            onPressed: () => FlutterUxcam.setUserProperty(
-                'userPropKeyString', 'valueString'),
-            buttonTitle: 'Set User Property',
-            occlude: true,
-          ),
-          FeatureSection(
-            title: 'Custom Event',
-            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
-            buttonTitle: 'Custom Event',
-            occlude: true,
           ),
           FeatureSection(
             title: 'Custom Event With Properties',
@@ -284,11 +295,9 @@ class _InteractiveDemoPageState extends State<InteractiveDemoPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              OccludeWrapper2(
-                child: Text(
-                  'Adjust value: ${_sliderValue.toStringAsFixed(2)}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+              Text(
+                'Adjust value: ${_sliderValue.toStringAsFixed(2)}',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
                 value: _sliderValue,
@@ -352,6 +361,53 @@ class _SpinningBoxPageState extends State<SpinningBoxPage>
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class PageViewDemoPage extends StatefulWidget {
+  const PageViewDemoPage({Key? key}) : super(key: key);
+
+  @override
+  State<PageViewDemoPage> createState() => _PageViewDemoPageState();
+}
+
+class _PageViewDemoPageState extends State<PageViewDemoPage> {
+  late final List<String> _texts;
+
+  @override
+  void initState() {
+    super.initState();
+    _texts = ["page1", "page2", "page3"];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('PageView Demo')),
+      body: PageView.builder(
+        itemCount: 3,
+        itemBuilder: (context, index) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: index == 1
+                  ? OccludeWrapper2(
+                      child: Text(
+                        _texts[index],
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    )
+                  : Text(
+                      _texts[index],
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+            ),
+          );
+        },
       ),
     );
   }
