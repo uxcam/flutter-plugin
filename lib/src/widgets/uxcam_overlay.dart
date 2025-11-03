@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -42,54 +44,38 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
     if (!mounted) return;
     await WidgetsBinding.instance.endOfFrame;
 
-    final context = rootViewkey.currentContext;
-    if (context == null) return;
-    final entries = RouteOverlay.maybeOf(context)?.entries ?? [];
-    // print(entries);
+    double devicePixelRatio = View.of(context).devicePixelRatio;
 
-    // final navigator = Navigator.of(context!, rootNavigator: true);
-    // final overlayState = navigator.overlay;
-    // if (overlayState == null) return null;
+    final boundary = context.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null || !boundary.attached) return;
 
-    // // Get the last (topmost) OverlayEntry
-    // final entries = overlayState.widget.initialEntries ?? [];
-    // if (entries.isEmpty) return null;
+    final _occlusionRects = _getOcclusionRects(boundary, devicePixelRatio);
+    final image = await boundary.toImage(pixelRatio: devicePixelRatio);
+    final ui.PictureRecorder recorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(recorder);
+    canvas.drawImage(image, Offset.zero, Paint());
 
-    // OverlayEntry.child is usually a Page or route content
-    //final topEntry = entries.last;
+    final Paint rectPaint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.fill;
+    for (final rect in _occlusionRects) {
+      canvas.drawRect(rect, rectPaint);
+    }
 
-    // double devicePixelRatio = View.of(context!).devicePixelRatio;
+    final ui.Image finalImage =
+        await recorder.endRecording().toImage(image.width, image.height);
 
-    // final boundary = context.findRenderObject() as RenderRepaintBoundary?;
-    // if (boundary == null || !boundary.attached) return;
+    final byteData = await finalImage.toByteData(format: ImageByteFormat.png);
+    final imageBytes = byteData?.buffer.asUint8List();
 
-    // final _occlusionRects = _getOcclusionRects(boundary, devicePixelRatio);
-    // final image = await boundary.toImage(pixelRatio: devicePixelRatio);
-    // final ui.PictureRecorder recorder = ui.PictureRecorder();
-    // final Canvas canvas = Canvas(recorder);
-    // canvas.drawImage(image, Offset.zero, Paint());
+    if (imageBytes != null) {
+      _persistScreenshotsForDebugging(imageBytes);
+      FlutterUxcam.sendFrameScreenshot(imageBytes);
+      frameNumber += 1;
+    }
 
-    // final Paint rectPaint = Paint()
-    //   ..color = Colors.red
-    //   ..style = PaintingStyle.fill;
-    // for (final rect in _occlusionRects) {
-    //   canvas.drawRect(rect, rectPaint);
-    // }
-
-    // final ui.Image finalImage =
-    //     await recorder.endRecording().toImage(image.width, image.height);
-
-    // final byteData = await finalImage.toByteData(format: ImageByteFormat.png);
-    // final imageBytes = byteData?.buffer.asUint8List();
-
-    // if (imageBytes != null) {
-    //   _persistScreenshotsForDebugging(imageBytes);
-    //   FlutterUxcam.sendFrameScreenshot(imageBytes);
-    //   frameNumber += 1;
-    // }
-
-    // image.dispose();
-    // finalImage.dispose();
+    image.dispose();
+    finalImage.dispose();
   }
 
   bool _isBoxVisibleOnScreen(RenderBox box, RenderRepaintBoundary root) {

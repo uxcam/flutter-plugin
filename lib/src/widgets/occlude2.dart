@@ -11,30 +11,31 @@ class OccludeWrapper2 extends StatefulWidget {
 
 class _OccludeWrapper2State extends State<OccludeWrapper2> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final routeId = ModalRoute.of(context).hashCode;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Occlude(child: widget.child);
+    return Occlude(
+      child: widget.child,
+      routeId: ModalRoute.of(context).hashCode,
+    );
   }
 }
 
 class Occlude extends SingleChildRenderObjectWidget {
-  const Occlude({Key? key, Widget? child}) : super(key: key, child: child);
+  final int? routeId;
+  const Occlude({
+    Key? key,
+    Widget? child,
+    this.routeId,
+  }) : super(key: key, child: child);
 
   @override
   RenderObject createRenderObject(BuildContext context) {
-    return OccludeBox();
+    return OccludeBox(routeId ?? -1);
   }
 }
 
 class OccludeBox extends RenderProxyBox {
-  OccludeBox();
+  int routeId;
+  OccludeBox(this.routeId);
 
   @override
   void attach(PipelineOwner owner) {
@@ -53,54 +54,27 @@ class BoundsTracker extends ChangeNotifier {
   static final BoundsTracker instance = BoundsTracker._();
   BoundsTracker._();
 
-  final List<RenderBox> _occludedBoxes = [];
+  final List<OccludeBox> _occludedBoxes = [];
   List<OccludeBox> occludedBoxes() {
-    // List<Rect> occupiedRegions = [];
-    // List<RenderBox> result = [];
-    // if (_occludedBoxes.isNotEmpty) {
-    //   final reversed = _occludedBoxes.reversed.toList();
-    //   for (final box in reversed) {
-    //     if (!box.attached || !box.hasSize) continue;
-    //     final Matrix4 m = box.getTransformTo(root);
-    //     final Rect boxRect =
-    //         MatrixUtils.transformRect(m, Offset.zero & box.size);
-    //     if (occupiedRegions.isEmpty) {
-    //       occupiedRegions.add(boxRect);
-    //       result.add(box);
-    //     } else {
-    //       final isOccupied = occupiedRegions
-    //           .where((rect) =>
-    //               rect.contains(boxRect.topLeft) &&
-    //               rect.contains(boxRect.bottomRight))
-    //           .toList()
-    //           .isNotEmpty;
-    //       if (!isOccupied) {
-    //         result.add(box);
-    //       }
-    //     }
-    //   }
-    //   for (final rect in occupiedRegions) {
-    //     final hitTestResult = HitTestResult();
-    //     WidgetsBinding.instance.hitTest(hitTestResult, rect.center);
-    //     print("object:" + occupiedRegions.toString());
-    //     hitTestResult.path.forEach((entry) {
-    //       if (entry.target is OccludeBox) {
-    //         final box = entry.target as OccludeBox;
-    //         if (result.contains(box)) {
-    //           result.remove(box);
-    //         }
-    //       }
-    //     });
-    //   }
-    // }
+    if (_occludedBoxes.isNotEmpty) {
+      final reversed = _occludedBoxes.reversed.toList();
+      final lastBox = reversed.first;
+      final topMostRouteId = lastBox.routeId;
+      return _occludedBoxes
+          .where((OccludeBox box) {
+            return box.routeId == topMostRouteId;
+          })
+          .cast<OccludeBox>()
+          .toList();
+    }
     return List.unmodifiable(_occludedBoxes);
   }
 
-  void register(RenderBox box) {
+  void register(OccludeBox box) {
     _occludedBoxes.add(box);
   }
 
-  void unRegister(RenderBox box) {
+  void unRegister(OccludeBox box) {
     _occludedBoxes.remove(box);
   }
 }

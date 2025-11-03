@@ -20,13 +20,13 @@ class MyApp extends StatelessWidget {
     // FlutterUxcam.optIntoSchematicRecordings();
 
     // // Configuration
-    // FlutterUxConfig config = FlutterUxConfig(
-    //   userAppKey: 'n5ctt823s8qihkk-us',
-    //   // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
-    //   enableAutomaticScreenNameTagging: false,
-    // );
+    FlutterUxConfig config = FlutterUxConfig(
+      userAppKey: 'n5ctt823s8qihkk-us',
+      // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
+      enableAutomaticScreenNameTagging: false,
+    );
 
-    // FlutterUxcam.startWithConfiguration(config);
+    FlutterUxcam.startWithConfiguration(config);
 
     return MaterialApp(
       builder: (context, child) => UxcamOverlay(
@@ -161,6 +161,7 @@ class UXCamPage extends StatelessWidget {
             title: 'Custom Event',
             onPressed: () => FlutterUxcam.logEvent('Custom Event'),
             buttonTitle: 'Custom Event',
+            occlude: true,
           ),
           FeatureSection(
             title: 'Custom Event With Properties',
@@ -267,11 +268,6 @@ class _InteractiveDemoPageState extends State<InteractiveDemoPage> {
 
   @override
   Widget build(BuildContext context) {
-    final _overlayState = RouteOverlay.of(context);
-    _overlayState.entries.forEach((entry) {
-      // For debugging purposes, print overlay entries
-      print('Overlay Entry: ${entry.runtimeType}');
-    });
     return Scaffold(
       appBar: AppBar(title: const Text('Interactive Demo')),
       body: ListView(
@@ -288,7 +284,7 @@ class _InteractiveDemoPageState extends State<InteractiveDemoPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Occlude(
+              OccludeWrapper2(
                 child: Text(
                   'Adjust value: ${_sliderValue.toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.titleMedium,
