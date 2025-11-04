@@ -239,7 +239,7 @@ class FeatureSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         occlude
-            ? OccludeWrapper2(
+            ? OccludeWrapper(
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -393,7 +393,7 @@ class _PageViewDemoPageState extends State<PageViewDemoPage> {
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: index == 1
-                  ? OccludeWrapper2(
+                  ? OccludeWrapper(
                       child: Text(
                         _texts[index],
                         textAlign: TextAlign.center,

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_uxcam/src/models/bound_tracker.dart';
 
-class OccludeWrapper2 extends SingleChildRenderObjectWidget {
-  const OccludeWrapper2({Key? key, Widget? child})
+class OccludeWrapperAndroid extends SingleChildRenderObjectWidget {
+  const OccludeWrapperAndroid({Key? key, Widget? child})
       : super(key: key, child: child);
 
   @override
@@ -33,24 +34,5 @@ class OccludeBox extends RenderProxyBox {
   void detach() {
     super.detach();
     BoundsTracker.instance.unRegister(this);
-  }
-}
-
-class BoundsTracker extends ChangeNotifier {
-  static final BoundsTracker instance = BoundsTracker._();
-  BoundsTracker._();
-
-  final List<OccludeBox> _occludedBoxes = [];
-
-  List<OccludeBox> occludedBoxes() {
-    return List.unmodifiable(_occludedBoxes.where((box) => box.isVisible));
-  }
-
-  void register(OccludeBox box) {
-    _occludedBoxes.add(box);
-  }
-
-  void unRegister(OccludeBox box) {
-    _occludedBoxes.remove(box);
   }
 }

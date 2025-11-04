@@ -4,15 +4,12 @@ import 'dart:ui' as ui;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_uxcam/flutter_uxcam.dart';
-import 'package:flutter_uxcam/src/widgets/occlude2.dart';
-import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
+import 'package:flutter_uxcam/src/models/bound_tracker.dart';
 import 'package:path_provider/path_provider.dart';
 
 class UxcamOverlay extends StatefulWidget {
@@ -21,7 +18,7 @@ class UxcamOverlay extends StatefulWidget {
 
   @override
   State<UxcamOverlay> createState() => _UxcamOverlayState();
-  
+
   /// Static method to capture app content from channel callback
   static Future<Uint8List?> captureAppContent() async {
     return await _UxcamOverlayState.captureAppContent();
@@ -33,7 +30,7 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
   final eventChannel = EventChannel('screenshot_event');
   StreamSubscription? _screenshotSubscription;
   int frameNumber = 0;
-  
+
   // Static reference to access instance from channel callback
   static _UxcamOverlayState? _instance;
 
@@ -98,10 +95,9 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
       frameNumber += 1;
     }
 
-    print(WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio);
     image.dispose();
     finalImage.dispose();
-    
+
     return imageBytes;
   }
 
