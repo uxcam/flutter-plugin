@@ -19,7 +19,12 @@ class FlutterUXOverlay extends FlutterUXOcclusion {
 
   @override
   Map<String, dynamic>? get configuration => {
-        FlutterUxOverlayKeys.color: [color.r, color.g, color.b, color.a],
+        FlutterUxOverlayKeys.color: [
+          color.red,
+          color.green,
+          color.blue,
+          color.alpha
+        ],
         FlutterUxOverlayKeys.hideGestures: hideGestures
       };
 

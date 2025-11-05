@@ -22,8 +22,8 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
-import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
-import com.uxcam.screenshot.screenshotTaker.FlutterScreenshotListener;
+import com.uxcam.screenshot.screenshotTaker.FlutterDelegate;
+import com.uxcam.screenshot.screenshotTaker.FlutterFrameRequestBridge;
 import com.uxcam.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
@@ -93,8 +93,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
      */
     private static Activity activity;
 
-    private CrossPlatformDelegate delegate;
+    private FlutterDelegate delegate;
     private EventChannel.EventSink eventSink;
+    private final Handler screenShotHandler = new Handler(Looper.getMainLooper());
 
     private int leftPadding;
     private int cutoutTop = 0;
@@ -113,10 +114,26 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         channel.setMethodCallHandler(this);
         screenshotChannel.setStreamHandler(this);
+        delegate.setFlutterFrameRequestBridge(new FlutterFrameRequestBridge() {
+            @Override
+            public void captureAppContent() {
+                if (eventSink != null) {
+                    screenShotHandler.post(() -> {
+                        eventSink.success(0);
+                 });
+                }
+            }
+        });
+
     }
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+            if (delegate != null) {
+                delegate.setFlutterFrameRequestBridge(null);
+                delegate.setFlutterFrameBridge(null);
+            }
+            eventSink = null;
     }
 
     @Override
@@ -383,7 +400,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("addFrameData".equals(call.method)) {
             Map<String, Object> payload = call.argument("payload");
             frameDataMap = payload;
-            Log.d("occlusion-data", payload.toString());
             result.success(true);
         } else if ("appendGestureContent".equals(call.method)) {
             double x = call.argument("x");
@@ -404,18 +420,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onListen(Object arguments, EventChannel.EventSink events) {
         this.eventSink = events;
-        delegate.setListener(new FlutterScreenshotListener() {
-            @Override
-            public void captureAppContent(int frameNumber) {
-                Log.d("screenshot-event", "Listening for screenshot events");
-                if (eventSink != null) {
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        eventSink.success(frameNumber);
-                 });
-                    
-                }
-            }
-        });
     }
 
     @Override
