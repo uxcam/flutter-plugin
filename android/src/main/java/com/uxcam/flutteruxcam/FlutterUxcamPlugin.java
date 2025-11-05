@@ -95,6 +95,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private FlutterDelegate delegate;
     private EventChannel.EventSink eventSink;
+    private final Handler screenShotHandler = new Handler(Looper.getMainLooper());
 
     private int leftPadding;
     private int cutoutTop = 0;
@@ -117,7 +118,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             @Override
             public void captureAppContent() {
                 if (eventSink != null) {
-                    new Handler(Looper.getMainLooper()).post(() -> {
+                    screenShotHandler.post(() -> {
                         eventSink.success(0);
                  });
                 }
@@ -128,6 +129,11 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+            if (delegate != null) {
+                delegate.setFlutterFrameRequestBridge(null);
+                delegate.setFlutterFrameBridge(null);
+            }
+            eventSink = null;
     }
 
     @Override
