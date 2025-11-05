@@ -19,6 +19,13 @@ class GestureHandler {
     this.position = position;
     this.targetHashList = target;
   }
+  
+  /// Clear tree and target list to prevent memory accumulation
+  void clearState() {
+    rootTree = null;
+    targetHashList?.clear();
+    targetHashList = null;
+  }
 
   void inspectElement(Element element) {
     rootTree = null;
@@ -337,7 +344,9 @@ class GestureHandler {
     SummaryTree? summaryTree = rootTree;
     List<SummaryTree> leaves = [];
 
-    String route = summaryTree!.route;
+    if (summaryTree == null) return; // Guard against null
+    
+    String route = summaryTree.route;
     if (route == "/") {
       route = "root";
     }
@@ -367,16 +376,47 @@ class GestureHandler {
     }
 
     if (leaf != null) {
-      String uId = uIdPath.join("#") + "#" + leaf.uiClass;
-      int effectiveType = UxTraceableElement.parseStringIdToGetType(
-          typePath.join("#") + "#" + leaf.type.toString());
-      uId += "#" + formatValueToPseudoId(leaf.value);
+      // Use StringBuffer to reduce memory allocations from string concatenation
+      final uIdBuffer = StringBuffer();
+      for (int i = 0; i < uIdPath.length; i++) {
+        if (i > 0) uIdBuffer.write('#');
+        uIdBuffer.write(uIdPath[i]);
+      }
+      uIdBuffer.write('#');
+      uIdBuffer.write(leaf.uiClass);
+      
+      // Build type path string efficiently
+      final typePathBuffer = StringBuffer();
+      for (int i = 0; i < typePath.length; i++) {
+        if (i > 0) typePathBuffer.write('#');
+        typePathBuffer.write(typePath[i]);
+      }
+      typePathBuffer.write('#');
+      typePathBuffer.write(leaf.type);
+      
+      int effectiveType = UxTraceableElement.parseStringIdToGetType(typePathBuffer.toString());
+      
+      // Complete uId construction
+      uIdBuffer.write('#');
+      uIdBuffer.write(formatValueToPseudoId(leaf.value));
+      final String uId = uIdBuffer.toString();
+
+      // Build uiId efficiently if not occluded
+      String? uiId;
+      if (!leaf.isOccluded) {
+        final uiIdBuffer = StringBuffer()
+          ..write(leaf.route)
+          ..write(generateStringHash(uId));
+        uiId = uiIdBuffer.toString();
+      } else {
+        uiId = "";
+      }
 
       trackData = TrackData(
         leaf.bound,
         leaf.route,
         uiValue: leaf.isOccluded ? "" : leaf.value,
-        uiId: leaf.isOccluded ? "" : leaf.route + generateStringHash(uId),
+        uiId: uiId,
         uiClass: leaf.isOccluded ? "" : leaf.uiClass,
         uiType: leaf.isOccluded ? UX_UNKOWN : effectiveType,
         isSensitive: leaf.isOccluded,
@@ -384,5 +424,8 @@ class GestureHandler {
 
       FlutterUxcam.appendGestureContent(position, trackData);
     }
+    
+    // Clear state after sending to prevent memory accumulation
+    clearState();
   }
 }

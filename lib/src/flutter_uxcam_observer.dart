@@ -21,6 +21,7 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
   /// before this one and keep track of screens previous to the
   /// current one.
   final List<String> _screenNames = [];
+  static const int _maxScreenNamesHistory = 50; // Prevent unbounded growth
   List<String> get screenNames => _screenNames;
 
   Animation<double>? _transitionAnimation;
@@ -43,6 +44,12 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
     } else if (route is DialogRoute || route is ModalBottomSheetRoute) {
       _screenNames.add(":popup");
     }
+    
+    // Prevent unbounded growth - keep only recent screen history
+    if (_screenNames.length > _maxScreenNamesHistory) {
+      _screenNames.removeRange(0, _screenNames.length - _maxScreenNamesHistory);
+    }
+    
     setAndTaggingScreenName();
   }
 
@@ -94,5 +101,12 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
           _topRoute!.isCurrent;
     }
     return false;
+  }
+  
+  /// Cleanup and dispose resources to prevent memory leaks
+  void dispose() {
+    _screenNames.clear();
+    _topRoute = null;
+    _transitionAnimation = null;
   }
 }

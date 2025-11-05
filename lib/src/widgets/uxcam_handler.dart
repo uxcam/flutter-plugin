@@ -51,6 +51,12 @@ class _UXCamHandlerState extends State<UXCamHandler> {
     gestureHandler = GestureHandler();
     UxTraceableElement.setUserDefinedTypes(widget.types);
   }
+  
+  @override
+  void dispose() {
+    gestureHandler.clearState();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

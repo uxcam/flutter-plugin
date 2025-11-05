@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
+import 'package:flutter_uxcam/src/helpers/lifecycle_manager.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
@@ -14,12 +16,37 @@ class FlutterUxcam {
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
 
   static UxCam? uxCam;
+  static bool _isInitialized = false;
+  
+  // Default timeout for platform channel calls to prevent hangs
+  static const Duration _defaultChannelTimeout = Duration(seconds: 10);
+  
+  /// Helper to invoke method channel with timeout protection
+  static Future<T?> _safeChannelInvoke<T>(
+    String method, [
+    dynamic arguments,
+    Duration? timeout,
+  ]) async {
+    try {
+      return await _channel
+          .invokeMethod<T>(method, arguments)
+          .timeout(
+            timeout ?? _defaultChannelTimeout,
+            onTimeout: () {
+              debugPrint('UXCam: Method "$method" timeout after ${timeout ?? _defaultChannelTimeout}');
+              return null;
+            },
+          );
+    } catch (e) {
+      debugPrint('UXCam: Method "$method" error - $e');
+      return null;
+    }
+  }
 
   /// For getting platformVersion from Native Side.
   static Future<String> get platformVersion async {
-    final String? version =
-        await _channel.invokeMethod<String>('getPlatformVersion');
-    return version!;
+    final String? version = await _safeChannelInvoke<String>('getPlatformVersion');
+    return version ?? 'Unknown';
   }
 
   /// This method is used to as a starting point for configuring and
@@ -29,20 +56,107 @@ class FlutterUxcam {
   ///
   /// * [FlutterUxConfig](https://pub.dev/documentation/flutter_uxcam/latest/uxcam/FlutterUxConfig-class.html)
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
+    // Clean up previous initialization asynchronously to avoid blocking
+    if (_isInitialized) {
+      // Schedule cleanup for next frame to avoid blocking current frame
+      scheduleMicrotask(() => dispose());
+      await Future.delayed(Duration.zero); // Allow microtask to complete
+    }
+    
     uxCam = UxCam();
+    
+    // ✅ Setup channel callbacks but don't block - let initialization proceed
+    // The callback handler will internally wait for first frame before deferring
     ChannelCallback.handleChannelCallBacks(_channel);
+    
+    // Add timeout to prevent indefinite hangs on platform channel calls
+    final bool? status = await _channel
+        .invokeMethod<bool>('startWithConfiguration', {"config": config.toJson()})
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('UXCam: startWithConfiguration timeout - native side not responding');
+            return false;
+          },
+        ).catchError((error) {
+          debugPrint('UXCam: startWithConfiguration error - $error');
+          return false;
+        });
 
-    final bool? status = await _channel.invokeMethod<bool>(
-        'startWithConfiguration', {"config": config.toJson()});
-
-    return status!;
+    _isInitialized = status ?? false;
+    
+    // Register lifecycle observer after first frame to avoid blocking startup
+    if (_isInitialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        UXCamLifecycleManager.instance.register();
+      });
+    }
+    
+    return status ?? false;
+  }
+  
+  /// Zone-isolated initialization for apps with heavy stream usage
+  /// This prevents UXCam from interfering with app streams during startup
+  ///
+  /// Use this instead of startWithConfiguration if your app experiences
+  /// startup hangs or stream conflicts with UXCam
+  ///
+  /// Example:
+  /// ```dart
+  /// await FlutterUxcam.startWithConfigurationIsolated(config);
+  /// ```
+  static Future<bool> startWithConfigurationIsolated(FlutterUxConfig config) async {
+    // Run initialization in a separate Zone to isolate from app streams
+    try {
+      return await runZoned<Future<bool>>(() async {
+        debugPrint('UXCam: Starting initialization in isolated Zone');
+        
+        // Perform initialization asynchronously with controlled microtask scheduling
+        final completer = Completer<bool>();
+        
+        scheduleMicrotask(() async {
+          try {
+            final result = await startWithConfiguration(config);
+            completer.complete(result);
+          } catch (e) {
+            debugPrint('UXCam: Isolated initialization error - $e');
+            completer.complete(false);
+          }
+        });
+        
+        // Add a reasonable timeout for the entire initialization
+        return await completer.future.timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            debugPrint('UXCam: Isolated initialization timeout');
+            return false;
+          },
+        );
+      }, zoneSpecification: ZoneSpecification(
+        handleUncaughtError: (self, parent, zone, error, stackTrace) {
+          debugPrint('UXCam: Zone error during initialization - $error');
+          debugPrint('Stack trace: $stackTrace');
+        },
+      ));
+    } catch (e) {
+      debugPrint('UXCam: Failed to initialize in isolated zone - $e');
+      return false;
+    }
   }
 
   static Future<void> attachBridge() async {
     if (Platform.isIOS) {
-      await _channel.invokeMethod('attachBridge');
-    } else {
-      return;
+      try {
+        await _channel.invokeMethod('attachBridge').timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint('UXCam: attachBridge timeout');
+            return null;
+          },
+        );
+      } catch (e) {
+        debugPrint('UXCam: attachBridge error - $e');
+      }
     }
   }
 
@@ -134,7 +248,8 @@ class FlutterUxcam {
   ///
   /// * See: [Flutter Tagging Approach](https://developer.uxcam.com/docs/flutter-tagging-approach)
   static Future<void> tagScreenName(String screenName) async {
-    await _channel.invokeMethod('tagScreenName', {"key": screenName});
+    // Non-blocking but still awaitable for error handling
+    await _safeChannelInvoke('tagScreenName', {"key": screenName}, const Duration(seconds: 2));
   }
 
   /// This method is used for setting the UserIdentity that can be
@@ -465,15 +580,24 @@ class FlutterUxcam {
   /// Methods declared to handle smart events.
   static Future<void> appendGestureContent(
       Offset position, TrackData trackData) async {
-    var instance = OcclusionWrapperManager();
-    var rects = instance.fetchOcclusionRects();
-    final data = trackData.toJson();
-    data['occlusionRects'] = rects;
-    await _channel.invokeMethod<void>("appendGestureContent", {
-      "x": position.dx.toNative.toDouble(),
-      "y": position.dy.toNative.toDouble(),
-      "data": data,
-    });
+    // Non-blocking with short timeout to avoid UI lag
+    try {
+      var instance = OcclusionWrapperManager();
+      var rects = instance.fetchOcclusionRects();
+      final data = trackData.toJson();
+      data['occlusionRects'] = rects;
+      await _safeChannelInvoke<void>(
+        "appendGestureContent",
+        {
+          "x": position.dx.toNative.toDouble(),
+          "y": position.dy.toNative.toDouble(),
+          "data": data,
+        },
+        const Duration(milliseconds: 500), // Very short timeout for gesture events
+      );
+    } catch (e) {
+      debugPrint('UXCam: appendGestureContent error - $e');
+    }
   }
 
   /// Set user defined types for tracing elements.
@@ -496,26 +620,61 @@ class FlutterUxcam {
   static void clearUserDefinedTypes() {
     UxTraceableElement.clearUserDefinedTypes();
   }
+  
+  /// Dispose and cleanup all resources to prevent memory leaks
+  /// Call this when you want to completely reset UXCam or before reinitializing
+  static void dispose() {
+    if (!_isInitialized) return;
+    
+    // Unregister lifecycle observer
+    UXCamLifecycleManager.instance.unregister();
+    
+    // Cleanup channel callbacks
+    ChannelCallback.dispose();
+    
+    // Cleanup occlusion wrapper manager
+    OcclusionWrapperManager().dispose();
+    
+    // Cleanup navigation observer if exists
+    if (UxCam.navigationObserver != null) {
+      UxCam.navigationObserver!.dispose();
+    }
+    
+    // Clear user defined types
+    UxTraceableElement.clearUserDefinedTypes();
+    
+    uxCam = null;
+    _isInitialized = false;
+  }
 }
 
 List<Map<String, String>> getStackTraceElements(StackTrace stackTrace) {
   final Trace trace = Trace.parseVM(stackTrace.toString()).terse;
   final List<Map<String, String>> elements = <Map<String, String>>[];
+  
+  // Limit stack trace depth to prevent unbounded memory growth
+  const int maxFrames = 50;
+  int frameCount = 0;
 
   for (final Frame frame in trace.frames) {
+    if (frameCount >= maxFrames) break;
+    
     final Map<String, String> element = <String, String>{
       'file': frame.library,
       'line': frame.line?.toString() ?? '0',
     };
     final String member = frame.member ?? '<fn>';
-    final List<String> members = member.split('.');
-    if (members.length > 1) {
-      element['method'] = members.sublist(1).join('.');
-      element['class'] = members.first;
+    
+    // Optimize member splitting to reduce temporary string allocations
+    final int dotIndex = member.indexOf('.');
+    if (dotIndex > 0 && dotIndex < member.length - 1) {
+      element['class'] = member.substring(0, dotIndex);
+      element['method'] = member.substring(dotIndex + 1);
     } else {
       element['method'] = member;
     }
     elements.add(element);
+    frameCount++;
   }
 
   return elements;

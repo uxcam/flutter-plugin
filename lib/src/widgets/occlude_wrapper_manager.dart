@@ -43,9 +43,15 @@ class OcclusionWrapperManager {
   // Track native call frequency for dynamic timer adjustment
   final List<DateTime> _nativeCallTimestamps = [];
   static const int _maxCallHistory = 5;
+  static const int _maxRectsSize = 500; // Prevent unbounded growth
+  static const int _maxItemsSize = 500; // Prevent unbounded growth
   static const Duration _minInterval = Duration(milliseconds: 100); // ~10fps
-  static const Duration _maxInterval = Duration(milliseconds: 1000); // ~fps
+  static const Duration _maxInterval = Duration(milliseconds: 1000); // ~1fps
   static const Duration _defaultInterval = Duration(milliseconds: 100); // ~10fps
+  
+  // Cache for JSON encoding to reduce repeated string allocations
+  String? _cachedJsonData;
+  int _lastRectsHash = 0;
 
   void add(int timeStamp, GlobalKey key, Rect rect) {
     rects.remove(key);
@@ -55,6 +61,17 @@ class OcclusionWrapperManager {
       rect.right.toNative,
       rect.bottom.toNative,
     );
+    
+    // Prevent unbounded growth - remove oldest entries if limit exceeded
+    if (rects.length > _maxRectsSize) {
+      final keysToRemove = rects.keys.take(rects.length - _maxRectsSize).toList();
+      for (final key in keysToRemove) {
+        rects.remove(key);
+      }
+      // Invalidate cache when rects are removed
+      _cachedJsonData = null;
+      _lastRectsHash = 0;
+    }
     // Timer is managed by registration/unregistration lifecycle
   }
   
@@ -82,6 +99,8 @@ class OcclusionWrapperManager {
   void _sendRectsToNative() {
     if (rects.isEmpty) {
       _stopUpdateTimer();
+      _cachedJsonData = null;
+      _lastRectsHash = 0;
       return;
     }
     
@@ -90,25 +109,48 @@ class OcclusionWrapperManager {
     
     if (rects.isEmpty) {
       _stopUpdateTimer();
+      _cachedJsonData = null;
+      _lastRectsHash = 0;
       return;
     }
     
-    List<Map<String, dynamic>> rectList = [];
+    // Calculate a simple hash of the rects to detect changes
+    int currentHash = 0;
+    List<Map<String, dynamic>>? rectList;
+    
     rects.forEach((key, value) {
-      if (key.isWidgetVisible()) {
-        Map<String, dynamic> rectData = {
-          "key": key.toString(),
-          "point": value.toJson(),
-          "isVisible": true,
-        };
-        rectList.add(rectData);
-      }
+      // Simple hash based on key and value
+      currentHash = currentHash ^ key.hashCode ^ value.hashCode;
     });
+    
+    // Only rebuild rectList and re-encode JSON if data changed
+    if (_cachedJsonData == null || currentHash != _lastRectsHash) {
+      rectList = [];
+      rects.forEach((key, value) {
+        if (key.isWidgetVisible()) {
+          Map<String, dynamic> rectData = {
+            "key": key.toString(),
+            "point": value.toJson(),
+            "isVisible": true,
+          };
+          rectList!.add(rectData);
+        }
+      });
+      
+      if (rectList.isNotEmpty) {
+        _cachedJsonData = jsonEncode(rectList);
+        _lastRectsHash = currentHash;
+      } else {
+        _cachedJsonData = null;
+        _lastRectsHash = 0;
+      }
+    }
     
     // Always send to native since native doesn't cache/store the data
     // Native side needs fresh data every time for proper occlusion tracking
-    if (Platform.isAndroid && rectList.isNotEmpty) {
-      FlutterUxcam.addFrameData(DateTime.now().millisecondsSinceEpoch, jsonEncode(rectList));
+    // But reuse cached JSON string to avoid repeated encoding
+    if (Platform.isAndroid && _cachedJsonData != null) {
+      FlutterUxcam.addFrameData(DateTime.now().millisecondsSinceEpoch, _cachedJsonData!);
     }
   }
   
@@ -119,6 +161,9 @@ class OcclusionWrapperManager {
 
   void clearOcclusionRects() {
     occlusionRects.clear();
+    // Invalidate cache when clearing
+    _cachedJsonData = null;
+    _lastRectsHash = 0;
   }
 
   bool containsWidgetByKey(GlobalKey key) {
@@ -132,6 +177,17 @@ class OcclusionWrapperManager {
   void registerOcclusionWrapper(OcclusionWrapperItem item) {
     if (!items.contains(item)) {
       items.add(item);
+      
+      // Prevent unbounded growth - remove oldest entries if limit exceeded
+      if (items.length > _maxItemsSize) {
+        final itemsToRemove = items.take(items.length - _maxItemsSize).toList();
+        for (final item in itemsToRemove) {
+          items.remove(item);
+          rects.remove(item.key);
+          occlusionRects.remove(item.id);
+        }
+      }
+      
       // Start timer when first widget is registered
       _startUpdateTimerIfNeeded();
     }
@@ -181,12 +237,13 @@ class OcclusionWrapperManager {
   }
   
   void _recordNativeCall() {
-    // don't record if we have too many calls
-    if (_nativeCallTimestamps.length >= _maxCallHistory) {
-      return;
-    }
     final now = DateTime.now();
     _nativeCallTimestamps.add(now);
+    
+    // Keep only recent history to prevent memory leak
+    if (_nativeCallTimestamps.length > _maxCallHistory) {
+      _nativeCallTimestamps.removeRange(0, _nativeCallTimestamps.length - _maxCallHistory);
+    }
     
     // Adjust timer interval based on native call frequency
     _adjustTimerInterval();
@@ -254,5 +311,16 @@ class OcclusionWrapperManager {
     );
 
     return occludePoint;
+  }
+  
+  /// Dispose and cleanup all resources to prevent memory leaks
+  void dispose() {
+    _stopUpdateTimer();
+    items.clear();
+    rects.clear();
+    occlusionRects.clear();
+    _nativeCallTimestamps.clear();
+    _cachedJsonData = null;
+    _lastRectsHash = 0;
   }
 }

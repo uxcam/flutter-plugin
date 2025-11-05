@@ -52,13 +52,26 @@ class TrackData {
   }
 
   Map<String, dynamic> toJson() {
-    final value =
-        jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : "");
-    final effectiveclass = uiClass != null && uiClass!.isNotEmpty
-        ? uiClass
-        : Platform.isAndroid
-            ? jsonEncode("")
-            : "";
+    // Cache effective values to avoid multiple jsonEncode calls
+    final String effectiveValue = uiValue != null && uiValue!.isNotEmpty ? uiValue! : "";
+    final String effectiveClass = uiClass != null && uiClass!.isNotEmpty ? uiClass! : "";
+    
+    // For Android, we need JSON encoded strings, but cache them to avoid re-encoding
+    final dynamic valueForResult;
+    final dynamic idForResult;
+    final String classForResult;
+    
+    if (Platform.isAndroid) {
+      // Only encode non-empty strings once
+      valueForResult = effectiveValue.isNotEmpty ? jsonEncode(effectiveValue) : '""';
+      idForResult = uiId != null && uiId!.isNotEmpty ? jsonEncode(uiId) : '""';
+      classForResult = effectiveClass.isNotEmpty ? effectiveClass : '""';
+    } else {
+      valueForResult = effectiveValue;
+      idForResult = uiId;
+      classForResult = effectiveClass;
+    }
+    
     Map<String, dynamic> result = {
       'isViewGroup': isViewGroup ?? false,
       'isSensitive': isSensitive,
@@ -70,10 +83,10 @@ class TrackData {
         "bottom": bound.bottom,
       },
       "custom": custom ?? {},
-      "id": Platform.isAndroid ? jsonEncode(uiId) : uiId,
-      "value": Platform.isAndroid ? value : uiValue,
-      "name": Platform.isAndroid ? value : uiValue,
-      "class": effectiveclass,
+      "id": idForResult,
+      "value": valueForResult,
+      "name": valueForResult,
+      "class": classForResult,
     };
     return result;
   }
