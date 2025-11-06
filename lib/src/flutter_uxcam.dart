@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
+import 'package:flutter_uxcam/src/helpers/ios_uxcam_initializer.dart';
 import 'package:flutter_uxcam/src/helpers/lifecycle_manager.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
@@ -62,13 +63,60 @@ class FlutterUxcam {
       scheduleMicrotask(() => dispose());
       await Future.delayed(Duration.zero); // Allow microtask to complete
     }
+
+    print('[App] Starting UXCam initialization...');
+  
+  // Configuration
+  
+  bool success = false;
+  
+  if (Platform.isIOS) {
+    // Use iOS-specific initializer
+    success = await IOSUXCamInitializer.initialize(config);
+    
+    if (success) {
+      // Start recording state monitoring
+      IOSRecordingManager.startMonitoring();
+      
+      // Initialize lifecycle manager AFTER SDK init
+      UXCamLifecycleManager().initialize();
+    }
+
+  } else {
+    // Regular initialization for Android
+    success = await FlutterUxcam.initailizeUXCam(config);
+    
+    if (success) {
+      // Initialize lifecycle manager for Android
+      UXCamLifecycleManager().initialize();
+    }
+
+  }
+  
+  if (success) {
+    print('[App] UXCam initialized successfully');
+    
+    // Set any additional properties
+    await FlutterUxcam.setAutomaticScreenNameTagging(true);
+    
+    // Add navigator observer
+    // This will be used in MaterialApp
+  } else {
+    print('[App] UXCam initialization failed');
+  }
+
+  return success;
+
+  }
+
+  static Future<bool> initailizeUXCam(FlutterUxConfig config) async {
     
     uxCam = UxCam();
     
     // ✅ Setup channel callbacks but don't block - let initialization proceed
     // The callback handler will internally wait for first frame before deferring
     ChannelCallback.handleChannelCallBacks(_channel);
-    
+
     // Add timeout to prevent indefinite hangs on platform channel calls
     final bool? status = await _channel
         .invokeMethod<bool>('startWithConfiguration', {"config": config.toJson()})
@@ -85,14 +133,7 @@ class FlutterUxcam {
 
     _isInitialized = status ?? false;
     
-    // Register lifecycle observer after first frame to avoid blocking startup
-    if (_isInitialized) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        UXCamLifecycleManager.instance.register();
-      });
-    }
-    
-    return status ?? false;
+    return _isInitialized;
   }
   
   /// Zone-isolated initialization for apps with heavy stream usage
@@ -625,12 +666,20 @@ class FlutterUxcam {
   /// Call this when you want to completely reset UXCam or before reinitializing
   static void dispose() {
     if (!_isInitialized) return;
+
+    UXCamLifecycleManager().removeListener(_onLifecycleChanged);
+    
+    // Cleanup on app termination
+    if (Platform.isIOS) {
+      IOSRecordingManager.stopMonitoring();
+      IOSUXCamInitializer.cleanup();
+    }
     
     // Unregister lifecycle observer
-    UXCamLifecycleManager.instance.unregister();
+    UXCamLifecycleManager().dispose();
     
     // Cleanup channel callbacks
-    ChannelCallback.dispose();
+    // ChannelCallback.dispose();
     
     // Cleanup occlusion wrapper manager
     OcclusionWrapperManager().dispose();
@@ -646,7 +695,33 @@ class FlutterUxcam {
     uxCam = null;
     _isInitialized = false;
   }
+
+  static void _onLifecycleChanged() {
+    final state = UXCamLifecycleManager().currentState;
+    print('[App] Lifecycle changed to: $state');
+    
+    // Handle app-specific logic based on lifecycle state
+    if (state == AppLifecycleState.paused) {
+      // App went to background
+      _handleAppBackground();
+    } else if (state == AppLifecycleState.resumed) {
+      // App came to foreground
+      _handleAppForeground();
+    }
+  }
+
+  
+  static void _handleAppBackground() {
+    // Your app-specific background logic
+    print('[App] App went to background');
+  }
+  
+  static void _handleAppForeground() {
+    // Your app-specific foreground logic
+    print('[App] App came to foreground');
+  }
 }
+
 
 List<Map<String, String>> getStackTraceElements(StackTrace stackTrace) {
   final Trace trace = Trace.parseVM(stackTrace.toString()).terse;
