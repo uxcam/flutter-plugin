@@ -38,11 +38,11 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (Platform.isAndroid) {
       WidgetsBinding.instance.addPersistentFrameCallback((_) async {
         if (!mounted) return;
-        registerOcclusionWidget();
         _updatePositionForTopRouteOnly();
       });
     } 
     if (Platform.isIOS) {
+        registerOcclusionWidget();
       // For iOS, we need to register the widget after the first frame
         if (!mounted) return;
         WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -89,7 +89,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
         if (!mounted) return;
         final visibilityFraction = visibilityInfo.visibleFraction;
         if (visibilityFraction == 0) {
-          //hideOcclusionWidget();
+          hideOcclusionWidget();
         } else {
           registerOcclusionWidget();
         }
@@ -123,10 +123,6 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (!mounted) return;
     var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
     OcclusionWrapperManager().registerOcclusionWrapper(item);
-    if (Platform.isAndroid) {
-      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-        _widgetKey, _widgetKey.globalPaintBounds ?? Rect.zero);
-    }
   }
 
   void unRegisterOcclusionWidget() {
@@ -134,53 +130,19 @@ class OccludeWrapperState extends State<OccludeWrapper>
   }
 
   void hideOcclusionWidget() {
-    if (!_isWidgetInTopRoute()) {
-      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
+    if (Platform.isIOS) {
+      if (_isWidgetInTopRoute()) {
+        registerOcclusionWidget();
+      } else {
+        unRegisterOcclusionWidget();
+      }
+    }
+    if (Platform.isAndroid) {
+      if (!_isWidgetInTopRoute()) {
+        OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
           _widgetKey, _widgetKey.globalPaintBounds!);
+      }
     }
-  }
-
-  void getOccludePoint(Function(OccludePoint) rect) {
-    var occludePoint = OccludePoint(0, 0, 0, 0);
-
-    Rect? bound = _widgetKey.globalPaintBounds;
-
-    if (bound == null) {
-      rect(occludePoint);
-      return;
-    }
-
-    occludePoint = OccludePoint(
-      bound.left.toNative,
-      bound.top.toNative,
-      bound.right.toNative,
-      bound.bottom.toNative,
-    );
-
-    rect(occludePoint);
-  }
-
-  void getOccludePoints() {
-    // Preventing Extra Operation
-    if (!mounted) return;
-
-    Rect? bound = _widgetKey.globalPaintBounds;
-
-    if (bound == null) return;
-
-    occludePoint = OccludePoint(
-      bound.left.toNative,
-      bound.top.toNative,
-      bound.right.toNative,
-      bound.bottom.toNative,
-    );
-
-    FlutterUxcam.occludeRectWithCoordinates(
-      occludePoint.topLeftX,
-      occludePoint.topLeftY,
-      occludePoint.bottomRightX,
-      occludePoint.bottomRightY,
-    );
   }
 
   bool _isWidgetInTopRoute() {

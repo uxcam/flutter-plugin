@@ -36,18 +36,10 @@ class OcclusionWrapperManager {
 
   final occlusionRects = <UniqueKey, OccludePoint>{};
   final rects = <GlobalKey, OccludePoint>{};
-  
-  Timer? _updateTimer;
-  Duration _currentUpdateInterval = const Duration(milliseconds: 100);
-  
+
   // Track native call frequency for dynamic timer adjustment
-  final List<DateTime> _nativeCallTimestamps = [];
-  static const int _maxCallHistory = 5;
   static const int _maxRectsSize = 500; // Prevent unbounded growth
   static const int _maxItemsSize = 500; // Prevent unbounded growth
-  static const Duration _minInterval = Duration(milliseconds: 100); // ~10fps
-  static const Duration _maxInterval = Duration(milliseconds: 1000); // ~1fps
-  static const Duration _defaultInterval = Duration(milliseconds: 100); // ~10fps
   
   // Cache for JSON encoding to reduce repeated string allocations
   String? _cachedJsonData;
@@ -73,34 +65,14 @@ class OcclusionWrapperManager {
       _lastRectsHash = 0;
     }
     // Timer is managed by registration/unregistration lifecycle
+
+    _sendRectsToNative();
   }
-  
-  void _startUpdateTimerIfNeeded() {
-    if (_updateTimer == null && items.isNotEmpty) {
-      _updateTimer = Timer.periodic(_currentUpdateInterval, (_) {
-        _sendRectsToNative();
-      });
-    }
-  }
-  
-  void _restartTimerWithNewInterval() {
-    if (_updateTimer != null && items.isNotEmpty) {
-      _stopUpdateTimer();
-      _startUpdateTimerIfNeeded();
-    }
-  }
-  
-  void _stopUpdateTimer() {
-    _nativeCallTimestamps.clear();
-    _updateTimer?.cancel();
-    _updateTimer = null;
-  }
-  
   void _sendRectsToNative() {
     if (rects.isEmpty) {
-      _stopUpdateTimer();
       _cachedJsonData = null;
       _lastRectsHash = 0;
+      FlutterUxcam.addFrameData(DateTime.now().millisecondsSinceEpoch, "");
       return;
     }
     
@@ -108,7 +80,6 @@ class OcclusionWrapperManager {
     _cleanupUnregisteredRects();
     
     if (rects.isEmpty) {
-      _stopUpdateTimer();
       _cachedJsonData = null;
       _lastRectsHash = 0;
       return;
@@ -187,9 +158,6 @@ class OcclusionWrapperManager {
           occlusionRects.remove(item.id);
         }
       }
-      
-      // Start timer when first widget is registered
-      _startUpdateTimerIfNeeded();
     }
   }
 
@@ -209,11 +177,6 @@ class OcclusionWrapperManager {
       if (occlusionRects.containsKey(id)) {
         occlusionRects.removeWhere((key, _) => key == id);
       }
-      
-      // Stop timer if no more items
-      if (items.isEmpty) {
-        _stopUpdateTimer();
-      }
     }
   }
 
@@ -231,70 +194,8 @@ class OcclusionWrapperManager {
   }
 
   List<OccludePoint> getOccludePoints() {
-    // Track this call from native to measure frequency
-    _recordNativeCall();
     return items.map((wrapper) => getOccludePoint(wrapper.key)).toList();
   }
-  
-  void _recordNativeCall() {
-    final now = DateTime.now();
-    _nativeCallTimestamps.add(now);
-    
-    // Keep only recent history to prevent memory leak
-    if (_nativeCallTimestamps.length > _maxCallHistory) {
-      _nativeCallTimestamps.removeRange(0, _nativeCallTimestamps.length - _maxCallHistory);
-    }
-    
-    // Adjust timer interval based on native call frequency
-    _adjustTimerInterval();
-  }
-  
-  void _adjustTimerInterval() {
-    if (_nativeCallTimestamps.length < 2) return; // Need some history
-    
-    // Calculate average interval between native calls
-    final recentCalls = _nativeCallTimestamps.take(_maxCallHistory).toList();
-    if (recentCalls.length < 2) return;
-    
-    Duration totalDuration = Duration.zero;
-    for (int i = 1; i < recentCalls.length; i++) {
-      totalDuration += recentCalls[i].difference(recentCalls[i - 1]);
-    }
-    
-    final averageNativeInterval = Duration(
-      milliseconds: totalDuration.inMilliseconds ~/ (recentCalls.length - 1)
-    );
-    
-    final targetInterval = Duration(
-      milliseconds: (averageNativeInterval.inMilliseconds).round()
-    );
-    
-    // Clamp to reasonable bounds
-    final clampedInterval = Duration(
-      milliseconds: targetInterval.inMilliseconds.clamp(
-        _minInterval.inMilliseconds,
-        _maxInterval.inMilliseconds
-      )
-    );
-    
-    // Only restart timer if interval changed significantly (>10ms difference)
-    if ((clampedInterval.inMilliseconds - _currentUpdateInterval.inMilliseconds).abs() > 10) {
-      _currentUpdateInterval = clampedInterval;
-      _restartTimerWithNewInterval();
-      
-
-    }
-  }
-  
-  /// Reset timer interval to default (useful for testing or manual reset)
-  void resetTimerInterval() {
-    _nativeCallTimestamps.clear();
-    _currentUpdateInterval = _defaultInterval;
-    _restartTimerWithNewInterval();
-  }
-  
-  /// Get current timer interval (for debugging/monitoring)
-  Duration get currentTimerInterval => _currentUpdateInterval;
 
   OccludePoint getOccludePoint(GlobalKey<State<StatefulWidget>> key) {
     var occludePoint = OccludePoint(0, 0, 0, 0);
@@ -315,11 +216,9 @@ class OcclusionWrapperManager {
   
   /// Dispose and cleanup all resources to prevent memory leaks
   void dispose() {
-    _stopUpdateTimer();
     items.clear();
     rects.clear();
     occlusionRects.clear();
-    _nativeCallTimestamps.clear();
     _cachedJsonData = null;
     _lastRectsHash = 0;
   }
