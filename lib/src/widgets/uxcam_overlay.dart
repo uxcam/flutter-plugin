@@ -42,6 +42,10 @@ class _UxcamOverlayState extends State<UxcamOverlay> {
         eventChannel.receiveBroadcastStream().listen((event) {
       _captureAppContent();
     });
+
+    //VERY IMPORTANT: The one time _captureAppContent call is necessary to seed a initial screenshot for the firstFrameReadyCallback to run properly.
+    //Without this call, the session video is normal but the first second of the video will be black.
+    _captureAppContent();
   }
 
   @override

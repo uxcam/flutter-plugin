@@ -409,6 +409,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             result.success(true);
         } else if ("sendFrameScreenshot".equals(call.method)) {
             byte[] bytes = (byte[]) call.arguments;
+            Log.d("ScreenVideoController", "proper screenshot is ready");
             delegate.sendFlutterScreenshot(bytes);
             result.success(true);
         }
