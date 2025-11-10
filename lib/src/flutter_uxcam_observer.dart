@@ -17,6 +17,8 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
     return instance;
   }
 
+  final Map<Route<dynamic>, String> _resolvedNames = <Route<dynamic>, String>{};
+
   /// Using this approach as we need to keep track of screens
   /// before this one and keep track of screens previous to the
   /// current one.
@@ -38,17 +40,28 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
     /// This line of code is required as there are scenarios where we have
     /// routing like in popup menu but it is not handled by routing in
     /// [onGenerateRoute].
-    if (route.settings.name != null) {
-      _screenNames.add(route.settings.name!);
-    } else if (route is DialogRoute || route is ModalBottomSheetRoute) {
-      _screenNames.add(":popup");
+    final name = _resolveNameByRoute(route);
+    if (name != null) {
+      _screenNames.add(name);
+      setAndTaggingScreenName();
     }
-    setAndTaggingScreenName();
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
-    _screenNames.remove(newRoute?.settings.name);
+    if (oldRoute != null) {
+      final oldName = _resolveNameByRoute(oldRoute);
+      if (oldName != null) {
+        _screenNames.remove(oldName);
+      }
+      _resolvedNames.remove(oldRoute);
+    }
+    if (newRoute != null) {
+      final newName = _resolveNameByRoute(newRoute);
+      if (newName != null) {
+        _screenNames.add(newName);
+      }
+    }
     setAndTaggingScreenName();
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
   }
@@ -56,27 +69,63 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _topRoute = previousRoute;
-    if (route is PageRoute) {
-      _transitionAnimation = route.animation;
-      _screenNames.remove(route.settings.name);
-    } else {
-      _screenNames.removeWhere((e) => e == ":popup");
+    final name = _resolveNameByRoute(route);
+    if (name != null) {
+      _screenNames.remove(name);
     }
+    _resolvedNames.remove(route);
     setAndTaggingScreenName();
     super.didPop(route, previousRoute);
   }
 
   @override
   void didRemove(Route route, Route? previousRoute) {
-    _screenNames.remove(route.settings.name);
+    final name = _resolveNameByRoute(route);
+    if (name != null) {
+      _screenNames.remove(name);
+    }
+    _resolvedNames.remove(route);
     setAndTaggingScreenName();
     super.didRemove(route, previousRoute);
+  }
+
+  String? _resolveNameByRoute(Route<dynamic> route) {
+    final cached = _resolvedNames[route];
+    if (cached != null) return cached;
+
+    //give user assigned names the highest priority
+    final explicitName = route.settings.name;
+    if (explicitName != null && explicitName.isNotEmpty) {
+      _resolvedNames[route] = explicitName;
+      return explicitName;
+    }
+
+    if (route is PageRoute<dynamic>) {
+      final context = route.subtreeContext;
+      if (context != null) {
+        final name = context.widget.runtimeType.toString();
+        _resolvedNames[route] = name;
+        return name;
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final context = route.subtreeContext;
+        if (context != null) {
+          _resolvedNames[route] = context.widget.runtimeType.toString();
+          setAndTaggingScreenName();
+        }
+      });
+      return null;
+    }
+
+    return null;
   }
 
   /// This function will just perform operation for setting [taggingScreen] and
   /// depeding on the value of  [taggingScreen] will either discard or perform
   /// [FlutterUxcam.tagScreenName] operation.
   void setAndTaggingScreenName() {
+    print("cachedNames :${_resolvedNames}");
     String taggingScreen = '';
     List<String> currentStackNames = List.from(_screenNames);
     if (currentStackNames.isNotEmpty) {

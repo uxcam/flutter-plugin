@@ -24,13 +24,14 @@ class MyApp extends StatelessWidget {
     FlutterUxConfig config = FlutterUxConfig(
       userAppKey: 'n5ctt823s8qihkk-us',
       // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
-      enableAutomaticScreenNameTagging: false,
+      enableAutomaticScreenNameTagging: true,
       enableIntegrationLogging: true,
     );
 
     FlutterUxcam.startWithConfiguration(config);
 
     return MaterialApp(
+      navigatorObservers: [FlutterUxcamNavigatorObserver()],
       builder: (context, child) => UxcamOverlay(
         child: child!,
       ),
@@ -57,7 +58,7 @@ class UXCamPage extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => const InteractiveDemoPage(),
+                  builder: (_) => const StatelessScreen(),
                 ),
               );
             },
@@ -256,6 +257,18 @@ class FeatureSection extends StatelessWidget {
         ),
         const Divider(),
       ],
+    );
+  }
+}
+
+class StatelessScreen extends StatelessWidget {
+  const StatelessScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Interactive Demo')),
+      body: Container(),
     );
   }
 }

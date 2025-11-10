@@ -1,0 +1,293 @@
+{
+    "usr": {},
+    "session": {
+      "cust": {},
+      "tt": 0.007,
+      "pixelCopyCaptureEnabled": true,
+      "environment": ".alpha",
+      "d_environment": ".alpha",
+      "nt": "wifi",
+      "isvo": false,
+      "id": "6911b5456efb6e4b87c566e3",
+      "appId": "68fee7787a1a3c24c9937b7d",
+      "isc": false,
+      "startType": "cold",
+      "timeToStart": 266,
+      "timeToInitialDisplay": 410,
+      "timeToInteractive": 423,
+      "isIntermediateData": true,
+      "video": {
+        "recordStatus": true,
+        "videoSize": -1
+      },
+      "appLogJson": [
+        {
+          "timeLine": 0.010999999940395355,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": " setupVideoEncoder()"
+        },
+        {
+          "timeLine": 0.010999999940395355,
+          "level": "w",
+          "tag": "OMXUtils",
+          "message": " do not know color format 0x7fa30c06 = 2141391878"
+        },
+        {
+          "timeLine": 0.010999999940395355,
+          "level": "w",
+          "tag": "OMXUtils",
+          "message": " do not know color format 0x7fa30c04 = 2141391876"
+        },
+        {
+          "timeLine": 0.012000000104308128,
+          "level": "w",
+          "tag": "OMXUtils",
+          "message": " do not know color format 0x7fa30c08 = 2141391880"
+        },
+        {
+          "timeLine": 0.012000000104308128,
+          "level": "w",
+          "tag": "OMXUtils",
+          "message": " do not know color format 0x7fa30c07 = 2141391879"
+        },
+        {
+          "timeLine": 0.012000000104308128,
+          "level": "w",
+          "tag": "OMXUtils",
+          "message": " do not know color format 0x7f000789 = 2130708361"
+        },
+        {
+          "timeLine": 0.02199999988079071,
+          "level": "i",
+          "tag": "ACodec  ",
+          "message": " setupAVCEncoderParameters: Open /proc/11781/comm succeed"
+        },
+        {
+          "timeLine": 0.02199999988079071,
+          "level": "i",
+          "tag": "ACodec  ",
+          "message": " setupAVCEncoderParameters: Get package name: r_uxcam_example"
+        },
+        {
+          "timeLine": 0.023000000044703484,
+          "level": "i",
+          "tag": "ACodec  ",
+          "message": " setupAVCEncoderParameters with [profile: High] [level: Level21]"
+        },
+        {
+          "timeLine": 0.023000000044703484,
+          "level": "i",
+          "tag": "ACodec  ",
+          "message": " setupAVCEncoderParameters: AVC codec setting: 240 x 432 bitrate: 123237, P-frame: 9, B-frame: 0, fps: 1.000000"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ACodec  ",
+          "message": " [OMX.qcom.video.encoder.avc] cannot encode HDR static metadata. Ignoring."
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ACodec  ",
+          "message": " setupVideoEncoder succeeded"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": " [OMX.qcom.video.encoder.avc] configure, AMessage : AMessage(what = 'conf', target = 1) = {"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": "   int32_t color-format = 2130708361"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": "   int32_t i-frame-interval = 10"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": "   int32_t slice-height = 432"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": "   string mime = \"video/avc\""
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": "   int32_t width = 240"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": "   int32_t bitrate = 123237"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": "   int32_t stride = 240"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": "   int32_t frame-rate = 1"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": "   int32_t height = 432"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": "   int32_t encoder = 1"
+        },
+        {
+          "timeLine": 0.02500000037252903,
+          "level": "i",
+          "tag": "ExtendedACodec",
+          "message": " }"
+        },
+        {
+          "timeLine": 0.027000000700354576,
+          "level": "w",
+          "tag": "OMXUtils",
+          "message": " do not know color format 0x7f000789 = 2130708361"
+        },
+        {
+          "timeLine": 0.03400000184774399,
+          "level": "w",
+          "tag": "ExtendedACodec",
+          "message": " Failed to get extension for extradata parameter"
+        }
+      ]
+    },
+    "device": {
+      "battery": [
+        {
+          "level": 100,
+          "chargeState": 3,
+          "timeLine": 0.004000000189989805
+        },
+        {
+          "level": 100,
+          "chargeState": 3,
+          "timeLine": 0.014999999664723873
+        }
+      ],
+      "did": "6219e119acfed629",
+      "osn": " Q",
+      "dvt": "Phone",
+      "dwt": 1080,
+      "dht": 1920,
+      "ahp": 5,
+      "ar": [
+        1080,
+        1920
+      ],
+      "xyDpi": [
+        403.4110107421875,
+        399.73699951171875
+      ],
+      "dpi": 400,
+      "osv": "10",
+      "mnf": "OnePlus",
+      "mdl": "ONEPLUS A5000",
+      "isr": false,
+      "ttr": 7715,
+      "tts": 113597,
+      "tfs": 67710,
+      "cr": "Ncell",
+      "cc": "42902",
+      "cnt": "United States",
+      "lng": "English",
+      "plf": "android"
+    },
+    "sdkv": {
+      "version": "3.8.2-alpha.1",
+      "versionNumber": 618,
+      "pluginType": "flutter",
+      "pluginVersion": "2.7.1"
+    },
+    "ron": "2025-11-10 15:34:57:474 GMT+05:45",
+    "appv": "1.0",
+    "appvc": 1,
+    "appn": "flutter_uxcam_example",
+    "misc": {
+      "ctn": "Nepal",
+      "ctc": "NP",
+      "city": "Kathmandu",
+      "ll": 27.7108,
+      "lt": 85.3251,
+      "buildidentifier": "com.example.flutter_uxcam_example",
+      "sessionsrecordedondevice": "601",
+      "verificationstatus": true,
+      "videorecording": true,
+      "videorecordingstatus": "",
+      "videoconditionalfilter": [],
+      "lastverification": "2025-11-10T09:49:57.116Z",
+      "reverification": 0,
+      "sdkdebuglog": "",
+      "isdatauploadenabled": true,
+      "datasize": 10,
+      "screenquality": 2
+    },
+    "pushNotificationData": [],
+    "evt": [],
+    "anr": [],
+    "bugReport": [],
+    "st": [
+      {
+        "cor": [],
+        "at": 0,
+        "vt": 0.007,
+        "an": "unknown",
+        "fd": {}
+      }
+    ],
+    "metrics": {
+      "vrt": 0,
+      "ds": 4.701171875,
+      "vs": -0.0009765625,
+      "event_tracking": {
+        "event_rejections": {
+          "null_event": 0,
+          "no_session": 0,
+          "limit_exceeded": 0,
+          "name_too_large": 0,
+          "total": 0
+        },
+        "parameter_validation": {
+          "limit_exceeded": 0,
+          "key_too_large": 0,
+          "value_too_large": 0,
+          "total_dropped": 0,
+          "events_with_truncated_params": 0
+        },
+        "storage": {
+          "serialization_failures": 0,
+          "storage_failures": 0,
+          "file_write_failures": 0,
+          "file_write_retries": 0
+        },
+        "events_successfully_added": 0
+      }
+    }
+  }
