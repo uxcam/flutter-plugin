@@ -1,13 +1,14 @@
 name: flutter_uxcam_example
 
-publish_to: 'none'
+publish_to: "none"
 
 environment:
-  sdk: '>=2.12.0-0 <3.0.0'
+  sdk: ">=2.12.0-0 <3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  # flutter_uxcam: 2.7.0
   flutter_uxcam:
     path: ../
   path_provider: ^2.1.5

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam_example/occlusion_stress_screen.dart';
 
 void main() {
   runApp(MyApp());
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
       ),
       routes: {
         '/pageview': (_) => const PageViewDemoPage(),
+        '/occlusion-stress': (_) => const OcclusionStressPage(),
       },
       home: UXCamPage(),
     );
@@ -173,7 +175,8 @@ class UXCamPage extends StatelessWidget {
           ),
           FeatureSection(
             title: 'Setting User Identity',
-            onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
+            onPressed: () =>
+                Navigator.of(context).pushNamed('/occlusion-stress'),
             buttonTitle: 'Set User Identity',
           ),
           FeatureSection(
