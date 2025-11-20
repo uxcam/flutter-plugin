@@ -147,17 +147,17 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, i) -> {
             WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(activity.getWindow().getDecorView());
             if (insets != null) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            WindowInsets insets1 = activity.getWindow()
-                .getDecorView()
-                .getRootWindowInsets();
-            if (insets1 != null) {
-                DisplayCutoutCompat cutout = insets.getDisplayCutout();
-                    if (cutout != null && cutout.getBoundingRects() != null && !cutout.getBoundingRects().isEmpty()) {
-                        hasNotch = true;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    WindowInsets insets1 = activity.getWindow()
+                        .getDecorView()
+                        .getRootWindowInsets();
+                    if (insets1 != null) {
+                        DisplayCutoutCompat cutout = insets.getDisplayCutout();
+                            if (cutout != null && cutout.getBoundingRects() != null && !cutout.getBoundingRects().isEmpty()) {
+                                hasNotch = true;
+                            }
                     }
-            }
-        }
+                }
                 DisplayCutoutCompat cutout = insets.getDisplayCutout();
                 if (cutout != null) {
                     cutoutTop = cutout.getSafeInsetTop();
@@ -183,8 +183,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     leftPadding = Math.max(systemBars.left, cutoutBottom);
                 }
             } else {
-                systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-                Log.d("bars","portrait" + systemBars.toString());
+                if(insets!=null) {
+                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                }
                 leftPadding = 0;
             }
             return ViewCompat.onApplyWindowInsets(v, insets);
