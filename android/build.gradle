@@ -41,7 +41,6 @@ android {
 
 dependencies {
     //To use the alpha version please use the following dependency pattern: implementation 'com.uxcam:uxcam-debug:<sdk-version>-alpha.1+<branch-commit-hash>'
-    implementation 'com.uxcam:uxcam:3.7.3'
-    //implementation 'com.uxcam:uxcam-debug:3.7.2-alpha.1'
+    implementation 'com.uxcam:uxcam:3.8.2'
     implementation "com.squareup.okhttp3:okhttp:4.8.1"
 }
