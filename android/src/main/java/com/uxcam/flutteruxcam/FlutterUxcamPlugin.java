@@ -114,8 +114,23 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
                 int offset = 50;  
+                // Drop stale Flutter rect frames so old screens don't keep occluding
+                long staleCutoff = startTimeStamp - 1000; // keep ~1s of history
+                if (!frameDataMap.isEmpty()) {
+                    frameDataMap.headMap(staleCutoff, true).clear();
+                }
+
+                if (frameDataMap.isEmpty()) {
+                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                    return;
+                }
+
                 Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-offset);
                 Long deletebeforeTimestamp = frameDataMap.lowerKey(startTimeStamp-offset - 10);
+                if (deletebeforeTimestamp != null) {
+                    frameDataMap.headMap(deletebeforeTimestamp, true).clear();
+                }
+
                 if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
                     effectiveStartTimestamp = frameDataMap.firstKey();
                 }
@@ -125,6 +140,14 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 } catch (Exception e) {
                     effectiveEndTimestamp = null;
                 }
+
+                // If nothing recent, return empty to avoid recycling old rects
+                if (effectiveEndTimestamp == null || effectiveEndTimestamp < startTimeStamp - offset) {
+                    frameDataMap.clear();
+                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                    return;
+                }
+
                 if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
                     ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
                     delegate.createScreenshotFromCollectedRects(result);
@@ -631,4 +654,3 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
 }
-
