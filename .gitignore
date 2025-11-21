@@ -14,5 +14,3 @@ local.properties
 /.dart_tool/package_config.json
 android/.gradle
 build
-pubspec.lock
-**/build/ 
