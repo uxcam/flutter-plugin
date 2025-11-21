@@ -618,32 +618,35 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 keyVisibilityMap.put(key, 0);
             }
             JSONArray values = entry.getValue();
-            Rect output = new Rect();
-            boolean isVisible = false;
-            for (int i = 0; i < values.length(); i++) {
-                JSONObject obj = values.optJSONObject(i).optJSONObject("point");
-                if (obj != null) {
-                    Rect rect = new Rect();
-                    if(leftPadding!=0) {
-                        rect.left = obj.optInt("x0") + leftPadding;
-                        rect.right = obj.optInt("x1") + leftPadding;
-                    } else {
-                        rect.left = obj.optInt("x0");
-                        rect.right = obj.optInt("x1");
-                    }
-                    rect.top = obj.optInt("y0");
-                    rect.bottom = obj.optInt("y1");
-                    output.union(rect);
-                    isVisible = isVisible || values.optJSONObject(i).optBoolean("isVisible");
-
-                    if(isVisible) {
-                        keyVisibilityMap.put(key, 0);
-                    } else {
-                        keyVisibilityMap.put(key, keyVisibilityMap.get(key)+1);
-                    }
-
-                }
+            // Use only the most recent position per key to avoid growing unions during scroll
+            JSONObject latest = values.optJSONObject(values.length() - 1);
+            if (latest == null) {
+                continue;
             }
+
+            JSONObject obj = latest.optJSONObject("point");
+            if (obj == null) {
+                continue;
+            }
+
+            Rect output = new Rect();
+            if(leftPadding!=0) {
+                output.left = obj.optInt("x0") + leftPadding;
+                output.right = obj.optInt("x1") + leftPadding;
+            } else {
+                output.left = obj.optInt("x0");
+                output.right = obj.optInt("x1");
+            }
+            output.top = obj.optInt("y0");
+            output.bottom = obj.optInt("y1");
+
+            boolean isVisible = latest.optBoolean("isVisible");
+            if(isVisible) {
+                keyVisibilityMap.put(key, 0);
+            } else {
+                keyVisibilityMap.put(key, keyVisibilityMap.get(key)+1);
+            }
+
             if(keyVisibilityMap.get(key) < 2) {
                 output.left = output.left-15;
                 output.right = output.right+15;
