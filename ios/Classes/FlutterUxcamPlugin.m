@@ -145,18 +145,9 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
     NSString *pointString = [NSString stringWithFormat:@"{%@,%@}", positionX, positionY];
 
     if (positionX && positionY && elementResult) {
-        CGPoint position = CGPointFromString(pointString);
-        if ([UXCam respondsToSelector:@selector(handleGestureContent:event:)]) {
-            NSMethodSignature *signature = [UXCam methodSignatureForSelector:@selector(handleGestureContent:event:)];
-            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-            [invocation setTarget:UXCam.class];
-            [invocation setSelector:@selector(handleGestureContent:event:)];
-            [invocation setArgument:&position atIndex:2]; // First argument (CGPoint)
-            [invocation setArgument:&elementResult atIndex:3]; // Second argument (NSDictionary*)
-            [invocation invoke];
-        } else {
-            NSLog(@"UXCam: handleGestureContent:event: method not available in current SDK version");
-        }
+        CGPoint position = CGPointFromString(pointString); 
+        NSMutableDictionary *mutableResult = [self deepMutableCopy:elementResult];
+        [UXCam handleGestureContent:position event:mutableResult];
     } 
 
     result(nil);
@@ -620,6 +611,29 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
     [UXCam reportExceptionEvent:exception reason:exception callStacks:stackTrace properties:nil];
     
     result(nil);
+}
+
+// Helper method to perform deep mutable copy of NSDictionary/NSArray
+- (id)deepMutableCopy:(id)object
+{
+    if ([object isKindOfClass:[NSDictionary class]]) {
+        NSMutableDictionary *mutableDict = [NSMutableDictionary dictionary];
+        NSDictionary *dict = (NSDictionary *)object;
+        for (id key in dict) {
+            mutableDict[key] = [self deepMutableCopy:dict[key]];
+        }
+        return mutableDict;
+    } else if ([object isKindOfClass:[NSArray class]]) {
+        NSMutableArray *mutableArray = [NSMutableArray array];
+        NSArray *array = (NSArray *)object;
+        for (id item in array) {
+            [mutableArray addObject:[self deepMutableCopy:item]];
+        }
+        return mutableArray;
+    } else {
+        // For primitive types (NSString, NSNumber, etc.), return as-is
+        return object;
+    }
 }
 
 @end
