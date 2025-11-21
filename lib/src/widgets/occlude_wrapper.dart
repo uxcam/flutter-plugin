@@ -26,6 +26,8 @@ class OccludeWrapperState extends State<OccludeWrapper>
   late OccludePoint occludePoint;
   late final GlobalKey _widgetKey;
   late final UniqueKey _uniqueId;
+  bool _isUpdateLoopRunning = false;
+  bool _framePending = false;
 
   @override
   void initState() {
@@ -40,16 +42,30 @@ class OccludeWrapperState extends State<OccludeWrapper>
         if (!mounted) return;
         _updatePositionForTopRouteOnly();
       });
-    } 
-    if (Platform.isIOS) {
-        registerOcclusionWidget();
-      // For iOS, we need to register the widget after the first frame
-        if (!mounted) return;
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          try { await FlutterUxcam.attachBridge(); } catch (_) {}
-        });
     }
-    
+    if (Platform.isIOS) {
+      registerOcclusionWidget();
+      // For iOS, we need to register the widget after the first frame
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          await FlutterUxcam.attachBridge();
+        } catch (_) {}
+      });
+    }
+  }
+
+  void _scheduleFrameUpdate() {
+    if (_framePending || !_isUpdateLoopRunning) return;
+    _framePending = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _framePending = false;
+      if (!mounted || !_isUpdateLoopRunning) return;
+
+      _updatePositionForTopRouteOnly();
+      _scheduleFrameUpdate();
+    });
   }
 
   void _updatePosition() {
@@ -74,9 +90,10 @@ class OccludeWrapperState extends State<OccludeWrapper>
       OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
     }
     if (Platform.isAndroid) {
+      _isUpdateLoopRunning = false;
       OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
       OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
+          .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
     }
     super.dispose();
   }
@@ -140,7 +157,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (Platform.isAndroid) {
       if (!_isWidgetInTopRoute()) {
         OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-          _widgetKey, _widgetKey.globalPaintBounds!);
+            _widgetKey, _widgetKey.globalPaintBounds!);
       }
     }
   }
