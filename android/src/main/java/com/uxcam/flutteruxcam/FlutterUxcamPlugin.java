@@ -64,7 +64,7 @@ import java.util.TreeMap;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.7.1";
+    private static final String TYPE_VERSION = "2.7.2";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
@@ -206,7 +206,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     leftPadding = Math.max(systemBars.left, cutoutBottom);
                 }
             } else {
-                systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                if(insets!=null) {
+                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                }
                 Log.d("bars","portrait" + systemBars.toString());
                 leftPadding = 0;
             }
