@@ -183,7 +183,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     leftPadding = Math.max(systemBars.left, cutoutBottom);
                 }
             } else {
-                systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                if(insets!=null) {
+                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                }
                 Log.d("bars","portrait" + systemBars.toString());
                 leftPadding = 0;
             }
