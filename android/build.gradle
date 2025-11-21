@@ -4,7 +4,7 @@ version '1.0-SNAPSHOT'
 buildscript {
     repositories {
         google()
-        mavenCentral()
+        jCenter()
     }
 
     dependencies {
@@ -15,7 +15,7 @@ buildscript {
 rootProject.allprojects {
     repositories {
         google()
-        mavenCentral()
+        jCenter()
         maven {
             url 'https://sdk.uxcam.com/android/'
         }
@@ -41,6 +41,6 @@ android {
 
 dependencies {
     //To use the alpha version please use the following dependency pattern: implementation 'com.uxcam:uxcam-debug:<sdk-version>-alpha.1+<branch-commit-hash>'
-    implementation 'com.uxcam:uxcam:3.8.2'
+    implementation 'com.uxcam:uxcam-debug:3.8.3-alpha.1'
     implementation "com.squareup.okhttp3:okhttp:4.8.1"
 }
