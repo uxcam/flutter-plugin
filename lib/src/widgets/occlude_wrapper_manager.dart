@@ -38,7 +38,7 @@ class OcclusionWrapperManager {
   final rects = <GlobalKey, OccludePoint>{};
   
   Timer? _updateTimer;
-  Duration _currentUpdateInterval = const Duration(milliseconds: 60);
+  Duration _currentUpdateInterval = const Duration(milliseconds: 100);
   
   // Track native call frequency for dynamic timer adjustment
   final List<DateTime> _nativeCallTimestamps = [];
