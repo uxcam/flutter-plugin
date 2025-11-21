@@ -64,7 +64,7 @@ import java.util.TreeMap;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.7.1";
+    private static final String TYPE_VERSION = "2.7.2";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
@@ -114,8 +114,23 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
                 int offset = 50;  
+                // Drop stale Flutter rect frames so old screens don't keep occluding
+                long staleCutoff = startTimeStamp - 1000; // keep ~1s of history
+                if (!frameDataMap.isEmpty()) {
+                    frameDataMap.headMap(staleCutoff, true).clear();
+                }
+
+                if (frameDataMap.isEmpty()) {
+                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                    return;
+                }
+
                 Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-offset);
                 Long deletebeforeTimestamp = frameDataMap.lowerKey(startTimeStamp-offset - 10);
+                if (deletebeforeTimestamp != null) {
+                    frameDataMap.headMap(deletebeforeTimestamp, true).clear();
+                }
+
                 if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
                     effectiveStartTimestamp = frameDataMap.firstKey();
                 }
@@ -125,6 +140,14 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 } catch (Exception e) {
                     effectiveEndTimestamp = null;
                 }
+
+                // If nothing recent, return empty to avoid recycling old rects
+                if (effectiveEndTimestamp == null || effectiveEndTimestamp < startTimeStamp - offset) {
+                    frameDataMap.clear();
+                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                    return;
+                }
+
                 if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
                     ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
                     delegate.createScreenshotFromCollectedRects(result);
@@ -183,7 +206,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     leftPadding = Math.max(systemBars.left, cutoutBottom);
                 }
             } else {
-                systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                if(insets!=null) {
+                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                }
                 Log.d("bars","portrait" + systemBars.toString());
                 leftPadding = 0;
             }
@@ -593,32 +618,35 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 keyVisibilityMap.put(key, 0);
             }
             JSONArray values = entry.getValue();
-            Rect output = new Rect();
-            boolean isVisible = false;
-            for (int i = 0; i < values.length(); i++) {
-                JSONObject obj = values.optJSONObject(i).optJSONObject("point");
-                if (obj != null) {
-                    Rect rect = new Rect();
-                    if(leftPadding!=0) {
-                        rect.left = obj.optInt("x0") + leftPadding;
-                        rect.right = obj.optInt("x1") + leftPadding;
-                    } else {
-                        rect.left = obj.optInt("x0");
-                        rect.right = obj.optInt("x1");
-                    }
-                    rect.top = obj.optInt("y0");
-                    rect.bottom = obj.optInt("y1");
-                    output.union(rect);
-                    isVisible = isVisible || values.optJSONObject(i).optBoolean("isVisible");
-
-                    if(isVisible) {
-                        keyVisibilityMap.put(key, 0);
-                    } else {
-                        keyVisibilityMap.put(key, keyVisibilityMap.get(key)+1);
-                    }
-
-                }
+            // Use only the most recent position per key to avoid growing unions during scroll
+            JSONObject latest = values.optJSONObject(values.length() - 1);
+            if (latest == null) {
+                continue;
             }
+
+            JSONObject obj = latest.optJSONObject("point");
+            if (obj == null) {
+                continue;
+            }
+
+            Rect output = new Rect();
+            if(leftPadding!=0) {
+                output.left = obj.optInt("x0") + leftPadding;
+                output.right = obj.optInt("x1") + leftPadding;
+            } else {
+                output.left = obj.optInt("x0");
+                output.right = obj.optInt("x1");
+            }
+            output.top = obj.optInt("y0");
+            output.bottom = obj.optInt("y1");
+
+            boolean isVisible = latest.optBoolean("isVisible");
+            if(isVisible) {
+                keyVisibilityMap.put(key, 0);
+            } else {
+                keyVisibilityMap.put(key, keyVisibilityMap.get(key)+1);
+            }
+
             if(keyVisibilityMap.get(key) < 2) {
                 output.left = output.left-15;
                 output.right = output.right+15;
@@ -631,4 +659,3 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
 }
-
