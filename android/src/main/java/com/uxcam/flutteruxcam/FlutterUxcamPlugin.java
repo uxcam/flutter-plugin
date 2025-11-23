@@ -5,6 +5,8 @@ import android.os.Build;
 import android.util.Log;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.HandlerThread;
+import java.util.concurrent.atomic.AtomicReference;
 import android.os.SystemClock;
 
 import io.flutter.plugin.common.MethodCall;
@@ -31,6 +33,7 @@ import com.uxcam.screenshot.model.UXCamOcclusion;
 import com.uxcam.screenshot.model.UXCamOccludeAllTextFields;
 import com.uxcam.datamodel.UXConfig;
 
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -100,64 +103,91 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
     private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final HandlerThread occlusionThread = new HandlerThread("OcclusionProcessor");
+    private Handler occlusionHandler;
+    private final Map<String, Rect> occlusionRects = new HashMap<>();
+    private final Map<String, Rect> unionedocclusionRects = new HashMap<>();
+    private final AtomicReference<List<Rect>> rectsByFrame =
+      new AtomicReference<>(Collections.emptyList());
+
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
-                final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
-        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
-                binding.getBinaryMessenger(),
-                "uxcam_message_channel",
-                StandardMessageCodec.INSTANCE);
-                
-        delegate = UXCam.getDelegate();
-        delegate.setListener(new OcclusionRectRequestListener() {
 
-            @Override
-            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
-                int offset = 50;  
-                // Drop stale Flutter rect frames so old screens don't keep occluding
-                long staleCutoff = startTimeStamp - 1000; // keep ~1s of history
-                if (!frameDataMap.isEmpty()) {
-                    frameDataMap.headMap(staleCutoff, true).clear();
-                }
+        //off-load thread to process existing occlusion Rects
+        occlusionThread.start();
+        occlusionHandler = new Handler(occlusionThread.getLooper());
 
-                if (frameDataMap.isEmpty()) {
-                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
-                    return;
-                }
-
-                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-offset);
-                Long deletebeforeTimestamp = frameDataMap.lowerKey(startTimeStamp-offset - 10);
-                if (deletebeforeTimestamp != null) {
-                    frameDataMap.headMap(deletebeforeTimestamp, true).clear();
-                }
-
-                if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
-                    effectiveStartTimestamp = frameDataMap.firstKey();
-                }
-                Long effectiveEndTimestamp;
-                try {
-                    effectiveEndTimestamp = frameDataMap.lastKey();
-                } catch (Exception e) {
-                    effectiveEndTimestamp = null;
-                }
-
-                // If nothing recent, return empty to avoid recycling old rects
-                if (effectiveEndTimestamp == null || effectiveEndTimestamp < startTimeStamp - offset) {
-                    frameDataMap.clear();
-                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
-                    return;
-                }
-
-                if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
-                    ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
-                    delegate.createScreenshotFromCollectedRects(result);
-                } else {
-                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
-                }
-            }
-        });
+        //general method channel for native and flutter communication
+        final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
         channel.setMethodCallHandler(this);
 
+        //low latency communication channel for occlusion rect requests
+        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
+                binding.getBinaryMessenger(),
+                "uxcam_occlusion_channel",
+                StandardMessageCodec.INSTANCE);
+        uxcamMessageChannel.setMessageHandler((message, reply) -> {
+            occlusionHandler.post(() -> {
+                processOcclusionRequest(message);
+            });
+        });
+
+        delegate = UXCam.getDelegate();
+        delegate.setListener(new OcclusionRectRequestListener() {
+            @Override
+            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
+                List<Rect> snapshot = rectsByFrame.getAndSet(Collections.emptyList());
+                //incase the user has stopped interacting with the app, make sure that the last occlusion data is still used
+                occlusionHandler.post(() -> {
+                    unionedocclusionRects.clear();
+                    occlusionRects.forEach((key, value) -> {
+                        updateRectsForFrame(key, value);
+                    });
+               });
+                delegate.createScreenshotFromCollectedRects(new ArrayList<>(snapshot));
+            }
+        });
+    }
+
+
+    private void processOcclusionRequest(Object message) {
+        try {
+            JSONObject jsonObject = new JSONObject((Map) message);
+            String widgetKey = jsonObject.getString("key");
+            if(widgetKey == null || widgetKey.isEmpty()) {
+                return;
+            }   
+            JSONObject bound = jsonObject.getJSONObject("point");
+            Rect rect = new Rect();
+            rect.left = bound.getInt("x0");
+            rect.top = bound.getInt("y0");
+            rect.right = bound.getInt("x1");
+            rect.bottom = bound.getInt("y1");
+
+            updateRectsForFrame(widgetKey, rect);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error processing occlusion request", e);
+        }
+    }
+
+    private void updateRectsForFrame(String widgetKey, Rect rect) {
+        occlusionRects.put(widgetKey, rect);
+        if(unionedocclusionRects.containsKey(widgetKey)) {
+            Rect existing = unionedocclusionRects.get(widgetKey);
+            existing.union(rect);
+            unionedocclusionRects.put(widgetKey, existing);
+        } else {
+            unionedocclusionRects.put(widgetKey, rect);
+        }
+
+        rectsByFrame.getAndUpdate(previous -> {
+            List<Rect> output = new ArrayList<>();
+            unionedocclusionRects.forEach((key, value) -> {
+                output.add(value);
+          });
+            return Collections.unmodifiableList(output);
+        });
     }
 
     @Override
