@@ -20,14 +20,15 @@ class MyApp extends StatelessWidget {
 
     // Configuration
     FlutterUxConfig config = FlutterUxConfig(
-      userAppKey: 'UXCAM_API_KEY',
+      userAppKey: 'n5ctt823s8qihkk-us',
       // Important as this is handled by automatic screenTagging https://developer.uxcam.com/docs/tag-of-screens#control-automatic-tagging
-      enableAutomaticScreenNameTagging: false,
+      enableAutomaticScreenNameTagging: true,
+      enableIntegrationLogging: true,
     );
 
     FlutterUxcam.startWithConfiguration(config);
 
-    return UXCamGestureHandler(child: const MaterialApp(home: UXCamPage()));
+    return const MaterialApp(home: UXCamPage());
   }
 }
 
@@ -42,6 +43,66 @@ class UXCamPage extends StatelessWidget {
         padding: const EdgeInsets.all(8.0),
         children: [
           /// 1. Tagging Screen Manually
+          FeatureSection(
+            title: 'Screen Tagging',
+            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+            buttonTitle: 'Tag Screen',
+          ),
+          FeatureSection(
+            title: 'Setting User Identity',
+            onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
+            buttonTitle: 'Set User Identity',
+          ),
+          FeatureSection(
+            occlude: true,
+            title: 'Setting User Property**',
+            onPressed: () => FlutterUxcam.setUserProperty(
+                'userPropKeyString', 'valueString'),
+            buttonTitle: 'Set User Property',
+          ),
+          FeatureSection(
+            title: 'Custom Event',
+            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+            buttonTitle: 'Custom Event',
+          ),
+          FeatureSection(
+            title: 'Custom Event With Properties',
+            onPressed: () =>
+                FlutterUxcam.logEventWithProperties('Custom Event', {
+              'Property 1': 12345,
+            }),
+            buttonTitle: 'Custom Event with Property',
+          ),
+          FeatureSection(
+            occlude: true,
+            title: 'Screen Tagging**',
+            onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
+            buttonTitle: 'Tag Screen',
+          ),
+          FeatureSection(
+            title: 'Setting User Identity',
+            onPressed: () => FlutterUxcam.setUserIdentity('Guest User'),
+            buttonTitle: 'Set User Identity',
+          ),
+          FeatureSection(
+            title: 'Setting User Property',
+            onPressed: () => FlutterUxcam.setUserProperty(
+                'userPropKeyString', 'valueString'),
+            buttonTitle: 'Set User Property',
+          ),
+          FeatureSection(
+            title: 'Custom Event',
+            onPressed: () => FlutterUxcam.logEvent('Custom Event'),
+            buttonTitle: 'Custom Event',
+          ),
+          FeatureSection(
+            title: 'Custom Event With Properties',
+            onPressed: () =>
+                FlutterUxcam.logEventWithProperties('Custom Event', {
+              'Property 1': 12345,
+            }),
+            buttonTitle: 'Custom Event with Property',
+          ),
           FeatureSection(
             title: 'Screen Tagging',
             onPressed: () => FlutterUxcam.tagScreenName('Example Screen'),
@@ -83,12 +144,14 @@ class FeatureSection extends StatelessWidget {
   final String title;
   final OnFeatureButtonPressed onPressed;
   final String buttonTitle;
+  final bool occlude;
 
   const FeatureSection({
     Key? key,
     required this.title,
     required this.onPressed,
     required this.buttonTitle,
+    this.occlude = false,
   }) : super(key: key);
 
   @override
@@ -96,10 +159,19 @@ class FeatureSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
+        occlude
+            ? OccludeWrapper(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              )
+            : Text(
+                title,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
         ElevatedButton(
           onPressed: onPressed,
           child: Text(buttonTitle),
