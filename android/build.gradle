@@ -4,8 +4,7 @@ version '1.0-SNAPSHOT'
 buildscript {
     repositories {
         google()
-        jcenter()
-//        mavenLocal()
+        mavenCentral()
     }
 
     dependencies {
@@ -16,12 +15,10 @@ buildscript {
 rootProject.allprojects {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
         maven {
             url 'https://sdk.uxcam.com/android/'
         }
-//        mavenLocal()
-//        flatDir {dirs 'libs'}
     }
 }
 
@@ -43,7 +40,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.uxcam:uxcam:3.6.37'
+    //To use the alpha version please use the following dependency pattern: implementation 'com.uxcam:uxcam-debug:<sdk-version>-alpha.1+<branch-commit-hash>'
+    implementation 'com.uxcam:uxcam:3.8.3'
     implementation "com.squareup.okhttp3:okhttp:4.8.1"
-//    implementation fileTree(dir: '/Users/uxcam/AndroidStudioProjects/flutter_uxcam/lib/', include: ['*.jar'])
 }

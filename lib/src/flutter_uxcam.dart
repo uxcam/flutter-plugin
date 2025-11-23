@@ -2,100 +2,18 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_uxcam/src/flutter_occlusion.dart';
+import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
+import 'package:flutter_uxcam/src/helpers/extensions.dart';
+import 'package:flutter_uxcam/src/models/track_data.dart';
+import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
 import 'package:stack_trace/stack_trace.dart';
-
-class FlutterUxConfigKeys {
-  static const userAppKey = "userAppKey";
-  static const enableIntegrationLogging = "enableIntegrationLogging";
-  static const enableMultiSessionRecord = "enableMultiSessionRecord";
-  static const enableCrashHandling = "enableCrashHandling";
-  static const enableAutomaticScreenNameTagging =
-      "enableAutomaticScreenNameTagging";
-  static const enableNetworkLogging = "enableNetworkLogging";
-  static const enableAdvancedGestureRecognition =
-      "enableAdvancedGestureRecognition";
-  static const occlusion = "occlusion";
-}
-
-/// Configuration Model for specifying flags to be sent to server
-/// 
-/// For values that are not set, sdk defaults will be added.
-/// 
-/// [userAppKey] is String. Required. Should be present to start SDK
-/// 
-/// [enableIntegrationLogging] is boolean and default set to false.
-/// 
-/// [enableMultiSessionRecord] is boolean
-/// 
-/// [enableCrashHandling] is boolean
-/// 
-/// [enableAutomaticScreenNameTagging] is boolean
-/// 
-/// * See: [Flutter Tagging Approach](https://developer.uxcam.com/docs/flutter-tagging-approach)
-/// 
-/// [enableAdvancedGestureRecognition] is boolean
-/// 
-/// [occlusions] is FlutterOcclusion Object for occlusion or blurring
-class FlutterUxConfig {
-  String userAppKey;
-
-  bool? enableIntegrationLogging;
-  bool? enableMultiSessionRecord;
-  bool? enableCrashHandling;
-  bool? enableAutomaticScreenNameTagging;
-  bool? enableNetworkLogging;
-  bool? enableAdvancedGestureRecognition;
-  List<FlutterUXOcclusion>? occlusions;
-
-  FlutterUxConfig({
-    required this.userAppKey,
-    this.enableIntegrationLogging,
-    this.enableMultiSessionRecord,
-    this.enableCrashHandling,
-    this.enableAutomaticScreenNameTagging,
-    this.enableNetworkLogging,
-    this.enableAdvancedGestureRecognition,
-    this.occlusions,
-  });
-
-  factory FlutterUxConfig.fromJson(Map<String, dynamic> json) {
-    var userAppKey = json[FlutterUxConfigKeys.userAppKey];
-    var config = FlutterUxConfig(userAppKey: userAppKey);
-    config.enableIntegrationLogging = 
-        json[FlutterUxConfigKeys.enableIntegrationLogging];
-    config.enableMultiSessionRecord =
-        json[FlutterUxConfigKeys.enableMultiSessionRecord];
-    config.enableCrashHandling = json[FlutterUxConfigKeys.enableCrashHandling];
-    config.enableAutomaticScreenNameTagging =
-        json[FlutterUxConfigKeys.enableAutomaticScreenNameTagging];
-    config.enableNetworkLogging =
-        json[FlutterUxConfigKeys.enableNetworkLogging];
-    config.enableAdvancedGestureRecognition =
-        json[FlutterUxConfigKeys.enableAdvancedGestureRecognition];
-    return config;
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      FlutterUxConfigKeys.userAppKey: userAppKey,
-      FlutterUxConfigKeys.enableIntegrationLogging: enableIntegrationLogging,
-      FlutterUxConfigKeys.enableMultiSessionRecord: enableMultiSessionRecord,
-      FlutterUxConfigKeys.enableCrashHandling: enableCrashHandling,
-      FlutterUxConfigKeys.enableAutomaticScreenNameTagging:
-          enableAutomaticScreenNameTagging,
-      FlutterUxConfigKeys.enableNetworkLogging: enableNetworkLogging,
-      FlutterUxConfigKeys.enableAdvancedGestureRecognition:
-          enableAdvancedGestureRecognition,
-      FlutterUxConfigKeys.occlusion:
-          occlusions?.map((occlusion) => occlusion.toJson()).toList()
-    };
-  }
-}
 
 class FlutterUxcam {
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
+
+  static UxCam? uxCam;
 
   /// For getting platformVersion from Native Side.
   static Future<String> get platformVersion async {
@@ -111,7 +29,7 @@ class FlutterUxcam {
   ///
   /// * [FlutterUxConfig](https://pub.dev/documentation/flutter_uxcam/latest/uxcam/FlutterUxConfig-class.html)
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
-    
+    uxCam = UxCam();
     ChannelCallback.handleChannelCallBacks(_channel);
 
     final bool? status = await _channel.invokeMethod<bool>(
@@ -119,7 +37,15 @@ class FlutterUxcam {
 
     return status!;
   }
-  
+
+  static Future<void> attachBridge() async {
+    if (Platform.isIOS) {
+      await _channel.invokeMethod('attachBridge');
+    } else {
+      return;
+    }
+  }
+
   /// This call is available only for IOS portion of the SDK so not sure will work on Android.
   static Future<FlutterUxConfig> configurationForUXCam() async {
     final Map<String, dynamic>? json =
@@ -147,6 +73,11 @@ class FlutterUxcam {
   /// This method is used for starting new session
   static Future<void> startNewSession() async {
     await _channel.invokeMethod('startNewSession');
+  }
+
+  /// This method is used add a new rect that needs to be tracked
+  static Future<void> addNewRect() async {
+    await _channel.invokeMethod('addNewRect');
   }
 
   /// This method is used for stopping the current session
@@ -522,6 +453,48 @@ class FlutterUxcam {
       "x1": x1,
       "y1": y1,
     });
+  }
+
+  static Future<void> addFrameData(int timestamp, String frameData) async {
+    await _channel.invokeMethod<void>("addFrameData", {
+      "timestamp": timestamp,
+      "frameData": frameData,
+    });
+  }
+
+  /// Methods declared to handle smart events.
+  static Future<void> appendGestureContent(
+      Offset position, TrackData trackData) async {
+    var instance = OcclusionWrapperManager();
+    var rects = instance.fetchOcclusionRects();
+    final data = trackData.toJson();
+    data['occlusionRects'] = rects;
+    await _channel.invokeMethod<void>("appendGestureContent", {
+      "x": position.dx.toNative.toDouble(),
+      "y": position.dy.toNative.toDouble(),
+      "data": data,
+    });
+  }
+
+  /// Set user defined types for tracing elements.
+  /// This will allow UXCam to recognize custom widgets as traceable elements.
+  /// [types] is a list of Type objects.
+  static void addUserDefinedType(Type type) {
+    UxTraceableElement.addUserDefinedType(type);
+  }
+
+  static void removeUserDefinedType(Type type) {
+    UxTraceableElement.removeUserDefinedType(type);
+  }
+
+  /// Set the entire userDefinedTypes list.
+  /// [types] is a list of Type objects.
+  static void setUserDefinedTypes(List<Type> types) {
+    UxTraceableElement.setUserDefinedTypes(types);
+  }
+
+  static void clearUserDefinedTypes() {
+    UxTraceableElement.clearUserDefinedTypes();
   }
 }
 

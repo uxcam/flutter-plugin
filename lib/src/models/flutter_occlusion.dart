@@ -6,7 +6,14 @@ class FlutterUxOcclusionKeys {
   static const config = "config";
 }
 
-enum UXOcclusionType { none, occludeAllTextFields, overlay, blur, unknown }
+enum UXOcclusionType {
+  none,
+  occludeAllTextFields,
+  overlay,
+  blur,
+  unknown,
+  aiTextOcclusion
+}
 
 abstract class FlutterUXOcclusion {
   String get name;

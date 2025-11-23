@@ -3,18 +3,27 @@ package com.uxcam.flutteruxcam;
 import android.app.Activity;
 import android.os.Build;
 import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
+import io.flutter.plugin.common.StandardMessageCodec;
+import io.flutter.plugin.common.BasicMessageChannel.MessageHandler;
+import io.flutter.plugin.common.BasicMessageChannel;
+import io.flutter.plugin.common.BasicMessageChannel.Reply;
+import io.flutter.plugin.common.StringCodec;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
+import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
+import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
 import com.uxcam.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
@@ -25,16 +34,37 @@ import com.uxcam.datamodel.UXConfig;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Objects;
+import android.graphics.Rect;
+import android.view.View;
+import android.util.DisplayMetrics;
+import android.view.Display;
+import android.util.Log;
 
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.DisplayCutoutCompat;
+import android.content.res.Configuration;
+import android.view.Surface;
+import android.view.WindowManager;
+import android.content.Context;
+import android.view.WindowInsets;
+import androidx.core.view.DisplayCutoutCompat;
+
+import org.json.JSONObject;
 import org.json.JSONArray;
+import org.json.JSONException;
 import androidx.annotation.NonNull;
+import java.util.TreeMap;
 
 /**
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.5.8";
+    private static final String TYPE_VERSION = "2.7.2";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
@@ -60,29 +90,130 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
      */
     private static Activity activity;
 
-    public static void registerWith(Registrar registrar) {
-        activity = registrar.activity();
-        register(registrar.messenger());
-    }
+    private CrossPlatformDelegate delegate;
+
+    private int leftPadding;
+    private int cutoutTop = 0;
+    private int cutoutBottom = 0;
+    private Insets systemBars = Insets.NONE;
+    private boolean hasNotch = false;
+    private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
+    private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
-        register(binding.getBinaryMessenger());
+                final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
+        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
+                binding.getBinaryMessenger(),
+                "uxcam_message_channel",
+                StandardMessageCodec.INSTANCE);
+                
+        delegate = UXCam.getDelegate();
+        delegate.setListener(new OcclusionRectRequestListener() {
+
+            @Override
+            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
+                int offset = 50;  
+                // Drop stale Flutter rect frames so old screens don't keep occluding
+                long staleCutoff = startTimeStamp - 1000; // keep ~1s of history
+                if (!frameDataMap.isEmpty()) {
+                    frameDataMap.headMap(staleCutoff, true).clear();
+                }
+
+                if (frameDataMap.isEmpty()) {
+                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                    return;
+                }
+
+                Long effectiveStartTimestamp = frameDataMap.lowerKey(startTimeStamp-offset);
+                Long deletebeforeTimestamp = frameDataMap.lowerKey(startTimeStamp-offset - 10);
+                if (deletebeforeTimestamp != null) {
+                    frameDataMap.headMap(deletebeforeTimestamp, true).clear();
+                }
+
+                if(effectiveStartTimestamp == null && frameDataMap.size() > 0) {
+                    effectiveStartTimestamp = frameDataMap.firstKey();
+                }
+                Long effectiveEndTimestamp;
+                try {
+                    effectiveEndTimestamp = frameDataMap.lastKey();
+                } catch (Exception e) {
+                    effectiveEndTimestamp = null;
+                }
+
+                // If nothing recent, return empty to avoid recycling old rects
+                if (effectiveEndTimestamp == null || effectiveEndTimestamp < startTimeStamp - offset) {
+                    frameDataMap.clear();
+                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                    return;
+                }
+
+                if(effectiveEndTimestamp != null && effectiveStartTimestamp!=null) {
+                    ArrayList<Rect> result = combineRectDataIfSimilar(effectiveStartTimestamp, effectiveEndTimestamp);
+                    delegate.createScreenshotFromCollectedRects(result);
+                } else {
+                    delegate.createScreenshotFromCollectedRects(new ArrayList<Rect>());
+                }
+            }
+        });
+        channel.setMethodCallHandler(this);
+
     }
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
     }
 
-    public static void register(BinaryMessenger messenger) {
-        final MethodChannel channel = new MethodChannel(messenger, "flutter_uxcam");
-        channel.setMethodCallHandler(new FlutterUxcamPlugin());
-    }
-
-
     @Override
     public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
         activity = activityPluginBinding.getActivity();
+        ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, i) -> {
+            WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(activity.getWindow().getDecorView());
+            if (insets != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowInsets insets1 = activity.getWindow()
+                .getDecorView()
+                .getRootWindowInsets();
+            if (insets1 != null) {
+                DisplayCutoutCompat cutout = insets.getDisplayCutout();
+                    if (cutout != null && cutout.getBoundingRects() != null && !cutout.getBoundingRects().isEmpty()) {
+                        hasNotch = true;
+                    }
+            }
+        }
+                DisplayCutoutCompat cutout = insets.getDisplayCutout();
+                if (cutout != null) {
+                    cutoutTop = cutout.getSafeInsetTop();
+                    cutoutBottom = cutout.getSafeInsetBottom();
+                }
+            }         
+            int orientation = activity.getResources().getConfiguration().orientation;
+            if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                Display display = ((WindowManager) activity.getSystemService(Context.WINDOW_SERVICE))
+                      .getDefaultDisplay();
+                int rotation = display.getRotation();
+                if(rotation == Surface.ROTATION_90) {
+                    int topInset = systemBars.left;
+                    if (hasNotch) {
+                        topInset = systemBars.top;
+                    }
+                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    Log.d("bars","landscape_90" + systemBars.toString());
+                    leftPadding = Math.max(topInset, cutoutTop);
+                } else if (rotation == Surface.ROTATION_270) {
+                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    Log.d("bars","landscape_270" + systemBars.toString());
+                    leftPadding = Math.max(systemBars.left, cutoutBottom);
+                }
+            } else {
+                if(insets!=null) {
+                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                }
+                Log.d("bars","portrait" + systemBars.toString());
+                leftPadding = 0;
+            }
+            return ViewCompat.onApplyWindowInsets(v, insets);
+        });
     }
 
     @Override
@@ -295,7 +426,19 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             UXCamOcclusion occlusion = getOcclusion(occlusionMap);
             UXCam.removeOcclusion(occlusion);
             result.success(true);
-        } else {
+        } else if ("addFrameData".equals(call.method)) {
+            long timestamp = call.argument("timestamp");
+            String frameData = call.argument("frameData");
+            frameDataMap.put(timestamp,frameData);
+            result.success(true);
+        } else if ("appendGestureContent".equals(call.method)) {
+            double x = call.argument("x");
+            double y = call.argument("y");
+            String gestureContent = call.argument("data").toString();
+            UXCam.appendGestureContent((float)x, (float)y, gestureContent);
+            result.success(true);
+        }
+        else {
             result.notImplemented();
         }
     }
@@ -440,4 +583,79 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             return null;
         }
     }
+
+    private ArrayList<Rect> combineRectDataIfSimilar(Long start, Long end) {
+
+        HashMap<String, JSONArray> widgetDataByKey = new HashMap<>();
+
+        Map<Long, String> effectiveFrameMap = frameDataMap.subMap(start, true, end, true);
+
+        for (Map.Entry<Long, String> entry : effectiveFrameMap.entrySet()) {
+            try {
+                String frameData = entry.getValue();
+                JSONArray list = new JSONArray(frameData);
+                for(int i = 0 ; i < list.length(); i++){
+                    JSONObject obj = list.getJSONObject(i);
+                    String key = obj.optString("key");
+                    JSONArray values;
+                    if(widgetDataByKey.containsKey(key)){
+                        values = widgetDataByKey.get(key);
+                    } else {
+                        values = new JSONArray();
+                    }
+                    values.put(obj);
+                    widgetDataByKey.put(key, values);
+                }
+            } catch (JSONException e) {
+                Log.e(TAG, "Error parsing JSON", e);
+            }
+        }
+        
+        ArrayList<Rect> result = new ArrayList<Rect>();
+        for (Map.Entry<String, JSONArray> entry : widgetDataByKey.entrySet()) {
+            String key = entry.getKey();
+            if (!keyVisibilityMap.containsKey(key)) {
+                keyVisibilityMap.put(key, 0);
+            }
+            JSONArray values = entry.getValue();
+            // Use only the most recent position per key to avoid growing unions during scroll
+            JSONObject latest = values.optJSONObject(values.length() - 1);
+            if (latest == null) {
+                continue;
+            }
+
+            JSONObject obj = latest.optJSONObject("point");
+            if (obj == null) {
+                continue;
+            }
+
+            Rect output = new Rect();
+            if(leftPadding!=0) {
+                output.left = obj.optInt("x0") + leftPadding;
+                output.right = obj.optInt("x1") + leftPadding;
+            } else {
+                output.left = obj.optInt("x0");
+                output.right = obj.optInt("x1");
+            }
+            output.top = obj.optInt("y0");
+            output.bottom = obj.optInt("y1");
+
+            boolean isVisible = latest.optBoolean("isVisible");
+            if(isVisible) {
+                keyVisibilityMap.put(key, 0);
+            } else {
+                keyVisibilityMap.put(key, keyVisibilityMap.get(key)+1);
+            }
+
+            if(keyVisibilityMap.get(key) < 2) {
+                output.left = output.left-15;
+                output.right = output.right+15;
+                output.top = output.top-25;
+                output.bottom = output.bottom+25;
+                result.add(output);
+            }
+        }
+        return result;
+    }
+
 }
