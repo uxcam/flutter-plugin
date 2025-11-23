@@ -52,8 +52,7 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
       rect = _widgetKey.globalPaintBounds ?? Rect.zero;
     }
-    OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
+    OcclusionWrapperManager().send(_widgetKey, rect);
   }
 
   void _updatePositionForTopRouteOnly() {
@@ -112,8 +111,8 @@ class OccludeWrapperState extends State<OccludeWrapper>
     if (!mounted) return;
     var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
     OcclusionWrapperManager().registerOcclusionWrapper(item);
-    OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-        _widgetKey, _widgetKey.globalPaintBounds ?? Rect.zero);
+    OcclusionWrapperManager()
+        .send(_widgetKey, _widgetKey.globalPaintBounds ?? Rect.zero);
   }
 
   void unRegisterOcclusionWidget() {
