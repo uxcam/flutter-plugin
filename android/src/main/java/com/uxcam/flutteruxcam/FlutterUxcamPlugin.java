@@ -129,6 +129,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 StandardMessageCodec.INSTANCE);
         uxcamMessageChannel.setMessageHandler((message, reply) -> {
             occlusionHandler.post(() -> {
+                Log.d("occ-test",message.toString())
                 processOcclusionRequest(message);
             });
         });
