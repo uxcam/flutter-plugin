@@ -169,7 +169,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
                 updateRectsForFrame(widgetKey, rect);
             } else {
-                Log.d(TAG, "Widget with key " + widgetKey + " is not visible.");
                 //the widget is not visible, remove the rect
                 occlusionRects.remove(widgetKey);
             }
@@ -451,6 +450,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("startWithConfiguration".equals(call.method)) {
             Map<String, Object> configMap = call.argument("config");
             boolean success = startWithConfig(configMap);
+            //starting a new session when app returns from background, clear previous occlusions
+            occlusionRects.clear();
             UXCam.pluginType("flutter", TYPE_VERSION);
             result.success(success);
         } else if ("applyOcclusion".equals(call.method)) {
