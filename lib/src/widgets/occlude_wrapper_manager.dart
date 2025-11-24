@@ -75,6 +75,10 @@ class OcclusionWrapperManager {
     _channel.send({"key": key.toString(), "point": rects[key]?.toJson()});
   }
 
+  void remove(GlobalKey key) {
+    _channel.send({"key": key.toString()});
+  }
+
   void _startUpdateTimerIfNeeded() {
     if (_updateTimer == null && items.isNotEmpty) {
       _updateTimer = Timer.periodic(_currentUpdateInterval, (_) {

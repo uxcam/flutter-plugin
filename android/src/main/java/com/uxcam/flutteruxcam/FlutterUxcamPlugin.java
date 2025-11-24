@@ -158,14 +158,21 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             if(widgetKey == null || widgetKey.isEmpty()) {
                 return;
             }   
-            JSONObject bound = jsonObject.getJSONObject("point");
-            Rect rect = new Rect();
-            rect.left = bound.getInt("x0");
-            rect.top = bound.getInt("y0");
-            rect.right = bound.getInt("x1");
-            rect.bottom = bound.getInt("y1");
+            JSONObject bound = jsonObject.optJSONObject("point");
+            if(bound!=null) {
+                //the widget is visible, update the rect
+                Rect rect = new Rect();
+                rect.left = bound.getInt("x0");
+                rect.top = bound.getInt("y0");
+                rect.right = bound.getInt("x1");
+                rect.bottom = bound.getInt("y1");
 
-            updateRectsForFrame(widgetKey, rect);
+                updateRectsForFrame(widgetKey, rect);
+            } else {
+                Log.d(TAG, "Widget with key " + widgetKey + " is not visible.");
+                //the widget is not visible, remove the rect
+                occlusionRects.remove(widgetKey);
+            }
         } catch (JSONException e) {
             Log.e(TAG, "Error processing occlusion request", e);
         }
