@@ -452,6 +452,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             boolean success = startWithConfig(configMap);
             //starting a new session when app returns from background, clear previous occlusions
             occlusionRects.clear();
+            rectsByFrame.getAndSet(Collections.emptyList());
             UXCam.pluginType("flutter", TYPE_VERSION);
             result.success(success);
         } else if ("applyOcclusion".equals(call.method)) {
