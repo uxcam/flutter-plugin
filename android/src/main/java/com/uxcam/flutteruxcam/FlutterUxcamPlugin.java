@@ -161,11 +161,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             JSONObject bound = jsonObject.optJSONObject("point");
             if(bound!=null) {
                 //the widget is visible, update the rect
+                int transitionOffset = 10;
                 Rect rect = new Rect();
                 rect.left = bound.getInt("x0");
-                rect.top = bound.getInt("y0");
+                rect.top = bound.getInt("y0") + transitionOffset;
                 rect.right = bound.getInt("x1");
-                rect.bottom = bound.getInt("y1");
+                rect.bottom = bound.getInt("y1") + transitionOffset;
 
                 updateRectsForFrame(widgetKey, rect);
             } else {
