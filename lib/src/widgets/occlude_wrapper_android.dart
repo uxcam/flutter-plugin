@@ -38,12 +38,6 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
       registerOcclusionWidget();
       _updatePositionForTopRouteOnly();
     });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        await FlutterUxcam.attachBridge();
-      } catch (_) {}
-    });
   }
 
   void _updatePosition() {
@@ -52,7 +46,11 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
     if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
       rect = _widgetKey.globalPaintBounds ?? Rect.zero;
     }
-    OcclusionWrapperManager().send(_widgetKey, rect);
+    if (_isWidgetInTopRoute()) {
+      OcclusionWrapperManager().send(_widgetKey, rect);
+    } else {
+      OcclusionWrapperManager().remove(_widgetKey);
+    }
   }
 
   void _updatePositionForTopRouteOnly() {
@@ -110,8 +108,6 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
     if (!mounted) return;
     var item = OcclusionWrapperItem(id: _uniqueId, key: _widgetKey);
     OcclusionWrapperManager().registerOcclusionWrapper(item);
-    OcclusionWrapperManager()
-        .send(_widgetKey, _widgetKey.globalPaintBounds ?? Rect.zero);
   }
 
   void unRegisterOcclusionWidget() {
