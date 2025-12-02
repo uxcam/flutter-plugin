@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/occlude_data.dart';
@@ -43,13 +42,8 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
       if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
         rect = _widgetKey.globalPaintBounds ?? Rect.zero;
       }
-      if (_isWidgetInTopRoute()) {
-        OcclusionWrapperManager()
-            .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
-      } else {
-        OcclusionWrapperManager()
-            .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
-      }
+      OcclusionWrapperManager()
+          .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
       _updatePosition();
     });
   }
@@ -70,9 +64,7 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
       onVisibilityChanged: (VisibilityInfo visibilityInfo) {
         if (!mounted) return;
         final visibilityFraction = visibilityInfo.visibleFraction;
-        if (visibilityFraction == 0) {
-          //hideOcclusionWidget();
-        } else {
+        if (visibilityFraction != 0) {
           registerOcclusionWidget();
         }
       },
@@ -109,13 +101,6 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
 
   void unRegisterOcclusionWidget() {
     OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-  }
-
-  void hideOcclusionWidget() {
-    if (!_isWidgetInTopRoute()) {
-      OcclusionWrapperManager().add(DateTime.now().millisecondsSinceEpoch,
-          _widgetKey, _widgetKey.globalPaintBounds!);
-    }
   }
 
   void getOccludePoint(Function(OccludePoint) rect) {
@@ -159,42 +144,5 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
       occludePoint.bottomRightX,
       occludePoint.bottomRightY,
     );
-  }
-
-  Route<dynamic>? _peekTopRoute(BuildContext context) {
-    final navigator = Navigator.maybeOf(context);
-    if (navigator == null) return null;
-
-    Route<dynamic>? top;
-    navigator.popUntil((route) {
-      top = route;
-      return true; // stops immediately, nothing is popped
-    });
-    return top;
-  }
-
-  bool _isWidgetInTopRoute() {
-    if (!mounted) return false;
-    try {
-      final route = ModalRoute.of(context);
-      if (route == null) return false;
-
-      if (route.isCurrent) {
-        return true;
-      }
-
-      if (route.isActive) {
-        final topRoute = _peekTopRoute(context);
-        if (topRoute != null) {
-          if (topRoute is PopupRoute && (topRoute).opaque == false) {
-            return true; // dialog / dropdown / bottom sheet on top: keep occluding
-          }
-        }
-      }
-
-      return false;
-    } on FlutterError {
-      return false;
-    }
   }
 }
