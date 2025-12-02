@@ -169,11 +169,38 @@ class OccludeWrapperState extends State<OccludeWrapper>
     );
   }
 
+  Route<dynamic>? _peekTopRoute(BuildContext context) {
+    final navigator = Navigator.maybeOf(context);
+    if (navigator == null) return null;
+
+    Route<dynamic>? top;
+    navigator.popUntil((route) {
+      top = route;
+      return true; // stops immediately, nothing is popped
+    });
+    return top;
+  }
+
   bool _isWidgetInTopRoute() {
     if (!mounted) return false;
     try {
-      ModalRoute? modalRoute = ModalRoute.of(context);
-      return modalRoute != null && modalRoute.isCurrent && modalRoute.isActive;
+      final route = ModalRoute.of(context);
+      if (route == null) return false;
+
+      if (route.isCurrent) {
+        return true;
+      }
+
+      if (route.isActive) {
+        final topRoute = _peekTopRoute(context);
+        if (topRoute != null) {
+          if (topRoute is PopupRoute && (topRoute).opaque == false) {
+            return true; // dialog / dropdown / bottom sheet on top: keep occluding
+          }
+        }
+      }
+
+      return false;
     } on FlutterError {
       return false;
     }
