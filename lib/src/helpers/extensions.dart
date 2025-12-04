@@ -28,14 +28,36 @@ extension GlobalKeyExtension on GlobalKey {
     }
   }
 
+  Route<dynamic>? _peekTopRoute(BuildContext context) {
+    final navigator = Navigator.maybeOf(context);
+    if (navigator == null) return null;
+
+    Route<dynamic>? top;
+    navigator.popUntil((route) {
+      top = route;
+      return true; // stops immediately, nothing is popped
+    });
+    return top;
+  }
+
   bool isWidgetVisible() {
     if (currentContext != null) {
       if (!currentContext!.mounted) return false;
       try {
-        ModalRoute? modalRoute = ModalRoute.of(currentContext!);
-        return modalRoute != null &&
-            modalRoute.isCurrent &&
-            modalRoute.isActive;
+        final route = ModalRoute.of(currentContext!);
+        if (route == null) return false;
+
+        if (route.isCurrent) {
+          return true;
+        }
+        if (route.isActive) {
+          final topRoute = _peekTopRoute(currentContext!);
+          if (topRoute != null) {
+            if (topRoute is PopupRoute && (topRoute).opaque == false) {
+              return true; // dialog / dropdown / bottom sheet on top: keep occluding
+            }
+          }
+        }
       } on FlutterError {
         return false;
       }
@@ -148,21 +170,22 @@ extension ElementX on Element {
 
 extension OptimizedElementX on Element {
   static final Map<int, Rect> _boundsCache = {};
-  
+
   Rect getEffectiveBoundsOptimized() {
     final hashCode = renderObject?.hashCode ?? 0;
     if (hashCode == 0) return Rect.zero;
-    
+
     final cached = _boundsCache[hashCode];
     if (cached != null) return cached;
-    
+
     if (renderObject is RenderBox) {
       final renderBox = renderObject as RenderBox;
       if (!renderBox.hasSize) return Rect.zero;
-      
+
       final translation = renderBox.getTransformTo(null).getTranslation();
-      final bounds = renderBox.paintBounds.shift(Offset(translation.x, translation.y));
-      
+      final bounds =
+          renderBox.paintBounds.shift(Offset(translation.x, translation.y));
+
       // Cache with size limit
       if (_boundsCache.length > 100) {
         _boundsCache.clear();
