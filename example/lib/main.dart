@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam_example/dialogs_page.dart';
@@ -273,7 +275,27 @@ class StatelessScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Interactive Demo')),
-      body: Container(),
+      body: OccludeWrapper(
+        child: TextFormField(
+          autofocus: false,
+          textAlign: TextAlign.start,
+          style: TextStyle(fontWeight: FontWeight.w400, fontSize: 20.0),
+          keyboardType: (Platform.isIOS)
+              ? const TextInputType.numberWithOptions(
+                  signed: true, decimal: true)
+              : TextInputType.phone,
+          textInputAction: TextInputAction.done,
+          decoration: InputDecoration(
+            contentPadding: EdgeInsets.all(20.0),
+            alignLabelWithHint: true,
+            hintStyle: TextStyle(fontSize: 20),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(width: 2, color: Colors.blue),
+            ),
+          ),
+          cursorColor: Colors.blue,
+        ),
+      ),
     );
   }
 }
