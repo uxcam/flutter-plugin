@@ -42,8 +42,11 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
       if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
         rect = _widgetKey.globalPaintBounds ?? Rect.zero;
       }
-      OcclusionWrapperManager()
-          .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, rect);
+      if (_isWidgetInTopRoute()) {
+        OcclusionWrapperManager().send(_widgetKey, rect);
+      } else {
+        OcclusionWrapperManager().remove(_widgetKey);
+      }
       _updatePosition();
     });
   }
@@ -52,8 +55,7 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     OcclusionWrapperManager().unRegisterOcclusionWrapper(_uniqueId);
-    OcclusionWrapperManager()
-        .add(DateTime.now().millisecondsSinceEpoch, _widgetKey, Rect.zero);
+    OcclusionWrapperManager().remove(_widgetKey);
     super.dispose();
   }
 
@@ -144,5 +146,42 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
       occludePoint.bottomRightX,
       occludePoint.bottomRightY,
     );
+  }
+
+  Route<dynamic>? _peekTopRoute(BuildContext context) {
+    final navigator = Navigator.maybeOf(context);
+    if (navigator == null) return null;
+
+    Route<dynamic>? top;
+    navigator.popUntil((route) {
+      top = route;
+      return true; // stops immediately, nothing is popped
+    });
+    return top;
+  }
+
+  bool _isWidgetInTopRoute() {
+    if (!mounted) return false;
+    try {
+      final route = ModalRoute.of(context);
+      if (route == null) return false;
+
+      if (route.isCurrent) {
+        return true;
+      }
+
+      if (route.isActive) {
+        final topRoute = _peekTopRoute(context);
+        if (topRoute != null) {
+          if (topRoute is PopupRoute && (topRoute).opaque == false) {
+            return true; // dialog / dropdown / bottom sheet on top: keep occluding
+          }
+        }
+      }
+
+      return false;
+    } on FlutterError {
+      return false;
+    }
   }
 }
