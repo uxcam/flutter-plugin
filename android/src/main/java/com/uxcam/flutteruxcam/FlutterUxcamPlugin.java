@@ -140,21 +140,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
 
                 List<Rect> snapshot = rectsByFrame.getAndSet(Collections.emptyList());
-
-                if(occludeScreens.contains(currentRoute)) {
-                    List<Rect> fullFrame = new ArrayList<>(1);
-                    fullFrame.add(getFullScreenRect());
-                    delegate.createScreenshotFromCollectedRects(new ArrayList<>(fullFrame));
-                    return;
-                }
-
-                if(blurScreens.contains(currentRoute)) {
-                    List<Rect> fullFrame = new ArrayList<>(1);
-                    fullFrame.add(getFullScreenRect());
-                    delegate.createScreenshotFromCollectedRects(new ArrayList<>(fullFrame));
-                    return;
-                }
-
                 //incase the user has stopped interacting with the app, make sure that the last occlusion data is still used
                 occlusionHandler.post(() -> {
                     unionedocclusionRects.clear();
