@@ -105,7 +105,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private final HandlerThread occlusionThread = new HandlerThread("OcclusionProcessor");
+    private HandlerThread occlusionThread = new HandlerThread("OcclusionProcessor");
     private Handler occlusionHandler;
     private final Map<String, Rect> occlusionRects = new HashMap<>();
     private final Map<String, Rect> unionedocclusionRects = new HashMap<>();
@@ -201,6 +201,18 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+        if (occlusionHandler != null) {
+            occlusionHandler.removeCallbacksAndMessages(null);
+            occlusionHandler = null;
+        }
+        if (occlusionThread != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                occlusionThread.quitSafely();
+            } else {
+                occlusionThread.quit();
+            }
+            occlusionThread = null;
+        }
     }
 
     @Override
