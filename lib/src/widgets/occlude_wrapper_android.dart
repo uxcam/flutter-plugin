@@ -39,6 +39,7 @@ class OccludeWrapperAndroidState extends State<OccludeWrapperAndroid>
   void _updatePosition() {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       Rect rect = Rect.zero;
       if (OcclusionWrapperManager().containsWidgetByKey(_widgetKey)) {
         rect = _widgetKey.globalPaintBounds ?? Rect.zero;
