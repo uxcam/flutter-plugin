@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
@@ -48,6 +49,11 @@ class OcclusionWrapperManager {
   static const Duration _defaultInterval =
       Duration(milliseconds: 100); // ~10fps
 
+  final _channel = BasicMessageChannel<Object?>(
+    'uxcam_occlusion_channel',
+    StandardMessageCodec(),
+  );
+
   void add(int timeStamp, GlobalKey key, Rect rect) {
     rects.remove(key);
     rects[key] = OccludePoint(
@@ -57,6 +63,20 @@ class OcclusionWrapperManager {
       rect.bottom.toNative,
     );
     // Timer is managed by registration/unregistration lifecycle
+  }
+
+  void send(GlobalKey key, Rect rect) {
+    rects[key] = OccludePoint(
+      rect.left.toNative,
+      rect.top.toNative,
+      rect.right.toNative,
+      rect.bottom.toNative,
+    );
+    _channel.send({"key": key.toString(), "point": rects[key]?.toJson()});
+  }
+
+  void remove(GlobalKey key) {
+    _channel.send({"key": key.toString()});
   }
 
   void _startUpdateTimerIfNeeded() {
