@@ -95,7 +95,7 @@ class _ExpandoElementRefStorage implements _ElementRefStorage {
 }
 
 /// Frame-synchronized element caching and indexing.
-class UXCamElementRegistry with WidgetsBindingObserver {
+class UXCamElementRegistry {
   // Use eager singleton to prevent resurrection issues
   static final UXCamElementRegistry _instance = UXCamElementRegistry._internal();
   factory UXCamElementRegistry() => _instance;
@@ -116,7 +116,6 @@ class UXCamElementRegistry with WidgetsBindingObserver {
     _isInitialized = true;
 
     _elementRefs = _createElementRefStorage();
-    WidgetsBinding.instance.addObserver(this);
   }
 
   void dispose() {
@@ -124,7 +123,6 @@ class UXCamElementRegistry with WidgetsBindingObserver {
 
     _isInitialized = false;
 
-    WidgetsBinding.instance.removeObserver(this);
     _elementRefs.clear();
     _cache.clear();
     _routeCache.clear();
@@ -191,8 +189,16 @@ class UXCamElementRegistry with WidgetsBindingObserver {
 
   Element? _getRootElement() {
     try {
-      // ignore: deprecated_member_use
-      return WidgetsBinding.instance.renderViewElement;
+      // Use rootElement (modern API) with fallback to deprecated renderViewElement
+      // for backward compatibility with older Flutter versions
+      final binding = WidgetsBinding.instance;
+      try {
+        return binding.rootElement;
+      } catch (_) {
+        // Fallback for older Flutter versions
+        // ignore: deprecated_member_use
+        return binding.renderViewElement;
+      }
     } catch (_) {
       return null;
     }
@@ -287,39 +293,13 @@ class UXCamElementRegistry with WidgetsBindingObserver {
     _treeDirty = true;
   }
 
-  int get cacheSize => _cache.length;
-
-  bool get isInitialized => _isInitialized;
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      onAppResumed();
-    }
-  }
-
-  @override
-  Future<bool> didPopRoute() async {
-    onRouteChange();
-    return false;
-  }
-
-  @override
-  Future<bool> didPushRoute(String route) async {
-    onRouteChange();
-    return false;
-  }
-
-  @override
-  Future<bool> didPushRouteInformation(RouteInformation routeInformation) async {
-    onRouteChange();
-    return false;
-  }
-
-  @override
-  void didHaveMemoryPressure() {
+  void handleMemoryPressure() {
     if (_cache.length > 1000) {
       _pruneOldestEntries(targetSize: 500);
     }
   }
+
+  int get cacheSize => _cache.length;
+
+  bool get isInitialized => _isInitialized;
 }

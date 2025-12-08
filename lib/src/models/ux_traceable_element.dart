@@ -6,22 +6,26 @@ import 'package:flutter_uxcam/src/core/uxcam_widget_classifier.dart';
 const UX_UNKOWN = UX_UNKNOWN;
 
 /// Widget type classifier for legacy UXCamHandler support.
-/// @deprecated Use [UXCamWidgetClassifier] instead.
+@Deprecated('Use UXCamWidgetClassifier or FlutterUxcam.registerButtonType() instead')
 class UxTraceableElement {
   static Set<Type> _userDefinedTypes = {};
 
+  @Deprecated('Use FlutterUxcam.registerButtonType() instead')
   static List<Type> get userDefinedTypes => _userDefinedTypes.toList();
 
+  @Deprecated('Use FlutterUxcam.registerButtonType() instead')
   static void addUserDefinedType(Type type) {
     _userDefinedTypes.add(type);
     UXCamWidgetClassifier.registerButtonType(type);
   }
 
+  @Deprecated('Use FlutterUxcam.registerButtonType() with unregisterButtonType() instead')
   static void removeUserDefinedType(Type type) {
     _userDefinedTypes.remove(type);
     UXCamWidgetClassifier.unregisterButtonType(type);
   }
 
+  @Deprecated('Use FlutterUxcam.registerButtonType() for each type instead')
   static void setUserDefinedTypes(List<Type> types) {
     _userDefinedTypes = Set<Type>.from(types);
     UXCamWidgetClassifier.clearCustomTypes();
@@ -30,6 +34,7 @@ class UxTraceableElement {
     }
   }
 
+  @Deprecated('Use UXCamWidgetClassifier.clearCustomTypes() instead')
   static void clearUserDefinedTypes() {
     _userDefinedTypes.clear();
     UXCamWidgetClassifier.clearCustomTypes();

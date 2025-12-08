@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/src/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
@@ -139,6 +140,12 @@ class UXCamWidgetExtractor {
   }
 
   bool _containsWithTolerance(Rect bounds, Offset position, double radius) {
+    // Check the position itself first
+    if (bounds.contains(position)) {
+      return true;
+    }
+
+    // Then check points around the position within the tolerance radius
     const int numPoints = 8;
     final offsets = List.generate(numPoints, (i) {
       final angle = (2 * pi * i) / numPoints;
@@ -273,6 +280,15 @@ class UXCamWidgetExtractor {
     if (widget is TextField) {
       return widget.decoration?.hintText ?? widget.decoration?.labelText ?? '';
     }
+    // Note: TextFormField doesn't expose decoration directly.
+    // The decoration is passed to the internal TextField builder.
+    // We handle this by extracting text from child TextField in _extractValue.
+    if (widget is CupertinoTextField) {
+      return widget.placeholder ?? '';
+    }
+    if (widget is CupertinoSearchTextField) {
+      return widget.placeholder ?? 'Search';
+    }
     return '';
   }
 
@@ -280,6 +296,8 @@ class UXCamWidgetExtractor {
     String label = '';
 
     void visitChildren(Element child) {
+      if (label.isNotEmpty) return;
+
       final widget = child.widget;
       if (widget is Text && widget.data != null && widget.data!.isNotEmpty) {
         label = widget.data!;

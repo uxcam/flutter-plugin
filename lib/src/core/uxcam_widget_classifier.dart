@@ -22,6 +22,7 @@ class UXCamWidgetClassifier {
     ElevatedButton,
     TextButton,
     OutlinedButton,
+    FilledButton,
     GestureDetector,
     InkWell,
     IconButton,
@@ -35,6 +36,15 @@ class UXCamWidgetClassifier {
     EndDrawerButton,
     MenuItemButton,
     SubmenuButton,
+    SegmentedButton,
+  };
+
+  static final Set<Type> _chipTypes = {
+    ActionChip,
+    FilterChip,
+    InputChip,
+    ChoiceChip,
+    RawChip,
   };
 
   static final Set<Type> _cupertinoButtonTypes = {
@@ -117,6 +127,7 @@ class UXCamWidgetClassifier {
     ElevatedButton: 'ElevatedButton',
     TextButton: 'TextButton',
     OutlinedButton: 'OutlinedButton',
+    FilledButton: 'FilledButton',
     IconButton: 'IconButton',
     FloatingActionButton: 'FloatingActionButton',
     GestureDetector: 'GestureDetector',
@@ -128,6 +139,13 @@ class UXCamWidgetClassifier {
     CloseButton: 'CloseButton',
     MenuItemButton: 'MenuItemButton',
     SubmenuButton: 'SubmenuButton',
+    SegmentedButton: 'SegmentedButton',
+    // Chip types
+    ActionChip: 'ActionChip',
+    FilterChip: 'FilterChip',
+    InputChip: 'InputChip',
+    ChoiceChip: 'ChoiceChip',
+    RawChip: 'RawChip',
     CupertinoButton: 'CupertinoButton',
     CupertinoContextMenuAction: 'CupertinoContextMenuAction',
     CupertinoDialogAction: 'CupertinoDialogAction',
@@ -189,7 +207,8 @@ class UXCamWidgetClassifier {
     if (_customInteractiveTypes.contains(runtimeType)) return UX_COMPOUND;
 
     if (_buttonTypes.contains(runtimeType) ||
-        _cupertinoButtonTypes.contains(runtimeType)) {
+        _cupertinoButtonTypes.contains(runtimeType) ||
+        _chipTypes.contains(runtimeType)) {
       return UX_BUTTON;
     }
 

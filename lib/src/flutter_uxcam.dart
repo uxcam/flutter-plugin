@@ -526,21 +526,29 @@ class FlutterUxcam {
   /// Set user defined types for tracing elements.
   /// This will allow UXCam to recognize custom widgets as traceable elements.
   /// [types] is a list of Type objects.
+  @Deprecated('Use FlutterUxcam.registerButtonType() instead')
   static void addUserDefinedType(Type type) {
+    // ignore: deprecated_member_use_from_same_package
     UxTraceableElement.addUserDefinedType(type);
   }
 
+  @Deprecated('Use UXCamWidgetClassifier.unregisterButtonType() instead')
   static void removeUserDefinedType(Type type) {
+    // ignore: deprecated_member_use_from_same_package
     UxTraceableElement.removeUserDefinedType(type);
   }
 
   /// Set the entire userDefinedTypes list.
   /// [types] is a list of Type objects.
+  @Deprecated('Use FlutterUxcam.registerButtonType() for each type instead')
   static void setUserDefinedTypes(List<Type> types) {
+    // ignore: deprecated_member_use_from_same_package
     UxTraceableElement.setUserDefinedTypes(types);
   }
 
+  @Deprecated('Use UXCamWidgetClassifier.clearCustomTypes() instead')
   static void clearUserDefinedTypes() {
+    // ignore: deprecated_member_use_from_same_package
     UxTraceableElement.clearUserDefinedTypes();
   }
 }

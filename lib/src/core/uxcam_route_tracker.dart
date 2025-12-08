@@ -69,10 +69,15 @@ class UXCamRouteTracker with WidgetsBindingObserver {
     return _getObserverTrackedRoute() ?? '/';
   }
 
+  /// Get the current route from the observer-tracked stacks.
+  /// Routes starting with ':' are considered internal/generated routes
+  /// (e.g., ':modal', ':overlay') and are excluded from tracking to prevent
+  /// noise in screen analytics.
   String? _getObserverTrackedRoute() {
     for (final stack in _navigatorStacks.values.toList().reversed) {
       if (stack.isNotEmpty) {
         final route = stack.last;
+        // Skip routes starting with ':' as they are internal/generated
         if (route.name != null && !route.name!.startsWith(':')) {
           return route.name;
         }
@@ -165,6 +170,7 @@ class UXCamRouteTracker with WidgetsBindingObserver {
   void _notifyRouteChanged() {
     onRouteChanged?.call();
     final currentRoute = _getObserverTrackedRoute();
+    // Only tag screen name for user-facing routes (not internal routes starting with ':')
     if (currentRoute != null &&
         currentRoute.isNotEmpty &&
         !currentRoute.startsWith(':')) {

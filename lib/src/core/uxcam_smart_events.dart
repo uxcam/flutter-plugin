@@ -255,6 +255,6 @@ class UXCamSmartEvents with WidgetsBindingObserver {
 
   @override
   void didHaveMemoryPressure() {
-    _elementRegistry?.didHaveMemoryPressure();
+    _elementRegistry?.handleMemoryPressure();
   }
 }
