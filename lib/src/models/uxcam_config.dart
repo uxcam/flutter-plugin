@@ -19,6 +19,10 @@ import 'package:flutter_uxcam/src/models/keys.dart';
 ///
 /// [enableAdvancedGestureRecognition] is boolean
 ///
+/// [enableSmartEvents] is boolean. When enabled, automatically tracks user
+/// gestures and widget interactions without requiring any widget wrapper.
+/// Default is true. Set to false to disable automatic gesture tracking.
+///
 /// [occlusions] is FlutterOcclusion Object for occlusion or blurring
 class FlutterUxConfig {
   String userAppKey;
@@ -29,6 +33,7 @@ class FlutterUxConfig {
   bool? enableAutomaticScreenNameTagging;
   bool? enableNetworkLogging;
   bool? enableAdvancedGestureRecognition;
+  bool? enableSmartEvents;
   List<FlutterUXOcclusion>? occlusions;
 
   FlutterUxConfig({
@@ -39,6 +44,7 @@ class FlutterUxConfig {
     this.enableAutomaticScreenNameTagging,
     this.enableNetworkLogging,
     this.enableAdvancedGestureRecognition,
+    this.enableSmartEvents,
     this.occlusions,
   });
 
@@ -56,6 +62,7 @@ class FlutterUxConfig {
         json[FlutterUxConfigKeys.enableNetworkLogging];
     config.enableAdvancedGestureRecognition =
         json[FlutterUxConfigKeys.enableAdvancedGestureRecognition];
+    config.enableSmartEvents = json[FlutterUxConfigKeys.enableSmartEvents];
     return config;
   }
 
@@ -70,6 +77,7 @@ class FlutterUxConfig {
       FlutterUxConfigKeys.enableNetworkLogging: enableNetworkLogging,
       FlutterUxConfigKeys.enableAdvancedGestureRecognition:
           enableAdvancedGestureRecognition,
+      FlutterUxConfigKeys.enableSmartEvents: enableSmartEvents,
       FlutterUxConfigKeys.occlusion:
           occlusions?.map((occlusion) => occlusion.toJson()).toList()
     };

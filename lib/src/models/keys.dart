@@ -8,6 +8,7 @@ class FlutterUxConfigKeys {
   static const enableNetworkLogging = "enableNetworkLogging";
   static const enableAdvancedGestureRecognition =
       "enableAdvancedGestureRecognition";
+  static const enableSmartEvents = "enableSmartEvents";
   static const occlusion = "occlusion";
 }
 

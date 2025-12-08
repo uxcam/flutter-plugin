@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/core/uxcam_widget_classifier.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
@@ -378,7 +379,7 @@ class GestureHandler {
         uiValue: leaf.isOccluded ? "" : leaf.value,
         uiId: leaf.isOccluded ? "" : leaf.route + generateStringHash(uId),
         uiClass: leaf.isOccluded ? "" : leaf.uiClass,
-        uiType: leaf.isOccluded ? UX_UNKOWN : effectiveType,
+        uiType: leaf.isOccluded ? UX_UNKNOWN : effectiveType,
         isSensitive: leaf.isOccluded,
       );
 

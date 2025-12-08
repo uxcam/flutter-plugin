@@ -2,18 +2,25 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_uxcam/src/core/uxcam_smart_events.dart';
+import 'package:flutter_uxcam/src/core/uxcam_widget_classifier.dart';
 import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
+import 'package:flutter_uxcam/src/models/flutter_occlusion.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
+import 'package:flutter_uxcam/src/models/uxcam_config.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
+import 'package:flutter_uxcam/uxcam.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 class FlutterUxcam {
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
 
   static UxCam? uxCam;
+
+  static final UXCamSmartEvents _smartEvents = UXCamSmartEvents();
 
   /// For getting platformVersion from Native Side.
   static Future<String> get platformVersion async {
@@ -22,20 +29,60 @@ class FlutterUxcam {
     return version!;
   }
 
-  /// This method is used to as a starting point for configuring and
-  /// starting point for setting up UXCam SDK.
+  /// Starts UXCam with the given [config].
   ///
-  /// [config] is a FlutterUxConfig Object
-  ///
-  /// * [FlutterUxConfig](https://pub.dev/documentation/flutter_uxcam/latest/uxcam/FlutterUxConfig-class.html)
+  /// Smart events are enabled by default. Set `config.enableSmartEvents = false` to disable.
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
+    WidgetsFlutterBinding.ensureInitialized();
+
     uxCam = UxCam();
     ChannelCallback.handleChannelCallBacks(_channel);
 
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
 
+    final enableSmartEvents = config.enableSmartEvents ?? true;
+    _smartEvents.initialize(enableGestureTracking: enableSmartEvents);
+
     return status!;
+  }
+
+  /// Navigator observer for route tracking (supports Navigator 1.0 and 2.0).
+  static NavigatorObserver get navigatorObserver =>
+      _smartEvents.navigatorObserver;
+
+  /// Create a navigator observer for nested navigators (e.g., bottom tabs).
+  static NavigatorObserver createNestedNavigatorObserver(String navigatorId) =>
+      _smartEvents.createNestedNavigatorObserver(navigatorId);
+
+  /// Enable smart event tracking.
+  static void enableSmartEvents() {
+    _smartEvents.enable();
+  }
+
+  /// Disable smart event tracking.
+  static void disableSmartEvents() {
+    _smartEvents.disable();
+  }
+
+  /// Register a custom widget type as a button.
+  static void registerButtonType(Type type) {
+    UXCamWidgetClassifier.registerButtonType(type);
+  }
+
+  /// Register a custom widget type as a text field.
+  static void registerFieldType(Type type) {
+    UXCamWidgetClassifier.registerFieldType(type);
+  }
+
+  /// Register a custom widget type as an interactive control.
+  static void registerInteractiveType(Type type) {
+    UXCamWidgetClassifier.registerInteractiveType(type);
+  }
+
+  /// Notify UXCam of a hot reload (debug only). Clears caches and re-registers handlers.
+  static void notifyHotReload() {
+    UXCamSmartEvents.notifyHotReload();
   }
 
   static Future<void> attachBridge() async {

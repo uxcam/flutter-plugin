@@ -4,32 +4,9 @@ import 'package:flutter_uxcam/src/models/gesture_handler.dart';
 import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
 import 'package:flutter_uxcam/src/widgets/uxcam_app_builder.dart';
 
-/// UXCamHandler is a widget that enables gesture tracking and element inspection
-/// for UXCam analytics within its widget subtree.
-///
-/// Place this widget high in your widget tree (e.g., above MaterialApp or at the root of a screen)
-/// to capture and analyze user gestures and UI interactions for all descendant widgets.
-///
-/// - [child]: The subtree to be tracked for gestures and UI element structure.
-/// - [types]: Optionally provide custom widget types to be treated as trackable elements.
-///
-/// Example usage:
-/// ```dart
-/// UXCamHandler(
-///   child: MaterialApp(
-///     home: MyHomePage(),
-///   ),
-/// )
-/// ```
-///
-/// This widget is intended for use in apps that integrate with UXCam for advanced gesture analytics.
-/// It should wrap the part of your app where you want gesture and UI element tracking to occur.
-///
-/// Note: Only one instance should be used per widget tree scope to avoid duplicate tracking.
-/// The widget uses a [Listener] to capture pointer events.
-///
-/// This is mandatory if want to use smart event feature.
-
+/// @Deprecated Smart events now work automatically via `startWithConfiguration()`.
+/// Remove this widget and optionally add `FlutterUxcam.navigatorObserver` to your app.
+@Deprecated('Smart events work automatically. Remove UXCamHandler from your widget tree.')
 class UXCamHandler extends StatefulWidget {
   const UXCamHandler(
       {Key? key, required this.child, this.types = const []})
@@ -83,8 +60,7 @@ class _UXCamHandlerState extends State<UXCamHandler> {
   }
 }
 
-/// Deprecated: use [UXCamHandler] instead.
-@Deprecated('UXCamGestureHandler is deprecated. Use UXCamHandler instead.')
+@Deprecated('Use smart events instead. Remove this widget entirely.')
 class UXCamGestureHandler extends UXCamHandler {
   const UXCamGestureHandler({Key? key, required Widget child, List<Type> types = const []})
       : super(key: key, child: child, types: types);
