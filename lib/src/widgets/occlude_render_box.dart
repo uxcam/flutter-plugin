@@ -30,6 +30,10 @@ class OccludeRenderBox extends RenderProxyBox
   ScrollPosition? _trackedScrollPosition;
   bool _isScrolling = false;
 
+  // Route visibility tracking
+  ModalRoute<dynamic>? _trackedRoute;
+  bool _isRouteVisible = true;
+
   bool get enabled => _enabled;
   set enabled(bool value) {
     if (_enabled == value) return;
@@ -60,6 +64,7 @@ class OccludeRenderBox extends RenderProxyBox
   void updateContext(BuildContext context) {
     _context = context;
     _setupScrollListener(context);
+    _setupRouteListener(context);
   }
 
   void _setupScrollListener(BuildContext context) {
@@ -88,6 +93,46 @@ class OccludeRenderBox extends RenderProxyBox
     }
   }
 
+
+  void _setupRouteListener(BuildContext context) {
+    _detachFromRoute();
+
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      _trackedRoute = route;
+      route.secondaryAnimation?.addStatusListener(_onSecondaryAnimationStatus);
+      _setRouteVisible(route.isCurrent);
+    } else {
+      _setRouteVisible(true);
+    }
+  }
+
+  void _detachFromRoute() {
+    _trackedRoute?.secondaryAnimation
+        ?.removeStatusListener(_onSecondaryAnimationStatus);
+    _trackedRoute = null;
+  }
+
+  void _onSecondaryAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      _setRouteVisible(false);
+    } else if (status == AnimationStatus.dismissed) {
+      _setRouteVisible(true);
+    }
+  }
+
+  void _setRouteVisible(bool visible) {
+    if (_isRouteVisible == visible) return;
+    _isRouteVisible = visible;
+
+    if (!visible && _lastReportedBounds != null) {
+      _lastReportedBounds = null;
+      registry.markDirty(this);
+    } else if (visible) {
+      markNeedsPaint();
+    }
+  }
+
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
@@ -97,6 +142,7 @@ class OccludeRenderBox extends RenderProxyBox
   @override
   void detach() {
     _detachFromScrollable();
+    _detachFromRoute();
     registry.unregister(this);
     super.detach();
   }
@@ -113,7 +159,7 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _calculateAndReportBounds() {
-    if (!_enabled || !attached) {
+    if (!_enabled || !attached || !_isRouteVisible) {
       if (_lastReportedBounds != null) {
         _lastReportedBounds = null;
         registry.markDirty(this);
@@ -147,7 +193,7 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _calculateAndReportBoundsThrottled({required double threshold}) {
-    if (!_enabled || !attached) {
+    if (!_enabled || !attached || !_isRouteVisible) {
       if (_lastReportedBounds != null) {
         _lastReportedBounds = null;
         registry.markDirty(this);
