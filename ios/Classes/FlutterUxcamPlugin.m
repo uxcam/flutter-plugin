@@ -14,12 +14,11 @@ static const NSString *FlutterOcclusion = @"occlusion";
 static const NSString *FlutterOccludeScreens = @"screens";
 static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
 
-static const NSString *FlutterChanelCallBackMethodPause = @"pauseRendering";
-static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllOcclusionRects";
-
 @interface FlutterUxcamPlugin ()
 @property(nonatomic, strong) FlutterMethodChannel *flutterChannel;
 @property(nonatomic, strong) FlutterBasicMessageChannel *flutterBasicMessageChannel;
+@property(nonatomic, strong) FlutterBasicMessageChannel *occlusionV2Channel;
+@property(nonatomic, strong) NSMutableDictionary<NSNumber *, NSValue *> *activeOcclusionsV2;
 @property (nonatomic, copy) void (^occludeRectsRequestHandler)(void (^)(NSArray *));
 @property (nonatomic, copy) void (^pauseForOcclusionNextFrameRequestHandler)(void (^)(BOOL));
 // Whether plugin bridge is attached to native or not
@@ -37,18 +36,31 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
     FlutterBasicMessageChannel* messageChannel = [FlutterBasicMessageChannel
                                                 messageChannelWithName:@"uxcam_message_channel"
                                                 binaryMessenger:[registrar messenger]];
+
+    FlutterBasicMessageChannel* occlusionChannel = [FlutterBasicMessageChannel
+                                                  messageChannelWithName:@"uxcam_occlusion_v2"
+                                                  binaryMessenger:[registrar messenger]
+                                                  codec:[FlutterBinaryCodec sharedInstance]];
     
     FlutterUxcamPlugin* instance = [[FlutterUxcamPlugin alloc] init];
 
     instance.flutterChannel = channel;
     instance.flutterBasicMessageChannel = messageChannel;
+    instance.occlusionV2Channel = occlusionChannel;
+    instance.activeOcclusionsV2 = [NSMutableDictionary dictionary];
     
     // Set the message handler for the basic channel
-        [messageChannel setMessageHandler:^(id  _Nullable message, FlutterReply  _Nonnull callback) {
+    [messageChannel setMessageHandler:^(id  _Nullable message, FlutterReply  _Nonnull callback) {
 
-            // Optionally, send a reply back to Dart
-            callback(@"Message received on iOS");
-        }];
+        // Optionally, send a reply back to Dart
+        callback(@"Message received on iOS");
+    }];
+
+    __weak FlutterUxcamPlugin *weakInstance = instance;
+    [occlusionChannel setMessageHandler:^(id  _Nullable message, FlutterReply  _Nonnull callback) {
+        [weakInstance handleOcclusionV2Message:message];
+        callback(nil);
+    }];
     
     [registrar addMethodCallDelegate:instance channel:channel];
     [UXCam pluginType:@"flutter" version:@"2.7.3"];
@@ -95,6 +107,8 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
     NSString *appKey = configDict[FlutterAppKey];
     UXCamConfiguration *config = [[UXCamConfiguration alloc] initWithAppKey:appKey];
     [self updateConfiguration:config withDict:configDict];
+    [self.activeOcclusionsV2 removeAllObjects];
+    [UXCam setOcclusionRects:@[]];
     
     // Attach bridge if not already attached
     if (!self.didAttachBridge) {
@@ -134,6 +148,87 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
         }
     } 
     result(nil);
+}
+
+- (void)handleOcclusionV2Message:(id)message
+{
+    if (![message isKindOfClass:[FlutterStandardTypedData class]]) {
+        return;
+    }
+
+    if (!self.activeOcclusionsV2) {
+        self.activeOcclusionsV2 = [NSMutableDictionary dictionary];
+    }
+
+    FlutterStandardTypedData *typedData = (FlutterStandardTypedData *)message;
+    NSData *data = typedData.data;
+
+    if (data.length < 4) {
+        return;
+    }
+
+    NSUInteger offset = 0;
+    int32_t count = 0;
+    [data getBytes:&count range:NSMakeRange(offset, 4)];
+    count = (int32_t)CFSwapInt32LittleToHost((uint32_t)count);
+    offset += 4;
+
+    if (count == -1) {
+        [self.activeOcclusionsV2 removeAllObjects];
+        [UXCam setOcclusionRects:@[]];
+        return;
+    }
+
+    for (int i = 0; i < count; i++) {
+        if (offset + 25 > data.length) {
+            break;
+        }
+
+        int32_t viewId = 0;
+        [data getBytes:&viewId range:NSMakeRange(offset, 4)];
+        offset += 4;
+
+        int32_t identifier = 0;
+        [data getBytes:&identifier range:NSMakeRange(offset, 4)];
+        offset += 4;
+
+        float left = [self floatFromLittleEndianData:data offset:offset];
+        float top = [self floatFromLittleEndianData:data offset:offset + 4];
+        float right = [self floatFromLittleEndianData:data offset:offset + 8];
+        float bottom = [self floatFromLittleEndianData:data offset:offset + 12];
+        UInt8 type = 0;
+        [data getBytes:&type range:NSMakeRange(offset + 16, 1)];
+        offset += 17;
+
+        (void)viewId;
+        (void)type;
+
+        if (left < 0) {
+            [self.activeOcclusionsV2 removeObjectForKey:@(identifier)];
+        } else {
+            CGRect rect = CGRectMake(left, top, right - left, bottom - top);
+            self.activeOcclusionsV2[@(identifier)] = [NSValue valueWithCGRect:rect];
+        }
+    }
+
+    NSMutableArray<NSValue *> *rects = [NSMutableArray arrayWithCapacity:self.activeOcclusionsV2.count];
+    for (NSValue *rectValue in self.activeOcclusionsV2.allValues) {
+        [rects addObject:rectValue];
+    }
+    [UXCam setOcclusionRects:rects];
+}
+
+- (float)floatFromLittleEndianData:(NSData *)data offset:(NSUInteger)offset
+{
+    if (offset + 4 > data.length) {
+        return 0;
+    }
+    uint32_t raw = 0;
+    [data getBytes:&raw range:NSMakeRange(offset, 4)];
+    raw = CFSwapInt32LittleToHost(raw);
+    float value = 0;
+    memcpy(&value, &raw, sizeof(float));
+    return value;
 }
 
 - (void)appendGestureContent:(FlutterMethodCall*)call result:(FlutterResult)result

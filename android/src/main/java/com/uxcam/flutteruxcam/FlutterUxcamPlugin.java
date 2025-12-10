@@ -6,6 +6,8 @@ import android.util.Log;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.HandlerThread;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.atomic.AtomicReference;
 import android.os.SystemClock;
 
@@ -14,6 +16,7 @@ import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.StandardMessageCodec;
+import io.flutter.plugin.common.BinaryCodec;
 import io.flutter.plugin.common.BasicMessageChannel.MessageHandler;
 import io.flutter.plugin.common.BasicMessageChannel;
 import io.flutter.plugin.common.BasicMessageChannel.Reply;
@@ -107,6 +110,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private HandlerThread occlusionThread = new HandlerThread("OcclusionProcessor");
     private Handler occlusionHandler;
+    private OcclusionHandlerV2 occlusionHandlerV2;
     private final Map<String, Rect> occlusionRects = new HashMap<>();
     private final Map<String, Rect> unionedocclusionRects = new HashMap<>();
     private final AtomicReference<List<Rect>> rectsByFrame =
@@ -135,6 +139,19 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         });
 
         delegate = UXCam.getDelegate();
+        occlusionHandlerV2 = new OcclusionHandlerV2(delegate);
+
+        final BasicMessageChannel<ByteBuffer> occlusionV2Channel = new BasicMessageChannel<>(
+                binding.getBinaryMessenger(),
+                "uxcam_occlusion_v2",
+                BinaryCodec.INSTANCE);
+        occlusionV2Channel.setMessageHandler((message, reply) -> {
+            if (message != null && occlusionHandler != null && occlusionHandlerV2 != null) {
+                occlusionHandler.post(() -> occlusionHandlerV2.handleBinaryMessage(message));
+            }
+            reply.reply(null);
+        });
+
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
@@ -204,6 +221,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         if (occlusionHandler != null) {
             occlusionHandler.removeCallbacksAndMessages(null);
             occlusionHandler = null;
+        }
+        if (occlusionHandlerV2 != null) {
+            occlusionHandlerV2.clear();
+            occlusionHandlerV2 = null;
         }
         if (occlusionThread != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
@@ -467,6 +488,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             boolean success = startWithConfig(configMap);
             //starting a new session when app returns from background, clear previous occlusions
             occlusionRects.clear();
+            if (occlusionHandlerV2 != null) {
+                occlusionHandlerV2.clear();
+            }
             rectsByFrame.getAndSet(Collections.emptyList());
             UXCam.pluginType("flutter", TYPE_VERSION);
             result.success(success);
@@ -635,6 +659,95 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } catch (Exception e) {
             Log.e(TAG, "Unable to generate stack trace element from Dart error.");
             return null;
+        }
+    }
+
+    private static class OcclusionHandlerV2 {
+        private final Map<Integer, OcclusionRect> activeOcclusions = new HashMap<>();
+        private final CrossPlatformDelegate delegate;
+
+        OcclusionHandlerV2(CrossPlatformDelegate delegate) {
+            this.delegate = delegate;
+        }
+
+        void handleBinaryMessage(ByteBuffer message) {
+            if (message == null) {
+                return;
+            }
+
+            message.order(ByteOrder.LITTLE_ENDIAN);
+            if (message.remaining() < 4) {
+                return;
+            }
+
+            int count = message.getInt();
+            if (count == -1) {
+                clear();
+                return;
+            }
+
+            for (int i = 0; i < count; i++) {
+                if (message.remaining() < 25) {
+                    break;
+                }
+                int viewId = message.getInt();
+                int id = message.getInt();
+                float left = message.getFloat();
+                float top = message.getFloat();
+                float right = message.getFloat();
+                float bottom = message.getFloat();
+                int type = message.get() & 0xFF;
+
+                if (left < 0) {
+                    activeOcclusions.remove(id);
+                } else {
+                    activeOcclusions.put(id, new OcclusionRect(left, top, right, bottom, type, viewId));
+                }
+            }
+
+            pushUpdates();
+        }
+
+        void clear() {
+            activeOcclusions.clear();
+            if (delegate != null) {
+                delegate.setOcclusionRects(Collections.emptyList());
+            }
+        }
+
+        private void pushUpdates() {
+            if (delegate == null) {
+                return;
+            }
+
+            List<Rect> rects = new ArrayList<>();
+            for (OcclusionRect rect : activeOcclusions.values()) {
+                rects.add(new Rect(
+                        Math.round(rect.left),
+                        Math.round(rect.top),
+                        Math.round(rect.right),
+                        Math.round(rect.bottom)
+                ));
+            }
+            delegate.setOcclusionRects(rects);
+        }
+
+        private static class OcclusionRect {
+            final float left;
+            final float top;
+            final float right;
+            final float bottom;
+            final int type;
+            final int viewId;
+
+            OcclusionRect(float left, float top, float right, float bottom, int type, int viewId) {
+                this.left = left;
+                this.top = top;
+                this.right = right;
+                this.bottom = bottom;
+                this.type = type;
+                this.viewId = viewId;
+            }
         }
     }
 
