@@ -32,53 +32,86 @@ class OccludeRenderBox extends RenderProxyBox
   bool _isScrolling = false;
   bool _visibilityCheckScheduled = false;
 
-  // Route visibility tracking
   ModalRoute<dynamic>? _trackedRoute;
+
+  bool _isWidgetVisible = true;
+  bool _isInViewport = true;
   bool _isRouteVisible = true;
+
+  bool get _isCurrentlyVisible =>
+      _isWidgetVisible && _isInViewport && _isRouteVisible;
+
+  void _updateOcclusionState() {
+    if (!attached) return;
+
+    final shouldReport = _isCurrentlyVisible && _enabled;
+
+    if (!shouldReport && _lastReportedBounds != null) {
+      _lastReportedBounds = null;
+      registry.markDirty(this);
+    } else if (shouldReport && _lastReportedBounds == null) {
+      markNeedsPaint();
+    }
+  }
+
+  void _updateWidgetVisibility(BuildContext context) {
+    _isWidgetVisible = Visibility.of(context);
+    _updateOcclusionState();
+  }
+
+  void _updateViewportVisibility() {
+    if (!attached || !hasSize) return;
+
+    final viewport = RenderAbstractViewport.maybeOf(this);
+    if (viewport == null) {
+      if (!_isInViewport) {
+        _isInViewport = true;
+        _updateOcclusionState();
+      }
+      return;
+    }
+
+    final globalBounds = localToGlobal(Offset.zero) & size;
+    final viewportBox = viewport as RenderBox;
+    final viewportBounds = viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
+
+    final wasInViewport = _isInViewport;
+    _isInViewport = globalBounds.overlaps(viewportBounds);
+
+    if (wasInViewport != _isInViewport) {
+      _updateOcclusionState();
+    }
+  }
+
+  void _updateRouteVisibility(bool visible) {
+    if (_isRouteVisible == visible) return;
+    _isRouteVisible = visible;
+    _updateOcclusionState();
+  }
 
   bool get enabled => _enabled;
   set enabled(bool value) {
     if (_enabled == value) return;
     _enabled = value;
-    _markOcclusionDirty();
-    markNeedsPaint();
+    _updateOcclusionState();
+    if (_enabled) markNeedsPaint();
   }
 
   OcclusionType get type => _type;
   set type(OcclusionType value) {
     if (_type == value) return;
     _type = value;
-    _markOcclusionDirty();
-    markNeedsPaint();
-  }
-
-  void _markOcclusionDirty() {
-    if (!attached) return;
-
-    if (!_enabled && _lastReportedBounds != null) {
-      _lastReportedBounds = null;
-      registry.markDirty(this);
-    } else if (_enabled) {
+    if (_lastReportedBounds != null) {
       registry.markDirty(this);
     }
+    markNeedsPaint();
   }
 
   void updateContext(BuildContext context) {
     _context = context;
+    _updateWidgetVisibility(context);
     _setupScrollListener(context);
     _setupRouteListener(context);
-    _checkWidgetVisibility(context);
-  }
-
-  void _checkWidgetVisibility(BuildContext context) {
-    final isVisible = Visibility.of(context);
-
-    if (!isVisible && _lastReportedBounds != null) {
-      _lastReportedBounds = null;
-      registry.markDirty(this);
-    } else if (isVisible && _lastReportedBounds == null && _enabled) {
-      markNeedsPaint();
-    }
   }
 
   void _setupScrollListener(BuildContext context) {
@@ -90,6 +123,8 @@ class OccludeRenderBox extends RenderProxyBox
       _trackedScrollPosition!.isScrollingNotifier
           .addListener(_onScrollStateChanged);
       _trackedScrollPosition!.addListener(_onScrollPositionChanged);
+    } else {
+      _isInViewport = true;
     }
   }
 
@@ -116,30 +151,8 @@ class OccludeRenderBox extends RenderProxyBox
       _visibilityCheckScheduled = true;
       SchedulerBinding.instance.addPostFrameCallback((_) {
         _visibilityCheckScheduled = false;
-        _checkViewportVisibility();
+        _updateViewportVisibility();
       });
-    }
-  }
-
-  void _checkViewportVisibility() {
-    if (!attached || !hasSize) return;
-
-    final RenderAbstractViewport viewport = RenderAbstractViewport.of(this);
-
-    final globalOffset = localToGlobal(Offset.zero);
-    final globalBounds = globalOffset & size;
-
-    final viewportBox = viewport as RenderBox;
-    final viewportOffset = viewportBox.localToGlobal(Offset.zero);
-    final viewportBounds = viewportOffset & viewportBox.size;
-
-    final isVisible = globalBounds.overlaps(viewportBounds);
-
-    if (!isVisible && _lastReportedBounds != null) {
-      _lastReportedBounds = null;
-      registry.markDirty(this);
-    } else if (isVisible && _lastReportedBounds == null && _enabled) {
-      markNeedsPaint();
     }
   }
 
@@ -150,9 +163,9 @@ class OccludeRenderBox extends RenderProxyBox
     if (route != null) {
       _trackedRoute = route;
       route.secondaryAnimation?.addStatusListener(_onSecondaryAnimationStatus);
-      _setRouteVisible(route.isCurrent);
+      _updateRouteVisibility(route.isCurrent);
     } else {
-      _setRouteVisible(true);
+      _updateRouteVisibility(true);
     }
   }
 
@@ -164,21 +177,9 @@ class OccludeRenderBox extends RenderProxyBox
 
   void _onSecondaryAnimationStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
-      _setRouteVisible(false);
+      _updateRouteVisibility(false);
     } else if (status == AnimationStatus.dismissed) {
-      _setRouteVisible(true);
-    }
-  }
-
-  void _setRouteVisible(bool visible) {
-    if (_isRouteVisible == visible) return;
-    _isRouteVisible = visible;
-
-    if (!visible && _lastReportedBounds != null) {
-      _lastReportedBounds = null;
-      registry.markDirty(this);
-    } else if (visible) {
-      markNeedsPaint();
+      _updateRouteVisibility(true);
     }
   }
 
@@ -208,7 +209,7 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _calculateAndReportBounds() {
-    if (!_enabled || !attached || !_isRouteVisible) {
+    if (!_enabled || !attached || !_isCurrentlyVisible) {
       if (_lastReportedBounds != null) {
         _lastReportedBounds = null;
         registry.markDirty(this);
@@ -242,7 +243,7 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _calculateAndReportBoundsThrottled({required double threshold}) {
-    if (!_enabled || !attached || !_isRouteVisible) {
+    if (!_enabled || !attached || !_isCurrentlyVisible) {
       if (_lastReportedBounds != null) {
         _lastReportedBounds = null;
         registry.markDirty(this);
