@@ -8,19 +8,13 @@ import android.os.Looper;
 import android.os.HandlerThread;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.concurrent.atomic.AtomicReference;
-import android.os.SystemClock;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.StandardMessageCodec;
 import io.flutter.plugin.common.BinaryCodec;
-import io.flutter.plugin.common.BasicMessageChannel.MessageHandler;
 import io.flutter.plugin.common.BasicMessageChannel;
-import io.flutter.plugin.common.BasicMessageChannel.Reply;
-import io.flutter.plugin.common.StringCodec;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
@@ -41,14 +35,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Objects;
 import android.graphics.Rect;
-import android.view.View;
-import android.util.DisplayMetrics;
-import android.view.WindowMetrics;
 import android.view.Display;
-import android.util.Log;
 
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -59,11 +48,8 @@ import android.view.Surface;
 import android.view.WindowManager;
 import android.content.Context;
 import android.view.WindowInsets;
-import androidx.core.view.DisplayCutoutCompat;
 
-import org.json.JSONObject;
 import org.json.JSONArray;
-import org.json.JSONException;
 import androidx.annotation.NonNull;
 import java.util.TreeMap;
 
@@ -111,10 +97,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private HandlerThread occlusionThread = new HandlerThread("OcclusionProcessor");
     private Handler occlusionHandler;
     private OcclusionHandlerV2 occlusionHandlerV2;
-    private final Map<String, Rect> occlusionRects = new HashMap<>();
-    private final Map<String, Rect> unionedocclusionRects = new HashMap<>();
-    private final AtomicReference<List<Rect>> rectsByFrame =
-      new AtomicReference<>(Collections.emptyList());
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
@@ -126,17 +108,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         //general method channel for native and flutter communication
         final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
         channel.setMethodCallHandler(this);
-
-        //low latency communication channel for occlusion rect requests
-        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
-                binding.getBinaryMessenger(),
-                "uxcam_occlusion_channel",
-                StandardMessageCodec.INSTANCE);
-        uxcamMessageChannel.setMessageHandler((message, reply) -> {
-            occlusionHandler.post(() -> {
-                processOcclusionRequest(message);
-            });
-        });
 
         delegate = UXCam.getDelegate();
         occlusionHandlerV2 = new OcclusionHandlerV2(delegate);
@@ -154,65 +125,14 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
-            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
-
-                List<Rect> snapshot = rectsByFrame.getAndSet(Collections.emptyList());
-                //incase the user has stopped interacting with the app, make sure that the last occlusion data is still used
-                occlusionHandler.post(() -> {
-                    unionedocclusionRects.clear();
-                    occlusionRects.forEach((key, value) -> {
-                        updateRectsForFrame(key, value);
-                    });
-               });
-                delegate.createScreenshotFromCollectedRects(new ArrayList<>(snapshot));
+            public void processOcclusionRectsForCurrentFrame(long startTimeStamp, long stopTimeStamp) {
+                // Get V2 cached rects (from binary channel updates)
+                List<Rect> rects = Collections.emptyList();
+                if (occlusionHandlerV2 != null) {
+                    rects = occlusionHandlerV2.getCurrentRects();
+                }
+                delegate.createScreenshotFromCollectedRects(new ArrayList<>(rects));
             }
-        });
-    }
-
-
-    private void processOcclusionRequest(Object message) {
-        try {
-            JSONObject jsonObject = new JSONObject((Map) message);
-            String widgetKey = jsonObject.getString("key");
-            if(widgetKey == null || widgetKey.isEmpty()) {
-                return;
-            }   
-            JSONObject bound = jsonObject.optJSONObject("point");
-            if(bound!=null) {
-                //the widget is visible, update the rect
-                int transitionOffset = 10;
-                Rect rect = new Rect();
-                rect.left = bound.getInt("x0");
-                rect.top = bound.getInt("y0") + transitionOffset;
-                rect.right = bound.getInt("x1");
-                rect.bottom = bound.getInt("y1") + transitionOffset;
-
-                updateRectsForFrame(widgetKey, rect);
-            } else {
-                //the widget is not visible, remove the rect
-                occlusionRects.remove(widgetKey);
-            }
-        } catch (JSONException e) {
-            Log.e(TAG, "Error processing occlusion request", e);
-        }
-    }
-
-    private void updateRectsForFrame(String widgetKey, Rect rect) {
-        occlusionRects.put(widgetKey, rect);
-        if(unionedocclusionRects.containsKey(widgetKey)) {
-            Rect existing = unionedocclusionRects.get(widgetKey);
-            existing.union(rect);
-            unionedocclusionRects.put(widgetKey, existing);
-        } else {
-            unionedocclusionRects.put(widgetKey, rect);
-        }
-
-        rectsByFrame.getAndUpdate(previous -> {
-            List<Rect> output = new ArrayList<>();
-            unionedocclusionRects.forEach((key, value) -> {
-                output.add(value);
-          });
-            return Collections.unmodifiableList(output);
         });
     }
 
@@ -487,11 +407,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             Map<String, Object> configMap = call.argument("config");
             boolean success = startWithConfig(configMap);
             //starting a new session when app returns from background, clear previous occlusions
-            occlusionRects.clear();
             if (occlusionHandlerV2 != null) {
                 occlusionHandlerV2.clear();
             }
-            rectsByFrame.getAndSet(Collections.emptyList());
             UXCam.pluginType("flutter", TYPE_VERSION);
             result.success(success);
         } else if ("applyOcclusion".equals(call.method)) {
@@ -664,10 +582,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private static class OcclusionHandlerV2 {
         private final Map<Integer, OcclusionRect> activeOcclusions = new HashMap<>();
-        private final CrossPlatformDelegate delegate;
+        private final Object lock = new Object();
 
         OcclusionHandlerV2(CrossPlatformDelegate delegate) {
-            this.delegate = delegate;
+            // delegate parameter kept for API compatibility but no longer used
         }
 
         void handleBinaryMessage(ByteBuffer message) {
@@ -686,50 +604,52 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 return;
             }
 
-            for (int i = 0; i < count; i++) {
-                if (message.remaining() < 25) {
-                    break;
-                }
-                int viewId = message.getInt();
-                int id = message.getInt();
-                float left = message.getFloat();
-                float top = message.getFloat();
-                float right = message.getFloat();
-                float bottom = message.getFloat();
-                int type = message.get() & 0xFF;
+            synchronized (lock) {
+                for (int i = 0; i < count; i++) {
+                    if (message.remaining() < 25) {
+                        break;
+                    }
+                    int viewId = message.getInt();
+                    int id = message.getInt();
+                    float left = message.getFloat();
+                    float top = message.getFloat();
+                    float right = message.getFloat();
+                    float bottom = message.getFloat();
+                    int type = message.get() & 0xFF;
 
-                if (left < 0) {
-                    activeOcclusions.remove(id);
-                } else {
-                    activeOcclusions.put(id, new OcclusionRect(left, top, right, bottom, type, viewId));
+                    if (left < 0) {
+                        activeOcclusions.remove(id);
+                    } else {
+                        activeOcclusions.put(id, new OcclusionRect(left, top, right, bottom, type, viewId));
+                    }
                 }
             }
+        }
 
-            pushUpdates();
+        /**
+         * Get current cached rects as List<Rect>.
+         * Called by V1 listener to return V2 cached data.
+         * Thread-safe: can be called from any thread.
+         */
+        List<Rect> getCurrentRects() {
+            synchronized (lock) {
+                List<Rect> rects = new ArrayList<>();
+                for (OcclusionRect rect : activeOcclusions.values()) {
+                    rects.add(new Rect(
+                            Math.round(rect.left),
+                            Math.round(rect.top),
+                            Math.round(rect.right),
+                            Math.round(rect.bottom)
+                    ));
+                }
+                return rects;
+            }
         }
 
         void clear() {
-            activeOcclusions.clear();
-            if (delegate != null) {
-                delegate.setOcclusionRects(Collections.emptyList());
+            synchronized (lock) {
+                activeOcclusions.clear();
             }
-        }
-
-        private void pushUpdates() {
-            if (delegate == null) {
-                return;
-            }
-
-            List<Rect> rects = new ArrayList<>();
-            for (OcclusionRect rect : activeOcclusions.values()) {
-                rects.add(new Rect(
-                        Math.round(rect.left),
-                        Math.round(rect.top),
-                        Math.round(rect.right),
-                        Math.round(rect.bottom)
-                ));
-            }
-            delegate.setOcclusionRects(rects);
         }
 
         private static class OcclusionRect {
