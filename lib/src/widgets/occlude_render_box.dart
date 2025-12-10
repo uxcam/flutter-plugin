@@ -180,6 +180,11 @@ class OccludeRenderBox extends RenderProxyBox
       _updateRouteVisibility(false);
     } else if (status == AnimationStatus.dismissed) {
       _updateRouteVisibility(true);
+      SchedulerBinding.instance.scheduleFrameCallback((_) {
+        if (attached && _isRouteVisible) {
+          markNeedsPaint();
+        }
+      });
     }
   }
 
