@@ -1,4 +1,5 @@
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import 'occlusion_models.dart';
@@ -29,6 +30,7 @@ class OccludeRenderBox extends RenderProxyBox
 
   ScrollPosition? _trackedScrollPosition;
   bool _isScrolling = false;
+  bool _visibilityCheckScheduled = false;
 
   // Route visibility tracking
   ModalRoute<dynamic>? _trackedRoute;
@@ -65,6 +67,18 @@ class OccludeRenderBox extends RenderProxyBox
     _context = context;
     _setupScrollListener(context);
     _setupRouteListener(context);
+    _checkWidgetVisibility(context);
+  }
+
+  void _checkWidgetVisibility(BuildContext context) {
+    final isVisible = Visibility.of(context);
+
+    if (!isVisible && _lastReportedBounds != null) {
+      _lastReportedBounds = null;
+      registry.markDirty(this);
+    } else if (isVisible && _lastReportedBounds == null && _enabled) {
+      markNeedsPaint();
+    }
   }
 
   void _setupScrollListener(BuildContext context) {
@@ -75,10 +89,12 @@ class OccludeRenderBox extends RenderProxyBox
       _trackedScrollPosition = scrollable.position;
       _trackedScrollPosition!.isScrollingNotifier
           .addListener(_onScrollStateChanged);
+      _trackedScrollPosition!.addListener(_onScrollPositionChanged);
     }
   }
 
   void _detachFromScrollable() {
+    _trackedScrollPosition?.removeListener(_onScrollPositionChanged);
     _trackedScrollPosition?.isScrollingNotifier
         .removeListener(_onScrollStateChanged);
     _trackedScrollPosition = null;
@@ -93,6 +109,39 @@ class OccludeRenderBox extends RenderProxyBox
     }
   }
 
+  void _onScrollPositionChanged() {
+    if (!attached) return;
+
+    if (!_visibilityCheckScheduled) {
+      _visibilityCheckScheduled = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _visibilityCheckScheduled = false;
+        _checkViewportVisibility();
+      });
+    }
+  }
+
+  void _checkViewportVisibility() {
+    if (!attached || !hasSize) return;
+
+    final RenderAbstractViewport viewport = RenderAbstractViewport.of(this);
+
+    final globalOffset = localToGlobal(Offset.zero);
+    final globalBounds = globalOffset & size;
+
+    final viewportBox = viewport as RenderBox;
+    final viewportOffset = viewportBox.localToGlobal(Offset.zero);
+    final viewportBounds = viewportOffset & viewportBox.size;
+
+    final isVisible = globalBounds.overlaps(viewportBounds);
+
+    if (!isVisible && _lastReportedBounds != null) {
+      _lastReportedBounds = null;
+      registry.markDirty(this);
+    } else if (isVisible && _lastReportedBounds == null && _enabled) {
+      markNeedsPaint();
+    }
+  }
 
   void _setupRouteListener(BuildContext context) {
     _detachFromRoute();
