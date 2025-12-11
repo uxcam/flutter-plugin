@@ -31,6 +31,7 @@ class OccludeRenderBox extends RenderProxyBox
   ScrollPosition? _trackedScrollPosition;
   bool _isScrolling = false;
   bool _visibilityCheckScheduled = false;
+  bool _boundsUpdateScheduled = false;
 
   ModalRoute<dynamic>? _trackedRoute;
 
@@ -50,8 +51,20 @@ class OccludeRenderBox extends RenderProxyBox
       _lastReportedBounds = null;
       registry.markDirty(this);
     } else if (shouldReport && _lastReportedBounds == null) {
-      markNeedsPaint();
+      _scheduleBoundsUpdate();
     }
+  }
+
+  void _scheduleBoundsUpdate() {
+    if (_boundsUpdateScheduled || !attached) return;
+    _boundsUpdateScheduled = true;
+
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _boundsUpdateScheduled = false;
+      if (attached && hasSize) {
+        _calculateAndReportBounds();
+      }
+    });
   }
 
   void _updateWidgetVisibility(BuildContext context) {
@@ -117,7 +130,8 @@ class OccludeRenderBox extends RenderProxyBox
   void _setupScrollListener(BuildContext context) {
     _detachFromScrollable();
 
-    final scrollable = Scrollable.maybeOf(context);
+    final scrollable = _findActiveScrollable(context);
+
     if (scrollable != null) {
       _trackedScrollPosition = scrollable.position;
       _trackedScrollPosition!.isScrollingNotifier
@@ -126,6 +140,24 @@ class OccludeRenderBox extends RenderProxyBox
     } else {
       _isInViewport = true;
     }
+  }
+
+  ScrollableState? _findActiveScrollable(BuildContext context) {
+    ScrollableState? result;
+    context.visitAncestorElements((element) {
+      if (element.widget is Scrollable) {
+        final state = (element as StatefulElement).state;
+        if (state is ScrollableState) {
+          final physics = state.position.physics;
+          if (physics is! NeverScrollableScrollPhysics) {
+            result = state;
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+    return result;
   }
 
   void _detachFromScrollable() {
@@ -140,7 +172,7 @@ class OccludeRenderBox extends RenderProxyBox
     _isScrolling = _trackedScrollPosition?.isScrollingNotifier.value ?? false;
 
     if (wasScrolling && !_isScrolling) {
-      markNeedsPaint();
+      _scheduleBoundsUpdate();
     }
   }
 
@@ -154,6 +186,8 @@ class OccludeRenderBox extends RenderProxyBox
         _updateViewportVisibility();
       });
     }
+
+    _scheduleBoundsUpdate();
   }
 
   void _setupRouteListener(BuildContext context) {
@@ -206,11 +240,7 @@ class OccludeRenderBox extends RenderProxyBox
   void paint(PaintingContext context, Offset offset) {
     super.paint(context, offset);
 
-    if (_isScrolling) {
-      _calculateAndReportBoundsThrottled(threshold: 50.0);
-    } else {
-      _calculateAndReportBounds();
-    }
+    _scheduleBoundsUpdate();
   }
 
   void _calculateAndReportBounds() {
@@ -244,40 +274,6 @@ class OccludeRenderBox extends RenderProxyBox
     if (!_rectsEqualWithinTolerance(_lastReportedBounds, snappedBounds)) {
       _lastReportedBounds = snappedBounds;
       registry.markDirty(this);
-    }
-  }
-
-  void _calculateAndReportBoundsThrottled({required double threshold}) {
-    if (!_enabled || !attached || !_isCurrentlyVisible) {
-      if (_lastReportedBounds != null) {
-        _lastReportedBounds = null;
-        registry.markDirty(this);
-      }
-      return;
-    }
-
-    final transform = getTransformTo(null);
-    final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
-
-    if (_lastReportedBounds == null ||
-        !_rectsWithinThreshold(_lastReportedBounds!, rawBounds, threshold)) {
-      final effectiveClip = _calculateEffectiveClip();
-
-      Rect? clippedBounds;
-      if (effectiveClip != null) {
-        final intersection = rawBounds.intersect(effectiveClip);
-        if (intersection.width > 0 && intersection.height > 0) {
-          clippedBounds = intersection;
-        }
-      } else {
-        clippedBounds = rawBounds;
-      }
-
-      if (clippedBounds != null) {
-        final dpr = _getDevicePixelRatio();
-        _lastReportedBounds = _snapToDevicePixels(clippedBounds, dpr);
-        registry.markDirty(this);
-      }
     }
   }
 
@@ -343,11 +339,6 @@ class OccludeRenderBox extends RenderProxyBox
         (a.top - b.top).abs() < tolerance &&
         (a.right - b.right).abs() < tolerance &&
         (a.bottom - b.bottom).abs() < tolerance;
-  }
-
-  bool _rectsWithinThreshold(Rect a, Rect b, double threshold) {
-    return (a.left - b.left).abs() < threshold &&
-        (a.top - b.top).abs() < threshold;
   }
 
   @override
