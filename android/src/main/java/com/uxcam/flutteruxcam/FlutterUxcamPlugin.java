@@ -5,7 +5,6 @@ import android.os.Build;
 import android.util.Log;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.HandlerThread;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -94,17 +93,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private HandlerThread occlusionThread = new HandlerThread("OcclusionProcessor");
-    private Handler occlusionHandler;
     private OcclusionHandlerV2 occlusionHandlerV2;
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
-
-        //off-load thread to process existing occlusion Rects
-        occlusionThread.start();
-        occlusionHandler = new Handler(occlusionThread.getLooper());
-
         //general method channel for native and flutter communication
         final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
         channel.setMethodCallHandler(this);
@@ -117,8 +109,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 "uxcam_occlusion_v2",
                 BinaryCodec.INSTANCE);
         occlusionV2Channel.setMessageHandler((message, reply) -> {
-            if (message != null && occlusionHandler != null && occlusionHandlerV2 != null) {
-                occlusionHandler.post(() -> occlusionHandlerV2.handleBinaryMessage(message));
+            if (message != null && occlusionHandlerV2 != null) {
+                occlusionHandlerV2.handleBinaryMessage(message);
             }
             reply.reply(null);
         });
@@ -138,21 +130,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-        if (occlusionHandler != null) {
-            occlusionHandler.removeCallbacksAndMessages(null);
-            occlusionHandler = null;
-        }
         if (occlusionHandlerV2 != null) {
             occlusionHandlerV2.clear();
             occlusionHandlerV2 = null;
-        }
-        if (occlusionThread != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                occlusionThread.quitSafely();
-            } else {
-                occlusionThread.quit();
-            }
-            occlusionThread = null;
         }
     }
 
@@ -600,7 +580,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
             int count = message.getInt();
             if (count == -1) {
-                clear();
+                                clear();
                 return;
             }
 

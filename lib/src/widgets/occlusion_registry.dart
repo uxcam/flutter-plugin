@@ -1,4 +1,3 @@
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import 'occlusion_models.dart';
@@ -13,7 +12,6 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   final _registered = <OcclusionReportingRenderBox>{};
   final _dirty = <OcclusionReportingRenderBox>{};
-  bool _frameCallbackScheduled = false;
 
   final OcclusionPlatformChannel _channel = const OcclusionPlatformChannel();
 
@@ -50,8 +48,6 @@ class OcclusionRegistry with WidgetsBindingObserver {
     for (final subscriber in subscription.subscribers) {
       subscriber.onScrollPositionChanged();
     }
-
-    _scheduleUpdate();
   }
 
   void _notifyScrollStateChanged(ScrollPosition position) {
@@ -68,7 +64,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
   void register(OcclusionReportingRenderBox box) {
     _registered.add(box);
     _dirty.add(box);
-    _scheduleUpdate();
+    _flushUpdates();
   }
 
   void unregister(OcclusionReportingRenderBox box) {
@@ -80,17 +76,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
   void markDirty(OcclusionReportingRenderBox box) {
     if (!_registered.contains(box)) return;
     _dirty.add(box);
-    _scheduleUpdate();
-  }
-
-  void _scheduleUpdate() {
-    if (_frameCallbackScheduled) return;
-    _frameCallbackScheduled = true;
-
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      _frameCallbackScheduled = false;
-      _flushUpdates();
-    });
+    _flushUpdates();
   }
 
   void _flushUpdates() {
@@ -117,7 +103,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
       _channel.clearAll();
     } else if (state == AppLifecycleState.resumed) {
       _dirty.addAll(_registered);
-      _scheduleUpdate();
+      _flushUpdates();
     }
   }
 
