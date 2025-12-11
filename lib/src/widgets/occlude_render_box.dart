@@ -197,7 +197,13 @@ class OccludeRenderBox extends RenderProxyBox
     if (route != null) {
       _trackedRoute = route;
       route.secondaryAnimation?.addStatusListener(_onSecondaryAnimationStatus);
-      _updateRouteVisibility(route.isCurrent);
+      // Check if we're already covered by an opaque route
+      if (route.isCurrent) {
+        _updateRouteVisibility(true);
+      } else {
+        // Route is not current, check if covered by opaque route
+        _checkIfCoveredByOpaqueRoute();
+      }
     } else {
       _updateRouteVisibility(true);
     }
@@ -211,8 +217,10 @@ class OccludeRenderBox extends RenderProxyBox
 
   void _onSecondaryAnimationStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
-      _updateRouteVisibility(false);
+      // A route was pushed on top - check if it's opaque
+      _checkIfCoveredByOpaqueRoute();
     } else if (status == AnimationStatus.dismissed) {
+      // Route above was popped - we're visible again
       _updateRouteVisibility(true);
       SchedulerBinding.instance.scheduleFrameCallback((_) {
         if (attached && _isRouteVisible) {
@@ -220,6 +228,34 @@ class OccludeRenderBox extends RenderProxyBox
         }
       });
     }
+  }
+
+  void _checkIfCoveredByOpaqueRoute() {
+    if (_context == null || _trackedRoute == null) return;
+
+    final navigator = Navigator.maybeOf(_context!);
+    if (navigator == null) return;
+
+    // popUntil iterates from top of stack downward
+    // We need to check if any opaque route exists between top and our route
+    bool hasOpaqueRouteAbove = false;
+    bool reachedOurRoute = false;
+
+    navigator.popUntil((route) {
+      if (route == _trackedRoute) {
+        reachedOurRoute = true;
+        return true; // Stop iteration
+      }
+      // This route is above ours (since we haven't reached ours yet)
+      if (route is ModalRoute && route.opaque) {
+        hasOpaqueRouteAbove = true;
+      }
+      return true; // Continue iteration
+    });
+
+    // Only hide if covered by an opaque route (full-screen push)
+    // Keep visible if covered by non-opaque route (dialog/bottom sheet)
+    _updateRouteVisibility(!hasOpaqueRouteAbove);
   }
 
   @override
