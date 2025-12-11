@@ -10,6 +10,13 @@ abstract class OcclusionReportingRenderBox {
   OcclusionType get currentType;
   double get devicePixelRatio;
   int get viewId;
+
+  void recalculateBounds();
+}
+
+abstract class ScrollSubscriber {
+  void onScrollPositionChanged();
+  void onScrollStateChanged(bool isScrolling);
 }
 
 class OcclusionUpdate {
@@ -19,6 +26,7 @@ class OcclusionUpdate {
     required this.type,
     required this.devicePixelRatio,
     required this.viewId,
+    required this.frameSequence,
   });
 
   final int id;
@@ -26,4 +34,5 @@ class OcclusionUpdate {
   final OcclusionType type;
   final double devicePixelRatio;
   final int viewId;
+  final int frameSequence;
 }

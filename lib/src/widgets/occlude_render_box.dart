@@ -6,7 +6,7 @@ import 'occlusion_models.dart';
 import 'occlusion_registry.dart';
 
 class OccludeRenderBox extends RenderProxyBox
-    implements OcclusionReportingRenderBox {
+    implements OcclusionReportingRenderBox, ScrollSubscriber {
   OccludeRenderBox({
     required bool enabled,
     required OcclusionType type,
@@ -134,9 +134,7 @@ class OccludeRenderBox extends RenderProxyBox
 
     if (scrollable != null) {
       _trackedScrollPosition = scrollable.position;
-      _trackedScrollPosition!.isScrollingNotifier
-          .addListener(_onScrollStateChanged);
-      _trackedScrollPosition!.addListener(_onScrollPositionChanged);
+      registry.subscribeToScroll(_trackedScrollPosition!, this);
     } else {
       _isInViewport = true;
     }
@@ -161,22 +159,25 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _detachFromScrollable() {
-    _trackedScrollPosition?.removeListener(_onScrollPositionChanged);
-    _trackedScrollPosition?.isScrollingNotifier
-        .removeListener(_onScrollStateChanged);
-    _trackedScrollPosition = null;
-  }
-
-  void _onScrollStateChanged() {
-    final wasScrolling = _isScrolling;
-    _isScrolling = _trackedScrollPosition?.isScrollingNotifier.value ?? false;
-
-    if (wasScrolling && !_isScrolling) {
-      _scheduleBoundsUpdate();
+    if (_trackedScrollPosition != null) {
+      registry.unsubscribeFromScroll(_trackedScrollPosition!, this);
+      _trackedScrollPosition = null;
     }
   }
 
-  void _onScrollPositionChanged() {
+  @override
+  void onScrollStateChanged(bool isScrolling) {
+    final wasScrolling = _isScrolling;
+    _isScrolling = isScrolling;
+
+    if (wasScrolling && !_isScrolling) {
+      _scheduleBoundsUpdate();
+      registry.signalMotionEnded();
+    }
+  }
+
+  @override
+  void onScrollPositionChanged() {
     if (!attached) return;
 
     if (!_visibilityCheckScheduled) {
@@ -196,30 +197,79 @@ class OccludeRenderBox extends RenderProxyBox
     final route = ModalRoute.of(context);
     if (route != null) {
       _trackedRoute = route;
+      route.animation?.addListener(_onRouteAnimationTick);
+      route.animation?.addStatusListener(_onPrimaryAnimationStatus);
+      route.secondaryAnimation?.addListener(_onRouteAnimationTick);
       route.secondaryAnimation?.addStatusListener(_onSecondaryAnimationStatus);
-      _updateRouteVisibility(route.isCurrent);
+      if (route.isCurrent) {
+        _updateRouteVisibility(true);
+      } else {
+        _checkIfCoveredByOpaqueRoute();
+      }
     } else {
       _updateRouteVisibility(true);
     }
   }
 
   void _detachFromRoute() {
+    _trackedRoute?.animation?.removeListener(_onRouteAnimationTick);
+    _trackedRoute?.animation?.removeStatusListener(_onPrimaryAnimationStatus);
+    _trackedRoute?.secondaryAnimation?.removeListener(_onRouteAnimationTick);
     _trackedRoute?.secondaryAnimation
         ?.removeStatusListener(_onSecondaryAnimationStatus);
     _trackedRoute = null;
   }
 
+  void _onRouteAnimationTick() {
+    if (!attached) return;
+    markNeedsPaint();
+  }
+
+  void _onPrimaryAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      registry.signalMotionEnded();
+    } else if (status == AnimationStatus.dismissed) {
+      registry.signalMotionEnded();
+    }
+  }
+
   void _onSecondaryAnimationStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
-      _updateRouteVisibility(false);
+      _checkIfCoveredByOpaqueRoute();
+      registry.signalMotionEnded();
+    } else if (status == AnimationStatus.reverse) {
+      _updateRouteVisibility(true);
+      markNeedsPaint();
     } else if (status == AnimationStatus.dismissed) {
       _updateRouteVisibility(true);
       SchedulerBinding.instance.scheduleFrameCallback((_) {
         if (attached && _isRouteVisible) {
           markNeedsPaint();
+          registry.signalMotionEnded();
         }
       });
     }
+  }
+
+  void _checkIfCoveredByOpaqueRoute() {
+    if (_context == null || _trackedRoute == null) return;
+
+    final navigator = Navigator.maybeOf(_context!);
+    if (navigator == null) return;
+
+    bool hasOpaqueRouteAbove = false;
+
+    navigator.popUntil((route) {
+      if (route == _trackedRoute) {
+        return true;
+      }
+      if (route is ModalRoute && route.opaque) {
+        hasOpaqueRouteAbove = true;
+      }
+      return true;
+    });
+
+    _updateRouteVisibility(!hasOpaqueRouteAbove);
   }
 
   @override
@@ -239,8 +289,7 @@ class OccludeRenderBox extends RenderProxyBox
   @override
   void paint(PaintingContext context, Offset offset) {
     super.paint(context, offset);
-
-    _scheduleBoundsUpdate();
+    _calculateAndReportBounds();
   }
 
   void _calculateAndReportBounds() {
@@ -254,6 +303,7 @@ class OccludeRenderBox extends RenderProxyBox
 
     final transform = getTransformTo(null);
     final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
+
     final effectiveClip = _calculateEffectiveClip();
 
     Rect? clippedBounds;
@@ -355,4 +405,10 @@ class OccludeRenderBox extends RenderProxyBox
 
   @override
   int get stableId => _stableId;
+
+  @override
+  void recalculateBounds() {
+    if (!attached || !hasSize) return;
+    _calculateAndReportBounds();
+  }
 }
