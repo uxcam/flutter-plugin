@@ -174,7 +174,9 @@ class OccludeRenderBox extends RenderProxyBox
     final wasScrolling = _isScrolling;
     _isScrolling = isScrolling;
 
-    if (wasScrolling && !_isScrolling) {
+    if (!wasScrolling && _isScrolling) {
+      registry.signalMotionStarted();
+    } else if (wasScrolling && !_isScrolling) {
       _lastKnownVelocity = 0.0;
       _lastScrollTimestamp = 0;
       _scheduleBoundsUpdate();
@@ -184,7 +186,7 @@ class OccludeRenderBox extends RenderProxyBox
 
   @override
   void onScrollPositionChanged() {
-    if (!attached) return;
+    if (!attached || !hasSize) return;
 
     _updateVelocityFromScrollPosition();
 
@@ -196,7 +198,7 @@ class OccludeRenderBox extends RenderProxyBox
       });
     }
 
-    _scheduleBoundsUpdate();
+    _calculateAndReportBounds();
   }
 
   void _updateVelocityFromScrollPosition() {
