@@ -33,6 +33,10 @@ class OccludeRenderBox extends RenderProxyBox
   bool _visibilityCheckScheduled = false;
   bool _boundsUpdateScheduled = false;
 
+  double _lastKnownVelocity = 0.0;
+  double _lastScrollPixels = 0.0;
+  int _lastScrollTimestamp = 0;
+
   ModalRoute<dynamic>? _trackedRoute;
 
   bool _isWidgetVisible = true;
@@ -171,6 +175,8 @@ class OccludeRenderBox extends RenderProxyBox
     _isScrolling = isScrolling;
 
     if (wasScrolling && !_isScrolling) {
+      _lastKnownVelocity = 0.0;
+      _lastScrollTimestamp = 0;
       _scheduleBoundsUpdate();
       registry.signalMotionEnded();
     }
@@ -179,6 +185,8 @@ class OccludeRenderBox extends RenderProxyBox
   @override
   void onScrollPositionChanged() {
     if (!attached) return;
+
+    _updateVelocityFromScrollPosition();
 
     if (!_visibilityCheckScheduled) {
       _visibilityCheckScheduled = true;
@@ -189,6 +197,28 @@ class OccludeRenderBox extends RenderProxyBox
     }
 
     _scheduleBoundsUpdate();
+  }
+
+  void _updateVelocityFromScrollPosition() {
+    final position = _trackedScrollPosition;
+    if (position == null) {
+      _lastKnownVelocity = 0.0;
+      return;
+    }
+
+    final currentPixels = position.pixels;
+    final currentTimestamp = DateTime.now().microsecondsSinceEpoch;
+
+    if (_lastScrollTimestamp > 0) {
+      final timeDeltaMicros = currentTimestamp - _lastScrollTimestamp;
+      if (timeDeltaMicros > 0) {
+        final pixelsDelta = currentPixels - _lastScrollPixels;
+        _lastKnownVelocity = (pixelsDelta / timeDeltaMicros) * 1000000;
+      }
+    }
+
+    _lastScrollPixels = currentPixels;
+    _lastScrollTimestamp = currentTimestamp;
   }
 
   void _setupRouteListener(BuildContext context) {
@@ -317,14 +347,57 @@ class OccludeRenderBox extends RenderProxyBox
     }
 
     final devicePixelRatio = _getDevicePixelRatio();
-    final snappedBounds = clippedBounds != null
+    Rect? snappedBounds = clippedBounds != null
         ? _snapToDevicePixels(clippedBounds, devicePixelRatio)
         : null;
+
+    snappedBounds = _applyVelocityExpansion(snappedBounds, effectiveClip);
 
     if (!_rectsEqualWithinTolerance(_lastReportedBounds, snappedBounds)) {
       _lastReportedBounds = snappedBounds;
       registry.markDirty(this);
     }
+  }
+
+  Rect? _applyVelocityExpansion(Rect? bounds, Rect? effectiveClip) {
+    if (bounds == null) return null;
+
+    if (!_isScrolling || _lastKnownVelocity.abs() < 100) {
+      return bounds;
+    }
+
+    const captureLatencySeconds = 0.05;
+
+    final expansionPixels =
+        (_lastKnownVelocity.abs() * captureLatencySeconds).clamp(0.0, 80.0);
+
+    Rect expandedBounds;
+
+    if (_lastKnownVelocity < 0) {
+      expandedBounds = Rect.fromLTRB(
+        bounds.left,
+        bounds.top,
+        bounds.right,
+        bounds.bottom + expansionPixels,
+      );
+    } else {
+      expandedBounds = Rect.fromLTRB(
+        bounds.left,
+        bounds.top - expansionPixels,
+        bounds.right,
+        bounds.bottom,
+      );
+    }
+
+    if (effectiveClip != null) {
+      final intersection = expandedBounds.intersect(effectiveClip);
+      if (intersection.width > 0 && intersection.height > 0) {
+        return intersection;
+      }
+      return bounds;
+    }
+
+    return expandedBounds;
   }
 
   Rect? _calculateEffectiveClip() {
