@@ -90,6 +90,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
         type: box.currentType,
         devicePixelRatio: box.devicePixelRatio,
         viewId: box.viewId,
+        timestampMicros: box.lastBoundsTimestampMicros,
       ));
     }
     _dirty.clear();

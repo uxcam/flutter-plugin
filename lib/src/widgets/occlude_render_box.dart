@@ -27,6 +27,7 @@ class OccludeRenderBox extends RenderProxyBox
   Rect? _lastReportedBounds;
   bool _enabled;
   OcclusionType _type;
+  int _lastBoundsTimestampMicros = 0;
 
   ScrollPosition? _trackedScrollPosition;
   bool _isScrolling = false;
@@ -271,6 +272,9 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _calculateAndReportBounds() {
+    final frameTimestamp = SchedulerBinding.instance.currentFrameTimeStamp;
+    _lastBoundsTimestampMicros = frameTimestamp.inMicroseconds;
+
     if (!_enabled || !attached || !_isCurrentlyVisible) {
       if (_lastReportedBounds != null) {
         _lastReportedBounds = null;
@@ -278,11 +282,6 @@ class OccludeRenderBox extends RenderProxyBox
       }
       return;
     }
-
-    final secondaryAnim = _trackedRoute?.secondaryAnimation;
-    final isAnimating = secondaryAnim != null &&
-        (secondaryAnim.status == AnimationStatus.forward ||
-            secondaryAnim.status == AnimationStatus.reverse);
 
     final transform = getTransformTo(null);
     final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
@@ -299,23 +298,6 @@ class OccludeRenderBox extends RenderProxyBox
       clippedBounds = rawBounds;
     }
 
-    // During animation, expand the bounds to account for potential timing
-    // mismatch between when Flutter calculates the transform and when the
-    // SDK captures the screenshot. This ensures sensitive content is always
-    // covered even if there's slight position drift during transitions.
-    if (isAnimating && clippedBounds != null) {
-      // Expand by a percentage of the screen width to cover slide animations
-      // Most Material transitions slide by ~25% of screen width
-      final screenWidth = _getScreenWidth();
-      final expansionAmount = screenWidth * 0.3; // 30% of screen width
-      clippedBounds = Rect.fromLTRB(
-        clippedBounds.left - expansionAmount,
-        clippedBounds.top,
-        clippedBounds.right + expansionAmount,
-        clippedBounds.bottom,
-      );
-    }
-
     final devicePixelRatio = _getDevicePixelRatio();
     final snappedBounds = clippedBounds != null
         ? _snapToDevicePixels(clippedBounds, devicePixelRatio)
@@ -325,14 +307,6 @@ class OccludeRenderBox extends RenderProxyBox
       _lastReportedBounds = snappedBounds;
       registry.markDirty(this);
     }
-  }
-
-  double _getScreenWidth() {
-    if (_context != null) {
-      final size = MediaQuery.maybeOf(_context!)?.size;
-      if (size != null) return size.width;
-    }
-    return 400.0; // Fallback default
   }
 
   Rect? _calculateEffectiveClip() {
@@ -413,4 +387,7 @@ class OccludeRenderBox extends RenderProxyBox
 
   @override
   int get stableId => _stableId;
+
+  @override
+  int get lastBoundsTimestampMicros => _lastBoundsTimestampMicros;
 }

@@ -10,6 +10,7 @@ abstract class OcclusionReportingRenderBox {
   OcclusionType get currentType;
   double get devicePixelRatio;
   int get viewId;
+  int get lastBoundsTimestampMicros;
 }
 
 abstract class ScrollSubscriber {
@@ -24,6 +25,7 @@ class OcclusionUpdate {
     required this.type,
     required this.devicePixelRatio,
     required this.viewId,
+    required this.timestampMicros,
   });
 
   final int id;
@@ -31,4 +33,5 @@ class OcclusionUpdate {
   final OcclusionType type;
   final double devicePixelRatio;
   final int viewId;
+  final int timestampMicros;
 }

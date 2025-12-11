@@ -118,10 +118,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp, long stopTimeStamp) {
-                // Get V2 cached rects (from binary channel updates)
                 List<Rect> rects = Collections.emptyList();
                 if (occlusionHandlerV2 != null) {
-                    rects = occlusionHandlerV2.getCurrentRects();
+                    rects = occlusionHandlerV2.getRectsForTimestamp(stopTimeStamp);
                 }
                 delegate.createScreenshotFromCollectedRects(new ArrayList<>(rects));
             }
@@ -561,6 +560,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
     private static class OcclusionHandlerV2 {
+        private static final int HEADER_SIZE = 8;
+        private static final int ITEM_SIZE = 33;
+
         private final Map<Integer, OcclusionRect> activeOcclusions = new HashMap<>();
         private final Object lock = new Object();
 
@@ -574,23 +576,26 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             }
 
             message.order(ByteOrder.LITTLE_ENDIAN);
-            if (message.remaining() < 4) {
+            if (message.remaining() < HEADER_SIZE) {
                 return;
             }
 
             int count = message.getInt();
             if (count == -1) {
-                                clear();
+                clear();
                 return;
             }
 
+            int version = message.getInt();
+
             synchronized (lock) {
                 for (int i = 0; i < count; i++) {
-                    if (message.remaining() < 25) {
+                    if (message.remaining() < ITEM_SIZE) {
                         break;
                     }
                     int viewId = message.getInt();
                     int id = message.getInt();
+                    long timestampMicros = message.getLong();
                     float left = message.getFloat();
                     float top = message.getFloat();
                     float right = message.getFloat();
@@ -598,17 +603,23 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     int type = message.get() & 0xFF;
 
                     if (left < 0) {
+                        // Removal: remove from active occlusions
                         activeOcclusions.remove(id);
                     } else {
-                        activeOcclusions.put(id, new OcclusionRect(left, top, right, bottom, type, viewId));
+                        // Add or update occlusion
+                        activeOcclusions.put(id, new OcclusionRect(
+                            left, top, right, bottom, type, viewId, timestampMicros));
                     }
                 }
             }
         }
 
+        List<Rect> getRectsForTimestamp(long captureTimestampMs) {
+            return getCurrentRects();
+        }
+
         /**
          * Get current cached rects as List<Rect>.
-         * Called by V1 listener to return V2 cached data.
          * Thread-safe: can be called from any thread.
          */
         List<Rect> getCurrentRects() {
@@ -639,14 +650,16 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             final float bottom;
             final int type;
             final int viewId;
+            final long timestampMicros;
 
-            OcclusionRect(float left, float top, float right, float bottom, int type, int viewId) {
+            OcclusionRect(float left, float top, float right, float bottom, int type, int viewId, long timestampMicros) {
                 this.left = left;
                 this.top = top;
                 this.right = right;
                 this.bottom = bottom;
                 this.type = type;
                 this.viewId = viewId;
+                this.timestampMicros = timestampMicros;
             }
         }
     }
