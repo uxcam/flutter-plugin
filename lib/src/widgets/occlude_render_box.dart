@@ -1,4 +1,5 @@
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import 'occlusion_models.dart';
@@ -29,51 +30,138 @@ class OccludeRenderBox extends RenderProxyBox
 
   ScrollPosition? _trackedScrollPosition;
   bool _isScrolling = false;
+  bool _visibilityCheckScheduled = false;
+  bool _boundsUpdateScheduled = false;
+
+  ModalRoute<dynamic>? _trackedRoute;
+
+  bool _isWidgetVisible = true;
+  bool _isInViewport = true;
+  bool _isRouteVisible = true;
+
+  bool get _isCurrentlyVisible =>
+      _isWidgetVisible && _isInViewport && _isRouteVisible;
+
+  void _updateOcclusionState() {
+    if (!attached) return;
+
+    final shouldReport = _isCurrentlyVisible && _enabled;
+
+    if (!shouldReport && _lastReportedBounds != null) {
+      _lastReportedBounds = null;
+      registry.markDirty(this);
+    } else if (shouldReport && _lastReportedBounds == null) {
+      _scheduleBoundsUpdate();
+    }
+  }
+
+  void _scheduleBoundsUpdate() {
+    if (_boundsUpdateScheduled || !attached) return;
+    _boundsUpdateScheduled = true;
+
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _boundsUpdateScheduled = false;
+      if (attached && hasSize) {
+        _calculateAndReportBounds();
+      }
+    });
+  }
+
+  void _updateWidgetVisibility(BuildContext context) {
+    _isWidgetVisible = Visibility.of(context);
+    _updateOcclusionState();
+  }
+
+  void _updateViewportVisibility() {
+    if (!attached || !hasSize) return;
+
+    final viewport = RenderAbstractViewport.maybeOf(this);
+    if (viewport == null) {
+      if (!_isInViewport) {
+        _isInViewport = true;
+        _updateOcclusionState();
+      }
+      return;
+    }
+
+    final globalBounds = localToGlobal(Offset.zero) & size;
+    final viewportBox = viewport as RenderBox;
+    final viewportBounds = viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
+
+    final wasInViewport = _isInViewport;
+    _isInViewport = globalBounds.overlaps(viewportBounds);
+
+    if (wasInViewport != _isInViewport) {
+      _updateOcclusionState();
+    }
+  }
+
+  void _updateRouteVisibility(bool visible) {
+    if (_isRouteVisible == visible) return;
+    _isRouteVisible = visible;
+    _updateOcclusionState();
+  }
 
   bool get enabled => _enabled;
   set enabled(bool value) {
     if (_enabled == value) return;
     _enabled = value;
-    _markOcclusionDirty();
-    markNeedsPaint();
+    _updateOcclusionState();
+    if (_enabled) markNeedsPaint();
   }
 
   OcclusionType get type => _type;
   set type(OcclusionType value) {
     if (_type == value) return;
     _type = value;
-    _markOcclusionDirty();
-    markNeedsPaint();
-  }
-
-  void _markOcclusionDirty() {
-    if (!attached) return;
-
-    if (!_enabled && _lastReportedBounds != null) {
-      _lastReportedBounds = null;
-      registry.markDirty(this);
-    } else if (_enabled) {
+    if (_lastReportedBounds != null) {
       registry.markDirty(this);
     }
+    markNeedsPaint();
   }
 
   void updateContext(BuildContext context) {
     _context = context;
+    _updateWidgetVisibility(context);
     _setupScrollListener(context);
+    _setupRouteListener(context);
   }
 
   void _setupScrollListener(BuildContext context) {
     _detachFromScrollable();
 
-    final scrollable = Scrollable.maybeOf(context);
+    final scrollable = _findActiveScrollable(context);
+
     if (scrollable != null) {
       _trackedScrollPosition = scrollable.position;
       _trackedScrollPosition!.isScrollingNotifier
           .addListener(_onScrollStateChanged);
+      _trackedScrollPosition!.addListener(_onScrollPositionChanged);
+    } else {
+      _isInViewport = true;
     }
   }
 
+  ScrollableState? _findActiveScrollable(BuildContext context) {
+    ScrollableState? result;
+    context.visitAncestorElements((element) {
+      if (element.widget is Scrollable) {
+        final state = (element as StatefulElement).state;
+        if (state is ScrollableState) {
+          final physics = state.position.physics;
+          if (physics is! NeverScrollableScrollPhysics) {
+            result = state;
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+    return result;
+  }
+
   void _detachFromScrollable() {
+    _trackedScrollPosition?.removeListener(_onScrollPositionChanged);
     _trackedScrollPosition?.isScrollingNotifier
         .removeListener(_onScrollStateChanged);
     _trackedScrollPosition = null;
@@ -84,7 +172,53 @@ class OccludeRenderBox extends RenderProxyBox
     _isScrolling = _trackedScrollPosition?.isScrollingNotifier.value ?? false;
 
     if (wasScrolling && !_isScrolling) {
-      markNeedsPaint();
+      _scheduleBoundsUpdate();
+    }
+  }
+
+  void _onScrollPositionChanged() {
+    if (!attached) return;
+
+    if (!_visibilityCheckScheduled) {
+      _visibilityCheckScheduled = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _visibilityCheckScheduled = false;
+        _updateViewportVisibility();
+      });
+    }
+
+    _scheduleBoundsUpdate();
+  }
+
+  void _setupRouteListener(BuildContext context) {
+    _detachFromRoute();
+
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      _trackedRoute = route;
+      route.secondaryAnimation?.addStatusListener(_onSecondaryAnimationStatus);
+      _updateRouteVisibility(route.isCurrent);
+    } else {
+      _updateRouteVisibility(true);
+    }
+  }
+
+  void _detachFromRoute() {
+    _trackedRoute?.secondaryAnimation
+        ?.removeStatusListener(_onSecondaryAnimationStatus);
+    _trackedRoute = null;
+  }
+
+  void _onSecondaryAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      _updateRouteVisibility(false);
+    } else if (status == AnimationStatus.dismissed) {
+      _updateRouteVisibility(true);
+      SchedulerBinding.instance.scheduleFrameCallback((_) {
+        if (attached && _isRouteVisible) {
+          markNeedsPaint();
+        }
+      });
     }
   }
 
@@ -97,6 +231,7 @@ class OccludeRenderBox extends RenderProxyBox
   @override
   void detach() {
     _detachFromScrollable();
+    _detachFromRoute();
     registry.unregister(this);
     super.detach();
   }
@@ -105,15 +240,11 @@ class OccludeRenderBox extends RenderProxyBox
   void paint(PaintingContext context, Offset offset) {
     super.paint(context, offset);
 
-    if (_isScrolling) {
-      _calculateAndReportBoundsThrottled(threshold: 50.0);
-    } else {
-      _calculateAndReportBounds();
-    }
+    _scheduleBoundsUpdate();
   }
 
   void _calculateAndReportBounds() {
-    if (!_enabled || !attached) {
+    if (!_enabled || !attached || !_isCurrentlyVisible) {
       if (_lastReportedBounds != null) {
         _lastReportedBounds = null;
         registry.markDirty(this);
@@ -143,40 +274,6 @@ class OccludeRenderBox extends RenderProxyBox
     if (!_rectsEqualWithinTolerance(_lastReportedBounds, snappedBounds)) {
       _lastReportedBounds = snappedBounds;
       registry.markDirty(this);
-    }
-  }
-
-  void _calculateAndReportBoundsThrottled({required double threshold}) {
-    if (!_enabled || !attached) {
-      if (_lastReportedBounds != null) {
-        _lastReportedBounds = null;
-        registry.markDirty(this);
-      }
-      return;
-    }
-
-    final transform = getTransformTo(null);
-    final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
-
-    if (_lastReportedBounds == null ||
-        !_rectsWithinThreshold(_lastReportedBounds!, rawBounds, threshold)) {
-      final effectiveClip = _calculateEffectiveClip();
-
-      Rect? clippedBounds;
-      if (effectiveClip != null) {
-        final intersection = rawBounds.intersect(effectiveClip);
-        if (intersection.width > 0 && intersection.height > 0) {
-          clippedBounds = intersection;
-        }
-      } else {
-        clippedBounds = rawBounds;
-      }
-
-      if (clippedBounds != null) {
-        final dpr = _getDevicePixelRatio();
-        _lastReportedBounds = _snapToDevicePixels(clippedBounds, dpr);
-        registry.markDirty(this);
-      }
     }
   }
 
@@ -242,11 +339,6 @@ class OccludeRenderBox extends RenderProxyBox
         (a.top - b.top).abs() < tolerance &&
         (a.right - b.right).abs() < tolerance &&
         (a.bottom - b.bottom).abs() < tolerance;
-  }
-
-  bool _rectsWithinThreshold(Rect a, Rect b, double threshold) {
-    return (a.left - b.left).abs() < threshold &&
-        (a.top - b.top).abs() < threshold;
   }
 
   @override
