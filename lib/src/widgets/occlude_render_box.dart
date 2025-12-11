@@ -27,7 +27,6 @@ class OccludeRenderBox extends RenderProxyBox
   Rect? _lastReportedBounds;
   bool _enabled;
   OcclusionType _type;
-  int _lastBoundsTimestampMicros = 0;
 
   ScrollPosition? _trackedScrollPosition;
   bool _isScrolling = false;
@@ -173,6 +172,7 @@ class OccludeRenderBox extends RenderProxyBox
 
     if (wasScrolling && !_isScrolling) {
       _scheduleBoundsUpdate();
+      registry.signalMotionEnded();
     }
   }
 
@@ -197,6 +197,9 @@ class OccludeRenderBox extends RenderProxyBox
     final route = ModalRoute.of(context);
     if (route != null) {
       _trackedRoute = route;
+      route.animation?.addListener(_onRouteAnimationTick);
+      route.animation?.addStatusListener(_onPrimaryAnimationStatus);
+      route.secondaryAnimation?.addListener(_onRouteAnimationTick);
       route.secondaryAnimation?.addStatusListener(_onSecondaryAnimationStatus);
       if (route.isCurrent) {
         _updateRouteVisibility(true);
@@ -209,22 +212,40 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _detachFromRoute() {
+    _trackedRoute?.animation?.removeListener(_onRouteAnimationTick);
+    _trackedRoute?.animation?.removeStatusListener(_onPrimaryAnimationStatus);
+    _trackedRoute?.secondaryAnimation?.removeListener(_onRouteAnimationTick);
     _trackedRoute?.secondaryAnimation
         ?.removeStatusListener(_onSecondaryAnimationStatus);
     _trackedRoute = null;
   }
 
+  void _onRouteAnimationTick() {
+    if (!attached) return;
+    markNeedsPaint();
+  }
+
+  void _onPrimaryAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      registry.signalMotionEnded();
+    } else if (status == AnimationStatus.dismissed) {
+      registry.signalMotionEnded();
+    }
+  }
+
   void _onSecondaryAnimationStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
       _checkIfCoveredByOpaqueRoute();
+      registry.signalMotionEnded();
     } else if (status == AnimationStatus.reverse) {
       _updateRouteVisibility(true);
       markNeedsPaint();
-    } else if (status == AnimationStatus.dismissed) {// Pop animation completed - ensure visibility is true and repaint
+    } else if (status == AnimationStatus.dismissed) {
       _updateRouteVisibility(true);
       SchedulerBinding.instance.scheduleFrameCallback((_) {
         if (attached && _isRouteVisible) {
           markNeedsPaint();
+          registry.signalMotionEnded();
         }
       });
     }
@@ -272,9 +293,6 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _calculateAndReportBounds() {
-    final frameTimestamp = SchedulerBinding.instance.currentFrameTimeStamp;
-    _lastBoundsTimestampMicros = frameTimestamp.inMicroseconds;
-
     if (!_enabled || !attached || !_isCurrentlyVisible) {
       if (_lastReportedBounds != null) {
         _lastReportedBounds = null;
@@ -389,5 +407,8 @@ class OccludeRenderBox extends RenderProxyBox
   int get stableId => _stableId;
 
   @override
-  int get lastBoundsTimestampMicros => _lastBoundsTimestampMicros;
+  void recalculateBounds() {
+    if (!attached || !hasSize) return;
+    _calculateAndReportBounds();
+  }
 }

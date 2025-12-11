@@ -13,6 +13,8 @@ class OcclusionRegistry with WidgetsBindingObserver {
   final _registered = <OcclusionReportingRenderBox>{};
   final _dirty = <OcclusionReportingRenderBox>{};
 
+  int _frameSequence = 0;
+
   final OcclusionPlatformChannel _channel = const OcclusionPlatformChannel();
 
   final Map<ScrollPosition, _ScrollSubscription> _scrollSubscriptions = {};
@@ -79,8 +81,10 @@ class OcclusionRegistry with WidgetsBindingObserver {
     _flushUpdates();
   }
 
-  void _flushUpdates() {
-    if (_dirty.isEmpty) return;
+  void _flushUpdates({bool resetAfterUpdate = false}) {
+    if (_dirty.isEmpty && !resetAfterUpdate) return;
+
+    _frameSequence++;
 
     final updates = <OcclusionUpdate>[];
     for (final box in _dirty) {
@@ -90,12 +94,12 @@ class OcclusionRegistry with WidgetsBindingObserver {
         type: box.currentType,
         devicePixelRatio: box.devicePixelRatio,
         viewId: box.viewId,
-        timestampMicros: box.lastBoundsTimestampMicros,
+        frameSequence: _frameSequence,
       ));
     }
     _dirty.clear();
 
-    _channel.sendBatchUpdate(updates);
+    _channel.sendBatchUpdate(updates, resetAfterUpdate: resetAfterUpdate);
   }
 
   @override
@@ -106,6 +110,16 @@ class OcclusionRegistry with WidgetsBindingObserver {
       _dirty.addAll(_registered);
       _flushUpdates();
     }
+  }
+
+  void signalMotionEnded() {
+    for (final box in _registered) {
+      box.recalculateBounds();
+    }
+
+    _dirty.addAll(_registered);
+
+    _flushUpdates(resetAfterUpdate: true);
   }
 
   static bool debugShowOcclusions = false;

@@ -120,7 +120,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             public void processOcclusionRectsForCurrentFrame(long startTimeStamp, long stopTimeStamp) {
                 List<Rect> rects = Collections.emptyList();
                 if (occlusionHandlerV2 != null) {
-                    rects = occlusionHandlerV2.getRectsForTimestamp(stopTimeStamp);
+                    rects = occlusionHandlerV2.getRectsForCapture();
                 }
                 delegate.createScreenshotFromCollectedRects(new ArrayList<>(rects));
             }
@@ -561,14 +561,16 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private static class OcclusionHandlerV2 {
         private static final int HEADER_SIZE = 8;
-        private static final int ITEM_SIZE = 33;
+        private static final int ITEM_SIZE = 25;
 
-        private final Map<Integer, OcclusionRect> activeOcclusions = new HashMap<>();
+        private final Map<Integer, AccumulatedRect> accumulators = new HashMap<>();
         private final Object lock = new Object();
 
         OcclusionHandlerV2(CrossPlatformDelegate delegate) {
             // delegate parameter kept for API compatibility but no longer used
         }
+
+        private static final int FLAG_RESET_AFTER_UPDATE = 1;
 
         void handleBinaryMessage(ByteBuffer message) {
             if (message == null) {
@@ -586,7 +588,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 return;
             }
 
-            int version = message.getInt();
+            int flags = message.getInt();
+            boolean resetAfterUpdate = (flags & FLAG_RESET_AFTER_UPDATE) != 0;
 
             synchronized (lock) {
                 for (int i = 0; i < count; i++) {
@@ -595,7 +598,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     }
                     int viewId = message.getInt();
                     int id = message.getInt();
-                    long timestampMicros = message.getLong();
                     float left = message.getFloat();
                     float top = message.getFloat();
                     float right = message.getFloat();
@@ -603,63 +605,88 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     int type = message.get() & 0xFF;
 
                     if (left < 0) {
-                        // Removal: remove from active occlusions
-                        activeOcclusions.remove(id);
+                        // Removal: remove accumulator entirely
+                        accumulators.remove(id);
                     } else {
-                        // Add or update occlusion
-                        activeOcclusions.put(id, new OcclusionRect(
-                            left, top, right, bottom, type, viewId, timestampMicros));
+                        // Add or update with accumulation
+                        AccumulatedRect acc = accumulators.get(id);
+                        if (acc == null) {
+                            accumulators.put(id, new AccumulatedRect(left, top, right, bottom, type, viewId));
+                        } else {
+                            acc.update(left, top, right, bottom, type, viewId);
+                        }
+                    }
+                }
+
+                if (resetAfterUpdate) {
+                    for (AccumulatedRect acc : accumulators.values()) {
+                        acc.resetAfterConsumption();
                     }
                 }
             }
         }
 
-        List<Rect> getRectsForTimestamp(long captureTimestampMs) {
-            return getCurrentRects();
+        List<Rect> getRectsForCapture() {
+            synchronized (lock) {
+                List<Rect> rects = new ArrayList<>();
+
+                for (AccumulatedRect acc : accumulators.values()) {
+                    rects.add(acc.getAccumulatedRect());
+                }
+
+                return rects;
+            }
         }
+
 
         /**
          * Get current cached rects as List<Rect>.
          * Thread-safe: can be called from any thread.
          */
         List<Rect> getCurrentRects() {
-            synchronized (lock) {
-                List<Rect> rects = new ArrayList<>();
-                for (OcclusionRect rect : activeOcclusions.values()) {
-                    rects.add(new Rect(
-                            Math.round(rect.left),
-                            Math.round(rect.top),
-                            Math.round(rect.right),
-                            Math.round(rect.bottom)
-                    ));
-                }
-                return rects;
-            }
+            return getRectsForCapture();
         }
 
         void clear() {
             synchronized (lock) {
-                activeOcclusions.clear();
+                accumulators.clear();
             }
         }
 
-        private static class OcclusionRect {
-            final float left;
-            final float top;
-            final float right;
-            final float bottom;
-            final int type;
-            final int viewId;
-            final long timestampMicros;
+      
+        private static class AccumulatedRect {
+            Rect current;
+            Rect accumulated;
+            int type;
+            int viewId;
 
-            OcclusionRect(float left, float top, float right, float bottom, int type, int viewId, long timestampMicros) {
-                this.left = left;
-                this.top = top;
-                this.right = right;
-                this.bottom = bottom;
+            AccumulatedRect(float left, float top, float right, float bottom, int type, int viewId) {
+                this.current = new Rect(
+                    Math.round(left), Math.round(top),
+                    Math.round(right), Math.round(bottom)
+                );
+                this.accumulated = new Rect(this.current);
                 this.type = type;
                 this.viewId = viewId;
-                this.timestampMicros = timestampMicros;
+            }
+
+            void update(float left, float top, float right, float bottom, int type, int viewId) {
+                this.current = new Rect(
+                    Math.round(left), Math.round(top),
+                    Math.round(right), Math.round(bottom)
+                );
+                this.type = type;
+                this.viewId = viewId;
+
+                this.accumulated.union(this.current);
+            }
+
+            void resetAfterConsumption() {
+                this.accumulated = new Rect(this.current);
+            }
+
+            Rect getAccumulatedRect() {
+                return new Rect(accumulated);
             }
         }
     }
