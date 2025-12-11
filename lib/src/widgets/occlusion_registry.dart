@@ -17,6 +17,54 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   final OcclusionPlatformChannel _channel = const OcclusionPlatformChannel();
 
+  final Map<ScrollPosition, _ScrollSubscription> _scrollSubscriptions = {};
+
+  void subscribeToScroll(ScrollPosition position, ScrollSubscriber subscriber) {
+    if (!_scrollSubscriptions.containsKey(position)) {
+      final subscription = _ScrollSubscription(position, this);
+      _scrollSubscriptions[position] = subscription;
+      subscription.attach();
+    }
+    _scrollSubscriptions[position]!.subscribers.add(subscriber);
+  }
+
+  void unsubscribeFromScroll(
+    ScrollPosition position,
+    ScrollSubscriber subscriber,
+  ) {
+    final subscription = _scrollSubscriptions[position];
+    if (subscription == null) return;
+
+    subscription.subscribers.remove(subscriber);
+
+    if (subscription.subscribers.isEmpty) {
+      subscription.detach();
+      _scrollSubscriptions.remove(position);
+    }
+  }
+
+  void _notifyScrollPositionChanged(ScrollPosition position) {
+    final subscription = _scrollSubscriptions[position];
+    if (subscription == null || subscription.subscribers.isEmpty) return;
+
+    for (final subscriber in subscription.subscribers) {
+      subscriber.onScrollPositionChanged();
+    }
+
+    _scheduleUpdate();
+  }
+
+  void _notifyScrollStateChanged(ScrollPosition position) {
+    final subscription = _scrollSubscriptions[position];
+    if (subscription == null || subscription.subscribers.isEmpty) return;
+
+    final isScrolling = position.isScrollingNotifier.value;
+
+    for (final subscriber in subscription.subscribers) {
+      subscriber.onScrollStateChanged(isScrolling);
+    }
+  }
+
   void register(OcclusionReportingRenderBox box) {
     _registered.add(box);
     _dirty.add(box);
@@ -81,5 +129,31 @@ class OcclusionRegistry with WidgetsBindingObserver {
     for (final box in _registered) {
       debugPrint('  - ${box.stableId}: ${box.currentBounds}');
     }
+  }
+}
+
+class _ScrollSubscription {
+  _ScrollSubscription(this.position, this.registry);
+
+  final ScrollPosition position;
+  final OcclusionRegistry registry;
+  final Set<ScrollSubscriber> subscribers = {};
+
+  void attach() {
+    position.addListener(_onPositionChanged);
+    position.isScrollingNotifier.addListener(_onScrollStateChanged);
+  }
+
+  void detach() {
+    position.removeListener(_onPositionChanged);
+    position.isScrollingNotifier.removeListener(_onScrollStateChanged);
+  }
+
+  void _onPositionChanged() {
+    registry._notifyScrollPositionChanged(position);
+  }
+
+  void _onScrollStateChanged() {
+    registry._notifyScrollStateChanged(position);
   }
 }

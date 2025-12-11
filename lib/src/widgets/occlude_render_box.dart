@@ -6,7 +6,7 @@ import 'occlusion_models.dart';
 import 'occlusion_registry.dart';
 
 class OccludeRenderBox extends RenderProxyBox
-    implements OcclusionReportingRenderBox {
+    implements OcclusionReportingRenderBox, ScrollSubscriber {
   OccludeRenderBox({
     required bool enabled,
     required OcclusionType type,
@@ -134,9 +134,7 @@ class OccludeRenderBox extends RenderProxyBox
 
     if (scrollable != null) {
       _trackedScrollPosition = scrollable.position;
-      _trackedScrollPosition!.isScrollingNotifier
-          .addListener(_onScrollStateChanged);
-      _trackedScrollPosition!.addListener(_onScrollPositionChanged);
+      registry.subscribeToScroll(_trackedScrollPosition!, this);
     } else {
       _isInViewport = true;
     }
@@ -161,22 +159,24 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _detachFromScrollable() {
-    _trackedScrollPosition?.removeListener(_onScrollPositionChanged);
-    _trackedScrollPosition?.isScrollingNotifier
-        .removeListener(_onScrollStateChanged);
-    _trackedScrollPosition = null;
+    if (_trackedScrollPosition != null) {
+      registry.unsubscribeFromScroll(_trackedScrollPosition!, this);
+      _trackedScrollPosition = null;
+    }
   }
 
-  void _onScrollStateChanged() {
+  @override
+  void onScrollStateChanged(bool isScrolling) {
     final wasScrolling = _isScrolling;
-    _isScrolling = _trackedScrollPosition?.isScrollingNotifier.value ?? false;
+    _isScrolling = isScrolling;
 
     if (wasScrolling && !_isScrolling) {
       _scheduleBoundsUpdate();
     }
   }
 
-  void _onScrollPositionChanged() {
+  @override
+  void onScrollPositionChanged() {
     if (!attached) return;
 
     if (!_visibilityCheckScheduled) {

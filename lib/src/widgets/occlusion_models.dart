@@ -12,6 +12,11 @@ abstract class OcclusionReportingRenderBox {
   int get viewId;
 }
 
+abstract class ScrollSubscriber {
+  void onScrollPositionChanged();
+  void onScrollStateChanged(bool isScrolling);
+}
+
 class OcclusionUpdate {
   const OcclusionUpdate({
     required this.id,
