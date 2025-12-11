@@ -216,7 +216,10 @@ class OccludeRenderBox extends RenderProxyBox
   void _onSecondaryAnimationStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
       _checkIfCoveredByOpaqueRoute();
-    } else if (status == AnimationStatus.dismissed) {
+    } else if (status == AnimationStatus.reverse) {
+      _updateRouteVisibility(true);
+      markNeedsPaint();
+    } else if (status == AnimationStatus.dismissed) {// Pop animation completed - ensure visibility is true and repaint
       _updateRouteVisibility(true);
       SchedulerBinding.instance.scheduleFrameCallback((_) {
         if (attached && _isRouteVisible) {
@@ -264,7 +267,7 @@ class OccludeRenderBox extends RenderProxyBox
   @override
   void paint(PaintingContext context, Offset offset) {
     super.paint(context, offset);
-    _scheduleBoundsUpdate();
+    _calculateAndReportBounds();
   }
 
   void _calculateAndReportBounds() {
@@ -277,14 +280,9 @@ class OccludeRenderBox extends RenderProxyBox
     }
 
     final secondaryAnim = _trackedRoute?.secondaryAnimation;
-    if (secondaryAnim != null) {
-      final value = secondaryAnim.value;
-      final status = secondaryAnim.status;
-      final isAnimating = status == AnimationStatus.forward || status == AnimationStatus.reverse;
-      if (isAnimating || (value > 0.0 && value < 1.0)) {
-        return;
-      }
-    }
+    final isAnimating = secondaryAnim != null &&
+        (secondaryAnim.status == AnimationStatus.forward ||
+            secondaryAnim.status == AnimationStatus.reverse);
 
     final transform = getTransformTo(null);
     final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
@@ -301,6 +299,23 @@ class OccludeRenderBox extends RenderProxyBox
       clippedBounds = rawBounds;
     }
 
+    // During animation, expand the bounds to account for potential timing
+    // mismatch between when Flutter calculates the transform and when the
+    // SDK captures the screenshot. This ensures sensitive content is always
+    // covered even if there's slight position drift during transitions.
+    if (isAnimating && clippedBounds != null) {
+      // Expand by a percentage of the screen width to cover slide animations
+      // Most Material transitions slide by ~25% of screen width
+      final screenWidth = _getScreenWidth();
+      final expansionAmount = screenWidth * 0.3; // 30% of screen width
+      clippedBounds = Rect.fromLTRB(
+        clippedBounds.left - expansionAmount,
+        clippedBounds.top,
+        clippedBounds.right + expansionAmount,
+        clippedBounds.bottom,
+      );
+    }
+
     final devicePixelRatio = _getDevicePixelRatio();
     final snappedBounds = clippedBounds != null
         ? _snapToDevicePixels(clippedBounds, devicePixelRatio)
@@ -310,6 +325,14 @@ class OccludeRenderBox extends RenderProxyBox
       _lastReportedBounds = snappedBounds;
       registry.markDirty(this);
     }
+  }
+
+  double _getScreenWidth() {
+    if (_context != null) {
+      final size = MediaQuery.maybeOf(_context!)?.size;
+      if (size != null) return size.width;
+    }
+    return 400.0; // Fallback default
   }
 
   Rect? _calculateEffectiveClip() {
