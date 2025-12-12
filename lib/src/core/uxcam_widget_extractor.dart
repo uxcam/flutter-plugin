@@ -53,69 +53,56 @@ class UXCamWidgetExtractor {
 
   _ExtractionResult? _findBestElement(
       Offset position, Set<int> hitTargetHashes) {
-    // Collect candidates and upgrade to semantic ancestors
-    // Many widgets (like Text) don't have RenderObjects - they delegate to
-    // internal widgets (like RichText). We walk UP to find the semantic widget.
-    final candidates = <_CandidateInfo>[];
-    final seenElements = <Element>{};
     final matches = _registry.getMatchingElements(hitTargetHashes);
 
-    for (final entry in matches) {
-      final hash = entry.key;
-      final element = entry.value;
+    // Find first valid candidate (hit order = specificity order)
+    Element? targetElement;
+    int? targetHash;
+    int? targetType;
 
+    for (final entry in matches) {
+      final element = entry.value;
       if (!element.mounted) continue;
 
-      final cachedInfo = _registry.getCachedInfo(hash);
-      final type = cachedInfo?.uxType ??
-          UXCamWidgetClassifier.classifyElement(element);
-
+      final cachedInfo = _registry.getCachedInfo(entry.key);
+      final type =
+          cachedInfo?.uxType ?? UXCamWidgetClassifier.classifyElement(element);
       if (type == UX_UNKNOWN) continue;
 
       final bounds = _getElementBounds(element);
-      final containsPosition =
-          bounds.contains(position) || _containsWithTolerance(bounds, position, 10.0);
-
-      if (containsPosition) {
-        // Try to find a better same-type ancestor (e.g., Text instead of RichText)
-        final semanticElement = _findSemanticAncestor(element, type) ?? element;
-
-        // Avoid duplicates when multiple hit targets upgrade to same ancestor
-        if (seenElements.contains(semanticElement)) continue;
-        seenElements.add(semanticElement);
-
-        candidates.add(_CandidateInfo(
-          hash: hash,
-          element: semanticElement,
-          type: type,
-        ));
+      if (!bounds.contains(position) &&
+          !_containsWithTolerance(bounds, position, 10.0)) {
+        continue;
       }
+
+      targetElement = element;
+      targetHash = entry.key;
+      targetType = type;
+      break; // First valid = most specific
     }
 
-    if (candidates.isEmpty) return null;
+    if (targetElement == null) return null;
 
-    // Select best (prefer interactive over non-interactive)
-    _CandidateInfo? best;
-    for (final candidate in candidates) {
-      if (best == null) {
-        best = candidate;
-      } else {
-        final bestIsInteractive = _isInteractiveType(best.type);
-        final candidateIsInteractive = _isInteractiveType(candidate.type);
+    // Upgrade to semantic ancestor (RichText → Text)
+    final semanticElement =
+        _findSemanticAncestor(targetElement, targetType!) ?? targetElement;
 
-        if (candidateIsInteractive && !bestIsInteractive) {
-          best = candidate;
-        }
-        // If both have same interactivity, keep the first one found
+    // If non-interactive, check if it's a label for an interactive parent
+    if (!_isInteractiveType(targetType)) {
+      final labelOwner = _findLabelOwner(semanticElement);
+      if (labelOwner != null) {
+        return _ExtractionResult(
+          element: labelOwner,
+          hash: identityHashCode(labelOwner.renderObject),
+          type: UXCamWidgetClassifier.classifyElement(labelOwner),
+        );
       }
     }
-
-    if (best == null) return null;
 
     return _ExtractionResult(
-      element: best.element,
-      hash: best.hash,
-      type: best.type,
+      element: semanticElement,
+      hash: targetHash!,
+      type: targetType,
     );
   }
 
@@ -137,6 +124,49 @@ class UXCamWidgetExtractor {
 
   bool _isInteractiveType(int type) {
     return type == UX_BUTTON || type == UX_FIELD || type == UX_COMPOUND;
+  }
+
+  /// Returns interactive ancestor if element is its sole content widget.
+  /// e.g., Text inside ElevatedButton → returns ElevatedButton
+  /// But Text inside Row[Icon, Text] inside Button → returns null (not sole content)
+  Element? _findLabelOwner(Element element) {
+    Element? result;
+
+    element.visitAncestorElements((ancestor) {
+      final type = UXCamWidgetClassifier.classifyElement(ancestor);
+      if (_isInteractiveType(type)) {
+        if (_isSoleContent(ancestor, element)) {
+          result = ancestor;
+        }
+        return false; // Stop at first interactive ancestor
+      }
+      return true;
+    });
+
+    return result;
+  }
+
+  /// Check if child is the only content widget inside parent
+  bool _isSoleContent(Element parent, Element target) {
+    int contentCount = 0;
+    bool foundTarget = false;
+
+    void visit(Element el) {
+      final type = UXCamWidgetClassifier.classifyElement(el);
+
+      if (type == UX_TEXT || type == UX_IMAGE) {
+        contentCount++;
+        if (identical(el, target)) foundTarget = true;
+        return; // Don't recurse into content widgets
+      }
+
+      if (_isInteractiveType(type)) return; // Don't recurse into nested interactive
+
+      el.visitChildElements(visit);
+    }
+
+    parent.visitChildElements(visit);
+    return foundTarget && contentCount == 1;
   }
 
   bool _containsWithTolerance(Rect bounds, Offset position, double radius) {
@@ -354,14 +384,3 @@ class _ExtractionResult {
   });
 }
 
-class _CandidateInfo {
-  final int hash;
-  final Element element;
-  final int type;
-
-  _CandidateInfo({
-    required this.hash,
-    required this.element,
-    required this.type,
-  });
-}
