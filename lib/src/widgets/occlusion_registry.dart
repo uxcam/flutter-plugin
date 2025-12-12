@@ -15,6 +15,9 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   int _frameSequence = 0;
 
+  int _lastResetTimestamp = 0;
+  static const int _resetIntervalMicros = 100000; // 100ms in microseconds
+
   final OcclusionPlatformChannel _channel = const OcclusionPlatformChannel();
 
   final Map<ScrollPosition, _ScrollSubscription> _scrollSubscriptions = {};
@@ -86,6 +89,15 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
     _frameSequence++;
 
+    final currentTimestamp = DateTime.now().microsecondsSinceEpoch;
+    final shouldPeriodicReset = !resetAfterUpdate &&
+        _lastResetTimestamp > 0 &&
+        (currentTimestamp - _lastResetTimestamp) >= _resetIntervalMicros;
+
+    if (resetAfterUpdate || shouldPeriodicReset) {
+      _lastResetTimestamp = currentTimestamp;
+    }
+
     final updates = <OcclusionUpdate>[];
     for (final box in _dirty) {
       updates.add(OcclusionUpdate(
@@ -99,7 +111,10 @@ class OcclusionRegistry with WidgetsBindingObserver {
     }
     _dirty.clear();
 
-    _channel.sendBatchUpdate(updates, resetAfterUpdate: resetAfterUpdate);
+    _channel.sendBatchUpdate(
+      updates,
+      resetAfterUpdate: resetAfterUpdate || shouldPeriodicReset,
+    );
   }
 
   @override
@@ -112,7 +127,13 @@ class OcclusionRegistry with WidgetsBindingObserver {
     }
   }
 
+  void signalMotionStarted() {
+    _lastResetTimestamp = DateTime.now().microsecondsSinceEpoch;
+  }
+
   void signalMotionEnded() {
+    _lastResetTimestamp = 0;
+
     for (final box in _registered) {
       box.recalculateBounds();
     }
