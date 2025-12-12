@@ -50,7 +50,7 @@ class UXCamPage extends StatelessWidget {
         children: [
           FeatureSection(
             occlude: true,
-            title: 'Interactive Demo Screen',
+            title: 'Interactive Demo Screen**',
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -62,7 +62,7 @@ class UXCamPage extends StatelessWidget {
           ),
           FeatureSection(
             occlude: true,
-            title: 'PageView with Random Text',
+            title: 'PageView with Random Text**',
             onPressed: () {
               Navigator.of(context).pushNamed('/pageview');
             },
@@ -70,7 +70,7 @@ class UXCamPage extends StatelessWidget {
           ),
           FeatureSection(
             occlude: true,
-            title: 'Spinning Colored Box',
+            title: 'Spinning Colored Box**',
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -82,7 +82,7 @@ class UXCamPage extends StatelessWidget {
           ),
           FeatureSection(
             occlude: true,
-            title: 'Open Dialog',
+            title: 'Open Dialog**',
             onPressed: () async {
               await showDialog(
                 context: context,
@@ -115,7 +115,7 @@ class UXCamPage extends StatelessWidget {
           ),
           FeatureSection(
             occlude: true,
-            title: 'Open Bottom Sheet',
+            title: 'Open Bottom Sheet**',
             onPressed: () async {
               await showModalBottomSheet(
                 context: context,
