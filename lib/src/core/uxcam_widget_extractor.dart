@@ -217,7 +217,7 @@ class UXCamWidgetExtractor {
     final isOccluded =
         element.findAncestorWidgetOfExactType<OccludeWrapper>() != null;
 
-    final value = _extractValue(element, type);
+    final value = _extractValue(element, type, position);
     final uiId = _generateUiId(route, widgetType, value);
 
     return TrackData(
@@ -231,7 +231,7 @@ class UXCamWidgetExtractor {
     );
   }
 
-  String _extractValue(Element element, int type) {
+  String _extractValue(Element element, int type, Offset position) {
     final widget = element.widget;
 
     switch (type) {
@@ -242,7 +242,7 @@ class UXCamWidgetExtractor {
       case UX_FIELD:
         return _extractFieldValue(widget);
       case UX_BUTTON:
-        return _extractButtonLabel(element);
+        return _extractButtonLabel(element, position);
       default:
         return '';
     }
@@ -322,11 +322,19 @@ class UXCamWidgetExtractor {
     return '';
   }
 
-  String _extractButtonLabel(Element element) {
+  String _extractButtonLabel(Element element, Offset position) {
     String label = '';
 
     void visitChildren(Element child) {
       if (label.isNotEmpty) return;
+
+      // Only extract from children at tap position
+      final bounds = _getElementBounds(child);
+      if (bounds != Rect.zero && !bounds.contains(position)) {
+        // Still recurse - the actual text widget might be deeper
+        child.visitChildElements(visitChildren);
+        return;
+      }
 
       final widget = child.widget;
       if (widget is Text && widget.data != null && widget.data!.isNotEmpty) {
