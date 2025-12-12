@@ -83,12 +83,17 @@ class UXCamWidgetExtractor {
 
     if (targetElement == null) return null;
 
-    // Upgrade to semantic ancestor (RichText → Text)
+    // Upgrade to semantic ancestor (RichText → Text, RichText → Icon)
     final semanticElement =
         _findSemanticAncestor(targetElement, targetType!) ?? targetElement;
 
+    // Re-classify if element changed (e.g., RichText upgraded to Icon)
+    final semanticType = semanticElement != targetElement
+        ? UXCamWidgetClassifier.classifyElement(semanticElement)
+        : targetType;
+
     // If non-interactive, check if it's a label for an interactive parent
-    if (!_isInteractiveType(targetType)) {
+    if (!_isInteractiveType(semanticType)) {
       final labelOwner = _findLabelOwner(semanticElement);
       if (labelOwner != null) {
         return _ExtractionResult(
@@ -102,21 +107,35 @@ class UXCamWidgetExtractor {
     return _ExtractionResult(
       element: semanticElement,
       hash: targetHash!,
-      type: targetType,
+      type: semanticType,
     );
   }
 
   /// Walk up the element tree to find the highest same-type ancestor.
   /// This upgrades implementation widgets to their semantic parents:
   /// - RichText → Text (Text has no RenderObject, delegates to RichText)
+  /// - RichText → Icon (Icon renders as RichText internally)
   /// - GestureDetector → InkWell → ElevatedButton (returns ElevatedButton)
   Element? _findSemanticAncestor(Element element, int type) {
     Element? highest;
+    int? upgradedType;
+
     element.visitAncestorElements((ancestor) {
       final ancestorType = UXCamWidgetClassifier.classifyElement(ancestor);
-      if (ancestorType == type) {
-        highest = ancestor; // Keep going to find the highest
+
+      // Same type - keep searching for highest
+      if (ancestorType == type || ancestorType == upgradedType) {
+        highest = ancestor;
+        return true;
       }
+
+      // Special case: RichText inside Icon - upgrade to Icon (UX_IMAGE)
+      if (type == UX_TEXT && ancestorType == UX_IMAGE) {
+        highest = ancestor;
+        upgradedType = UX_IMAGE;
+        return true;
+      }
+
       return true; // Continue searching all the way up
     });
     return highest;
@@ -126,8 +145,8 @@ class UXCamWidgetExtractor {
     return type == UX_BUTTON || type == UX_FIELD || type == UX_COMPOUND;
   }
 
-  /// Returns interactive ancestor if element is its sole content widget.
-  /// e.g., Text inside ElevatedButton → returns ElevatedButton
+  /// Returns the highest interactive ancestor if element is its sole content widget.
+  /// e.g., Text inside ElevatedButton → returns ElevatedButton (not inner GestureDetector)
   /// But Text inside Row[Icon, Text] inside Button → returns null (not sole content)
   Element? _findLabelOwner(Element element) {
     Element? result;
@@ -136,9 +155,9 @@ class UXCamWidgetExtractor {
       final type = UXCamWidgetClassifier.classifyElement(ancestor);
       if (_isInteractiveType(type)) {
         if (_isSoleContent(ancestor, element)) {
-          result = ancestor;
+          result = ancestor; // Keep searching for highest
         }
-        return false; // Stop at first interactive ancestor
+        // Continue searching - don't stop at first interactive
       }
       return true;
     });
@@ -146,7 +165,8 @@ class UXCamWidgetExtractor {
     return result;
   }
 
-  /// Check if child is the only content widget inside parent
+  /// Check if child is the only content widget inside parent.
+  /// Recurses through nested interactive widgets to find the target.
   bool _isSoleContent(Element parent, Element target) {
     int contentCount = 0;
     bool foundTarget = false;
@@ -160,8 +180,7 @@ class UXCamWidgetExtractor {
         return; // Don't recurse into content widgets
       }
 
-      if (_isInteractiveType(type)) return; // Don't recurse into nested interactive
-
+      // Always recurse to find the target, even through interactive widgets
       el.visitChildElements(visit);
     }
 
@@ -348,8 +367,12 @@ class UXCamWidgetExtractor {
           return;
         }
       }
-      if (widget is Icon && widget.semanticLabel != null) {
-        label = widget.semanticLabel!;
+      if (widget is Icon) {
+        if (widget.semanticLabel != null) {
+          label = widget.semanticLabel!;
+        } else if (widget.icon != null) {
+          label = '${widget.icon!.fontFamily}-${widget.icon!.codePoint.toRadixString(16)}';
+        }
         return;
       }
       if (label.isEmpty) {
