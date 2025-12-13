@@ -15,6 +15,9 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   int _frameSequence = 0;
 
+  bool _flushScheduled = false;
+  bool _pendingResetAfterUpdate = false;
+
   int _lastResetTimestamp = 0;
   static const int _resetIntervalMicros = 100000; // 100ms in microseconds
 
@@ -69,7 +72,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
   void register(OcclusionReportingRenderBox box) {
     _registered.add(box);
     _dirty.add(box);
-    _flushUpdates();
+    _scheduleFlush();
   }
 
   void unregister(OcclusionReportingRenderBox box) {
@@ -81,7 +84,25 @@ class OcclusionRegistry with WidgetsBindingObserver {
   void markDirty(OcclusionReportingRenderBox box) {
     if (!_registered.contains(box)) return;
     _dirty.add(box);
-    _flushUpdates();
+    _scheduleFlush();
+  }
+
+  void _scheduleFlush({bool resetAfterUpdate = false}) {
+    if (resetAfterUpdate) {
+      _pendingResetAfterUpdate = true;
+    }
+
+    if (_flushScheduled) return;
+    _flushScheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _flushScheduled = false;
+
+      final shouldReset = _pendingResetAfterUpdate;
+      _pendingResetAfterUpdate = false;
+
+      _flushUpdates(resetAfterUpdate: shouldReset);
+    });
   }
 
   void _flushUpdates({bool resetAfterUpdate = false}) {
@@ -123,7 +144,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
       _channel.clearAll();
     } else if (state == AppLifecycleState.resumed) {
       _dirty.addAll(_registered);
-      _flushUpdates();
+      _scheduleFlush();
     }
   }
 

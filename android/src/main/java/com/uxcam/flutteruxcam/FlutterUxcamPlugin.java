@@ -654,32 +654,40 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
 
       
-        private static class AccumulatedRect {
-            Rect current;
-            Rect accumulated;
-            int type;
-            int viewId;
+	        private static class AccumulatedRect {
+	            Rect current;
+	            Rect accumulated;
+	            int type;
+	            int viewId;
 
-            AccumulatedRect(float left, float top, float right, float bottom, int type, int viewId) {
-                this.current = new Rect(
-                    Math.round(left), Math.round(top),
-                    Math.round(right), Math.round(bottom)
-                );
-                this.accumulated = new Rect(this.current);
-                this.type = type;
-                this.viewId = viewId;
-            }
+	            private static Rect toConservativeRect(float left, float top, float right, float bottom) {
+	                float minX = Math.min(left, right);
+	                float maxX = Math.max(left, right);
+	                float minY = Math.min(top, bottom);
+	                float maxY = Math.max(top, bottom);
 
-            void update(float left, float top, float right, float bottom, int type, int viewId) {
-                this.current = new Rect(
-                    Math.round(left), Math.round(top),
-                    Math.round(right), Math.round(bottom)
-                );
-                this.type = type;
-                this.viewId = viewId;
+	                return new Rect(
+	                        (int) Math.floor(minX),
+	                        (int) Math.floor(minY),
+	                        (int) Math.ceil(maxX),
+	                        (int) Math.ceil(maxY)
+	                );
+	            }
 
-                this.accumulated.union(this.current);
-            }
+	            AccumulatedRect(float left, float top, float right, float bottom, int type, int viewId) {
+	                this.current = toConservativeRect(left, top, right, bottom);
+	                this.accumulated = new Rect(this.current);
+	                this.type = type;
+	                this.viewId = viewId;
+	            }
+
+	            void update(float left, float top, float right, float bottom, int type, int viewId) {
+	                this.current = toConservativeRect(left, top, right, bottom);
+	                this.type = type;
+	                this.viewId = viewId;
+
+	                this.accumulated.union(this.current);
+	            }
 
             void resetAfterConsumption() {
                 this.accumulated = new Rect(this.current);

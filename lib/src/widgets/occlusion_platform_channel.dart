@@ -78,8 +78,9 @@ class OcclusionPlatformChannel {
 
   /// Clear all occlusions (e.g., when app is backgrounded).
   void clearAll() {
-    final buffer = ByteData(4);
-    buffer.setInt32(0, -1, Endian.little);
+    final buffer = ByteData(8);
+    buffer.setInt32(0, -1, Endian.little); // count=-1 signals clear-all
+    buffer.setInt32(4, 0, Endian.little);
     _channel.send(buffer);
   }
 }
