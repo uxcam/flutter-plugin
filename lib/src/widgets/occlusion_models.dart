@@ -14,10 +14,6 @@ abstract class OcclusionReportingRenderBox {
   void recalculateBounds();
 }
 
-abstract class ScrollSubscriber {
-  void onScrollPositionChanged();
-  void onScrollStateChanged(bool isScrolling);
-}
 
 class OcclusionUpdate {
   const OcclusionUpdate({

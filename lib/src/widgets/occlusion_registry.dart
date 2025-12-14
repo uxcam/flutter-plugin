@@ -12,60 +12,102 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   final _registered = <OcclusionReportingRenderBox>{};
   final _dirty = <OcclusionReportingRenderBox>{};
+  
+  final _boxesForPosition = <ScrollPosition, Set<OcclusionReportingRenderBox>>{};
+  final _positionListeners = <ScrollPosition, VoidCallback>{};
+  final _scrollingListeners = <ScrollPosition, VoidCallback>{};
+  final _velocityTrackers = <ScrollPosition, _VelocityTracker>{};
 
   int _frameSequence = 0;
-
   bool _flushScheduled = false;
   bool _pendingResetAfterUpdate = false;
 
   int _lastResetTimestamp = 0;
-  static const int _resetIntervalMicros = 100000; // 100ms in microseconds
+  static const int _resetIntervalMicros = 100000; // 100ms
 
   final OcclusionPlatformChannel _channel = const OcclusionPlatformChannel();
 
-  final Map<ScrollPosition, _ScrollSubscription> _scrollSubscriptions = {};
 
-  void subscribeToScroll(ScrollPosition position, ScrollSubscriber subscriber) {
-    if (!_scrollSubscriptions.containsKey(position)) {
-      final subscription = _ScrollSubscription(position, this);
-      _scrollSubscriptions[position] = subscription;
-      subscription.attach();
+  void subscribeToScroll(
+    ScrollPosition position,
+    OcclusionReportingRenderBox box,
+  ) {
+    if (!_boxesForPosition.containsKey(position)) {
+      final positionListener = () => _onScrollPositionChanged(position);
+      final scrollingListener = () => _onScrollingStateChanged(position);
+
+      _positionListeners[position] = positionListener;
+      _scrollingListeners[position] = scrollingListener;
+      _velocityTrackers[position] = _VelocityTracker();
+
+      position.addListener(positionListener);
+      position.isScrollingNotifier.addListener(scrollingListener);
+
+      _boxesForPosition[position] = {};
     }
-    _scrollSubscriptions[position]!.subscribers.add(subscriber);
+
+    _boxesForPosition[position]!.add(box);
   }
 
   void unsubscribeFromScroll(
     ScrollPosition position,
-    ScrollSubscriber subscriber,
+    OcclusionReportingRenderBox box,
   ) {
-    final subscription = _scrollSubscriptions[position];
-    if (subscription == null) return;
+    final boxes = _boxesForPosition[position];
+    if (boxes == null) return;
 
-    subscription.subscribers.remove(subscriber);
+    boxes.remove(box);
 
-    if (subscription.subscribers.isEmpty) {
-      subscription.detach();
-      _scrollSubscriptions.remove(position);
+    if (boxes.isEmpty) {
+      final positionListener = _positionListeners.remove(position);
+      final scrollingListener = _scrollingListeners.remove(position);
+
+      if (positionListener != null) {
+        position.removeListener(positionListener);
+      }
+      if (scrollingListener != null) {
+        position.isScrollingNotifier.removeListener(scrollingListener);
+      }
+
+      _boxesForPosition.remove(position);
+      _velocityTrackers.remove(position);
     }
   }
 
-  void _notifyScrollPositionChanged(ScrollPosition position) {
-    final subscription = _scrollSubscriptions[position];
-    if (subscription == null || subscription.subscribers.isEmpty) return;
+  double getVelocity(ScrollPosition position) {
+    return _velocityTrackers[position]?.velocity ?? 0.0;
+  }
 
-    for (final subscriber in subscription.subscribers) {
-      subscriber.onScrollPositionChanged();
+  void _onScrollPositionChanged(ScrollPosition position) {
+    _velocityTrackers[position]?.update(position.pixels);
+
+    final boxes = _boxesForPosition[position];
+    if (boxes == null || boxes.isEmpty) return;
+
+    for (final box in boxes) {
+      box.recalculateBounds();
     }
   }
 
-  void _notifyScrollStateChanged(ScrollPosition position) {
-    final subscription = _scrollSubscriptions[position];
-    if (subscription == null || subscription.subscribers.isEmpty) return;
-
+  void _onScrollingStateChanged(ScrollPosition position) {
     final isScrolling = position.isScrollingNotifier.value;
 
-    for (final subscriber in subscription.subscribers) {
-      subscriber.onScrollStateChanged(isScrolling);
+    if (isScrolling) {
+      if (_lastResetTimestamp == 0) {
+        _lastResetTimestamp = DateTime.now().microsecondsSinceEpoch;
+      }
+    } else {
+      _velocityTrackers[position]?.reset();
+      _lastResetTimestamp = 0;
+
+      final boxes = _boxesForPosition[position];
+      if (boxes != null) {
+        for (final box in boxes) {
+          box.recalculateBounds();
+        }
+      }
+
+      _scheduleFlush(resetAfterUpdate: true);
     }
   }
 
@@ -111,12 +153,15 @@ class OcclusionRegistry with WidgetsBindingObserver {
     _frameSequence++;
 
     final currentTimestamp = DateTime.now().microsecondsSinceEpoch;
+
+    // Periodic reset every 100ms during scrolling
     final shouldPeriodicReset = !resetAfterUpdate &&
         _lastResetTimestamp > 0 &&
         (currentTimestamp - _lastResetTimestamp) >= _resetIntervalMicros;
 
     if (resetAfterUpdate || shouldPeriodicReset) {
-      _lastResetTimestamp = currentTimestamp;
+      _lastResetTimestamp =
+          _lastResetTimestamp > 0 ? currentTimestamp : _lastResetTimestamp;
     }
 
     final updates = <OcclusionUpdate>[];
@@ -148,55 +193,42 @@ class OcclusionRegistry with WidgetsBindingObserver {
     }
   }
 
-  void signalMotionStarted() {
-    _lastResetTimestamp = DateTime.now().microsecondsSinceEpoch;
-  }
-
-  void signalMotionEnded() {
-    _lastResetTimestamp = 0;
-
-    for (final box in _registered) {
-      box.recalculateBounds();
-    }
-
-    _dirty.addAll(_registered);
-
-    _flushUpdates(resetAfterUpdate: true);
-  }
-
   static bool debugShowOcclusions = false;
 
   void debugPrintState() {
     debugPrint(
-        'OcclusionRegistry: ${_registered.length} registered, ${_dirty.length} dirty');
+      'OcclusionRegistry: ${_registered.length} registered, ${_dirty.length} dirty',
+    );
     for (final box in _registered) {
       debugPrint('  - ${box.stableId}: ${box.currentBounds}');
     }
   }
 }
 
-class _ScrollSubscription {
-  _ScrollSubscription(this.position, this.registry);
+class _VelocityTracker {
+  double _lastPixels = 0.0;
+  int _lastTimestamp = 0;
+  double _velocity = 0.0;
 
-  final ScrollPosition position;
-  final OcclusionRegistry registry;
-  final Set<ScrollSubscriber> subscribers = {};
+  double get velocity => _velocity;
 
-  void attach() {
-    position.addListener(_onPositionChanged);
-    position.isScrollingNotifier.addListener(_onScrollStateChanged);
+  void update(double pixels) {
+    final now = DateTime.now().microsecondsSinceEpoch;
+
+    if (_lastTimestamp > 0) {
+      final timeDelta = now - _lastTimestamp;
+      if (timeDelta > 0) {
+        final pixelsDelta = pixels - _lastPixels;
+        _velocity = (pixelsDelta / timeDelta) * 1000000;
+      }
+    }
+
+    _lastPixels = pixels;
+    _lastTimestamp = now;
   }
 
-  void detach() {
-    position.removeListener(_onPositionChanged);
-    position.isScrollingNotifier.removeListener(_onScrollStateChanged);
-  }
-
-  void _onPositionChanged() {
-    registry._notifyScrollPositionChanged(position);
-  }
-
-  void _onScrollStateChanged() {
-    registry._notifyScrollStateChanged(position);
+  void reset() {
+    _velocity = 0.0;
+    _lastTimestamp = 0;
   }
 }
