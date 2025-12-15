@@ -67,7 +67,7 @@ class OccludeRenderBox extends RenderProxyBox
 
   final OcclusionRegistry registry;
 
-  late final int _stableId = _generateStableId();
+  int? _stableId;
   static int _idCounter = 0;
   static int _generateStableId() {
     return Object.hash(++_idCounter, DateTime.now().microsecondsSinceEpoch);
@@ -97,7 +97,7 @@ class OccludeRenderBox extends RenderProxyBox
       _timestampedBounds.clear();
       if (_isRegistered) {
         _isRegistered = false;
-        registry.unregister(this);
+        registry.remove(this);
       }
     }
     markNeedsPaint();
@@ -114,9 +114,33 @@ class OccludeRenderBox extends RenderProxyBox
     _context = context;
   }
 
+  int _deriveStableId() {
+    if (_context != null) {
+      final element = _context as Element;
+      final key = element.widget.key;
+      if (key != null) {
+        return Object.hash('key', key);
+      }
+    }
+
+    final parentData = this.parentData;
+    if (parentData is SliverMultiBoxAdaptorParentData &&
+        parentData.index != null) {
+      final viewId = _getViewId();
+      return Object.hash('sliver-index', parentData.index, viewId);
+    }
+
+    return _generateStableId();
+  }
+
+  void _ensureStableId() {
+    _stableId ??= _deriveStableId();
+  }
+
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
+    _ensureStableId();
     if (_enabled && !_isRegistered) {
       _isRegistered = true;
       registry.register(this);
@@ -127,9 +151,16 @@ class OccludeRenderBox extends RenderProxyBox
   void detach() {
     if (_isRegistered) {
       _isRegistered = false;
-      registry.unregister(this);
+      registry.markDetached(this);
     }
     super.detach();
+  }
+
+  @override
+  void dispose() {
+    registry.remove(this);
+    _isRegistered = false;
+    super.dispose();
   }
 
   @override
@@ -236,7 +267,10 @@ class OccludeRenderBox extends RenderProxyBox
   int get viewId => _getViewId();
 
   @override
-  int get stableId => _stableId;
+  int get stableId {
+    _ensureStableId();
+    return _stableId!;
+  }
 
   @override
   bool get hasValidBounds => attached && hasSize;
@@ -289,11 +323,24 @@ class OccludeRenderBox extends RenderProxyBox
       return;
     }
 
-    final snappedBounds = _calculateCurrentSnappedBounds(skipVisibilityCheck: true);
-    _lastReportedBounds = snappedBounds;
+    final previousBounds = _lastReportedBounds;
+    final snappedBounds =
+        _calculateCurrentSnappedBounds(skipVisibilityCheck: true);
+    if (snappedBounds != null) {
+      _lastReportedBounds = snappedBounds;
+    }
 
     if (snappedBounds != null) {
       _addToSlidingWindow(snappedBounds, nowMs);
+
+    } else {
+      if (previousBounds != null) {
+        _addToSlidingWindow(previousBounds, nowMs);
+      } else {
+        final transform = getTransformTo(null);
+        final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
+        _addToSlidingWindow(rawBounds, nowMs);
+      }
     }
   }
 }
