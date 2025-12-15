@@ -79,7 +79,7 @@ class OccludeRenderBox extends RenderProxyBox
   OcclusionType _type;
   bool _isRegistered = false;
 
-  static const int _boundsWindowMs = 50;
+  static const int _boundsWindowMs = 100;
   final _timestampedBounds = <TimestampedBounds>[];
 
   bool get enabled => _enabled;
@@ -157,9 +157,9 @@ class OccludeRenderBox extends RenderProxyBox
     return false;
   }
 
-  Rect? _calculateCurrentSnappedBounds() {
+  Rect? _calculateCurrentSnappedBounds({bool skipVisibilityCheck = false}) {
     if (!attached || !hasSize || !_enabled) return null;
-    if (_isEffectivelyInvisible()) return null;
+    if (!skipVisibilityCheck && _isEffectivelyInvisible()) return null;
 
     final transform = getTransformTo(null);
     Rect bounds = MatrixUtils.transformRect(transform, Offset.zero & size);
@@ -283,12 +283,13 @@ class OccludeRenderBox extends RenderProxyBox
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     _pruneSlidingWindow(nowMs);
 
-    final snappedBounds = _calculateCurrentSnappedBounds();
-
-    if (snappedBounds == null) {
+    if (_isEffectivelyInvisible()) {
       _timestampedBounds.clear();
+      _lastReportedBounds = null;
+      return;
     }
 
+    final snappedBounds = _calculateCurrentSnappedBounds(skipVisibilityCheck: true);
     _lastReportedBounds = snappedBounds;
 
     if (snappedBounds != null) {
