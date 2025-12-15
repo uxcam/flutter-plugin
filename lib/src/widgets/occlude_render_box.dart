@@ -4,6 +4,52 @@ import 'package:flutter/widgets.dart';
 import 'occlusion_models.dart';
 import 'occlusion_registry.dart';
 
+typedef VisibilityChecker = bool Function(
+    RenderObject ancestor, RenderObject child);
+
+final Map<Type, VisibilityChecker> _visibilityCheckers = {
+  RenderIndexedStack: _checkIndexedStackVisibility,
+  RenderViewport: _checkViewportVisibility,
+};
+
+bool _checkIndexedStackVisibility(RenderObject ancestor, RenderObject child) {
+  final indexedStack = ancestor as RenderIndexedStack;
+  final displayedIndex = indexedStack.index;
+  if (displayedIndex == null) return false;
+
+  int childIndex = 0;
+  RenderBox? current = indexedStack.firstChild;
+  while (current != null) {
+    if (current == child) {
+      return childIndex == displayedIndex;
+    }
+    childIndex++;
+    current = indexedStack.childAfter(current);
+  }
+  return false;
+}
+
+bool _checkViewportVisibility(RenderObject ancestor, RenderObject child) {
+  final viewport = ancestor as RenderViewport;
+
+  RenderSliver? sliver;
+  RenderObject? current = child;
+  while (current != null && current != viewport) {
+    if (current is RenderSliver) {
+      sliver = current;
+      break;
+    }
+    current = current.parent;
+  }
+
+  if (sliver == null) return true;
+
+  final geometry = sliver.geometry;
+  if (geometry == null || !geometry.visible) return false;
+
+  return geometry.paintExtent > 0;
+}
+
 class TimestampedBounds {
   final int timestampMs;
   final Rect bounds;
@@ -33,7 +79,6 @@ class OccludeRenderBox extends RenderProxyBox
   OcclusionType _type;
   bool _isRegistered = false;
 
-  /// Sliding window of bounds from last 50ms to handle rasterization lag.
   static const int _boundsWindowMs = 50;
   final _timestampedBounds = <TimestampedBounds>[];
 
@@ -93,13 +138,21 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   bool _isEffectivelyInvisible() {
-    RenderObject? current = this;
-    while (current != null) {
-      if (current is RenderOffstage && current.offstage) return true;
-      if (current is RenderOpacity && current.opacity == 0) return true;
-      if (current is RenderAnimatedOpacity && current.opacity.value == 0)
+    RenderObject? child = this;
+    RenderObject? ancestor = parent;
+
+    while (ancestor != null) {
+      if (!ancestor.paintsChild(child!)) {
         return true;
-      current = current.parent;
+      }
+
+      final checker = _visibilityCheckers[ancestor.runtimeType];
+      if (checker != null && !checker(ancestor, child)) {
+        return true;
+      }
+
+      child = ancestor;
+      ancestor = ancestor.parent;
     }
     return false;
   }
@@ -203,12 +256,6 @@ class OccludeRenderBox extends RenderProxyBox
       }
     }
 
-    if (_lastReportedBounds != null) {
-      union = union == null
-          ? _lastReportedBounds
-          : union.expandToInclude(_lastReportedBounds!);
-    }
-
     return union;
   }
 
@@ -231,11 +278,17 @@ class OccludeRenderBox extends RenderProxyBox
   @override
   void updateBoundsFromTransform() {
     if (!attached || !hasSize) return;
+    if (_context == null || !(_context as Element).mounted) return;
 
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     _pruneSlidingWindow(nowMs);
 
     final snappedBounds = _calculateCurrentSnappedBounds();
+
+    if (snappedBounds == null) {
+      _timestampedBounds.clear();
+    }
+
     _lastReportedBounds = snappedBounds;
 
     if (snappedBounds != null) {
