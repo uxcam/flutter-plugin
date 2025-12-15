@@ -51,12 +51,12 @@ class OcclusionRegistry with WidgetsBindingObserver {
   }
 
   List<Map<String, dynamic>> _handleCachedRectsRequest() {
-
     final registeredSnapshot = _registered.toList();
     final rects = <Map<String, dynamic>>[];
 
     for (final box in registeredSnapshot) {
-      if (!box.attached) continue;
+      if (!box.attached || !box.hasSize) continue;
+      box.updateBoundsFromTransform();
 
       final bounds = box.getUnionOfHistoricalBounds();
       if (bounds == null || bounds.width <= 0 || bounds.height <= 0) continue;
@@ -82,5 +82,4 @@ class OcclusionRegistry with WidgetsBindingObserver {
   void unregister(OcclusionReportingRenderBox box) {
     _registered.remove(box);
   }
-
 }

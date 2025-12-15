@@ -1,5 +1,4 @@
 import 'package:flutter/rendering.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import 'occlusion_models.dart';
@@ -38,17 +37,25 @@ class OccludeRenderBox extends RenderProxyBox
   static const int _boundsWindowMs = 50;
   final _timestampedBounds = <TimestampedBounds>[];
 
-  ModalRoute<dynamic>? _trackedRoute;
-  bool _isRouteVisible = true;
-
-  bool get _shouldReport => _enabled && _isRouteVisible;
-
   bool get enabled => _enabled;
   set enabled(bool value) {
     if (_enabled == value) return;
     _enabled = value;
-    _calculateAndReportBounds();
-    if (_enabled) markNeedsPaint();
+    if (_enabled) {
+      if (attached && !_isRegistered) {
+        _isRegistered = true;
+        registry.register(this);
+      }
+      updateBoundsFromTransform();
+    } else {
+      _lastReportedBounds = null;
+      _timestampedBounds.clear();
+      if (_isRegistered) {
+        _isRegistered = false;
+        registry.unregister(this);
+      }
+    }
+    markNeedsPaint();
   }
 
   OcclusionType get type => _type;
@@ -60,89 +67,12 @@ class OccludeRenderBox extends RenderProxyBox
 
   void updateContext(BuildContext context) {
     _context = context;
-    _setupRouteListener(context);
-  }
-
-  void _setupRouteListener(BuildContext context) {
-    _detachFromRoute();
-
-    final route = ModalRoute.of(context);
-    if (route != null) {
-      _trackedRoute = route;
-      route.animation?.addListener(_onRouteAnimationTick);
-      route.secondaryAnimation?.addListener(_onRouteAnimationTick);
-      route.secondaryAnimation?.addStatusListener(_onSecondaryAnimationStatus);
-
-      if (route.isCurrent) {
-        _updateRouteVisibility(true);
-      } else {
-        _checkIfCoveredByOpaqueRoute();
-      }
-    } else {
-      _updateRouteVisibility(true);
-    }
-  }
-
-  void _detachFromRoute() {
-    _trackedRoute?.animation?.removeListener(_onRouteAnimationTick);
-    _trackedRoute?.secondaryAnimation?.removeListener(_onRouteAnimationTick);
-    _trackedRoute?.secondaryAnimation
-        ?.removeStatusListener(_onSecondaryAnimationStatus);
-    _trackedRoute = null;
-  }
-
-  void _onRouteAnimationTick() {
-    if (!attached) return;
-    markNeedsPaint();
-  }
-
-  void _onSecondaryAnimationStatus(AnimationStatus status) {
-    if (status == AnimationStatus.completed) {
-      _checkIfCoveredByOpaqueRoute();
-    } else if (status == AnimationStatus.reverse ||
-        status == AnimationStatus.dismissed) {
-      _updateRouteVisibility(true);
-      if (status == AnimationStatus.dismissed) {
-        SchedulerBinding.instance.scheduleFrameCallback((_) {
-          if (attached && _isRouteVisible) {
-            markNeedsPaint();
-          }
-        });
-      }
-    }
-  }
-
-  void _checkIfCoveredByOpaqueRoute() {
-    if (_context == null || _trackedRoute == null) return;
-
-    final navigator = Navigator.maybeOf(_context!);
-    if (navigator == null) return;
-
-    bool hasOpaqueRouteAbove = false;
-
-    navigator.popUntil((route) {
-      if (route == _trackedRoute) {
-        return true;
-      }
-      if (route is ModalRoute && route.opaque) {
-        hasOpaqueRouteAbove = true;
-      }
-      return true;
-    });
-
-    _updateRouteVisibility(!hasOpaqueRouteAbove);
-  }
-
-  void _updateRouteVisibility(bool visible) {
-    if (_isRouteVisible == visible) return;
-    _isRouteVisible = visible;
-    _calculateAndReportBounds();
   }
 
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
-    if (!_isRegistered) {
+    if (_enabled && !_isRegistered) {
       _isRegistered = true;
       registry.register(this);
     }
@@ -150,7 +80,6 @@ class OccludeRenderBox extends RenderProxyBox
 
   @override
   void detach() {
-    _detachFromRoute();
     if (_isRegistered) {
       _isRegistered = false;
       registry.unregister(this);
@@ -161,89 +90,58 @@ class OccludeRenderBox extends RenderProxyBox
   @override
   void paint(PaintingContext context, Offset offset) {
     super.paint(context, offset);
-    _calculateAndReportBounds();
   }
 
-  void _calculateAndReportBounds() {
-    if (!attached || !hasSize) return;
-
-    if (!_shouldReport) {
-      _lastReportedBounds = null;
-      if (_isRegistered) {
-        _isRegistered = false;
-        registry.unregister(this);
-      }
-      return;
+  bool _isEffectivelyInvisible() {
+    RenderObject? current = this;
+    while (current != null) {
+      if (current is RenderOffstage && current.offstage) return true;
+      if (current is RenderOpacity && current.opacity == 0) return true;
+      if (current is RenderAnimatedOpacity && current.opacity.value == 0)
+        return true;
+      current = current.parent;
     }
+    return false;
+  }
+
+  Rect? _calculateCurrentSnappedBounds() {
+    if (!attached || !hasSize || !_enabled) return null;
+    if (_isEffectivelyInvisible()) return null;
 
     final transform = getTransformTo(null);
-    final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
+    Rect bounds = MatrixUtils.transformRect(transform, Offset.zero & size);
 
     final effectiveClip = _calculateEffectiveClip();
-    Rect? finalBounds;
-
     if (effectiveClip != null) {
-      final intersection = rawBounds.intersect(effectiveClip);
-
-      final rawArea = rawBounds.width * rawBounds.height;
-      final clippedArea = intersection.width > 0 && intersection.height > 0
-          ? intersection.width * intersection.height
-          : 0.0;
-      final visibleRatio = rawArea > 0 ? clippedArea / rawArea : 0.0;
-
-      if (clippedArea <= 0) {
-        // Completely clipped - keep last bounds for scroll coverage
-        return;
-      } else if (visibleRatio < 0.5) {
-        // Mostly clipped - use raw bounds for over-occlusion
-        finalBounds = rawBounds;
-      } else {
-        finalBounds = intersection;
-      }
-    } else {
-      finalBounds = rawBounds;
+      bounds = bounds.intersect(effectiveClip);
     }
 
-    if (!_isRegistered) {
-      _isRegistered = true;
-      registry.register(this);
-    }
+    if (bounds.width <= 0 || bounds.height <= 0) return null;
 
     final devicePixelRatio = _getDevicePixelRatio();
-    final snappedBounds = _snapToDevicePixels(finalBounds, devicePixelRatio);
-
-    if (!_rectsEqualWithinTolerance(_lastReportedBounds, snappedBounds)) {
-      _lastReportedBounds = snappedBounds;
-    }
+    return _snapToDevicePixels(bounds, devicePixelRatio);
   }
 
   Rect? _calculateEffectiveClip() {
-    Rect? clip;
+    Rect? accumulatedClip;
+    RenderObject? child = this;
+    RenderObject? ancestor = parent;
 
-    RenderObject? current = parent;
-    while (current != null) {
-      if (current is RenderClipRect ||
-          current is RenderClipRRect ||
-          current is RenderClipPath ||
-          current is RenderViewport ||
-          current is RenderAbstractViewport) {
-        clip = _intersectClip(clip, current as RenderBox);
+    while (ancestor != null) {
+      if (ancestor is RenderBox) {
+        final clip = ancestor.describeApproximatePaintClip(child!);
+        if (clip != null) {
+          final transform = ancestor.getTransformTo(null);
+          final globalClip = MatrixUtils.transformRect(transform, clip);
+          accumulatedClip =
+              accumulatedClip?.intersect(globalClip) ?? globalClip;
+        }
       }
-      current = current.parent;
+      child = ancestor;
+      ancestor = ancestor.parent;
     }
 
-    return clip;
-  }
-
-  Rect? _intersectClip(Rect? existing, RenderBox clipper) {
-    final clipperTransform = clipper.getTransformTo(null);
-    final clipperBounds =
-        MatrixUtils.transformRect(clipperTransform, Offset.zero & clipper.size);
-
-    if (existing == null) {
-      return clipperBounds;
-    }
-    return existing.intersect(clipperBounds);
+    return accumulatedClip;
   }
 
   double _getDevicePixelRatio() {
@@ -272,15 +170,6 @@ class OccludeRenderBox extends RenderProxyBox
     );
   }
 
-  bool _rectsEqualWithinTolerance(Rect? a, Rect? b, [double tolerance = 0.5]) {
-    if (a == null && b == null) return true;
-    if (a == null || b == null) return false;
-    return (a.left - b.left).abs() < tolerance &&
-        (a.top - b.top).abs() < tolerance &&
-        (a.right - b.right).abs() < tolerance &&
-        (a.bottom - b.bottom).abs() < tolerance;
-  }
-
   @override
   Rect? get currentBounds => _lastReportedBounds;
 
@@ -301,9 +190,7 @@ class OccludeRenderBox extends RenderProxyBox
 
   @override
   Rect? getUnionOfHistoricalBounds() {
-    if (_timestampedBounds.isEmpty) {
-      return _lastReportedBounds;
-    }
+    _pruneSlidingWindow(DateTime.now().millisecondsSinceEpoch);
 
     Rect? union;
     for (final entry in _timestampedBounds) {
@@ -316,58 +203,43 @@ class OccludeRenderBox extends RenderProxyBox
       }
     }
 
-    return union ?? _lastReportedBounds;
+    if (_lastReportedBounds != null) {
+      union = union == null
+          ? _lastReportedBounds
+          : union.expandToInclude(_lastReportedBounds!);
+    }
+
+    return union;
   }
 
-  void _addToSlidingWindow(Rect bounds) {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    _timestampedBounds.add(TimestampedBounds(now, bounds));
-
-    final cutoff = now - _boundsWindowMs;
+  void _pruneSlidingWindow(int nowMs) {
+    final cutoff = nowMs - _boundsWindowMs;
     _timestampedBounds.removeWhere((entry) => entry.timestampMs < cutoff);
+  }
+
+  void _addToSlidingWindow(Rect bounds, int nowMs) {
+    _timestampedBounds.add(TimestampedBounds(nowMs, bounds));
+    _pruneSlidingWindow(nowMs);
   }
 
   @override
   void recalculateBounds() {
     if (!attached || !hasSize) return;
-    _calculateAndReportBounds();
+    updateBoundsFromTransform();
   }
 
   @override
   void updateBoundsFromTransform() {
     if (!attached || !hasSize) return;
-    if (!_shouldReport) return;
 
-    final transform = getTransformTo(null);
-    final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    _pruneSlidingWindow(nowMs);
 
-    final effectiveClip = _calculateEffectiveClip();
-    Rect? finalBounds;
-
-    if (effectiveClip != null) {
-      final intersection = rawBounds.intersect(effectiveClip);
-
-      final rawArea = rawBounds.width * rawBounds.height;
-      final clippedArea = intersection.width > 0 && intersection.height > 0
-          ? intersection.width * intersection.height
-          : 0.0;
-      final visibleRatio = rawArea > 0 ? clippedArea / rawArea : 0.0;
-
-      if (clippedArea <= 0) {
-        return;
-      } else if (visibleRatio < 0.5) {
-        finalBounds = rawBounds;
-      } else {
-        finalBounds = intersection;
-      }
-    } else {
-      finalBounds = rawBounds;
-    }
-
-    final dpr = _getDevicePixelRatio();
-    final snappedBounds = _snapToDevicePixels(finalBounds, dpr);
-
+    final snappedBounds = _calculateCurrentSnappedBounds();
     _lastReportedBounds = snappedBounds;
-    _addToSlidingWindow(snappedBounds);
+
+    if (snappedBounds != null) {
+      _addToSlidingWindow(snappedBounds, nowMs);
+    }
   }
 }
