@@ -5,6 +5,12 @@ import 'package:flutter/widgets.dart';
 import 'occlusion_models.dart';
 import 'occlusion_registry.dart';
 
+class TimestampedBounds {
+  final int timestampMs;
+  final Rect bounds;
+  const TimestampedBounds(this.timestampMs, this.bounds);
+}
+
 class OccludeRenderBox extends RenderProxyBox
     implements OcclusionReportingRenderBox {
   OccludeRenderBox({
@@ -26,17 +32,14 @@ class OccludeRenderBox extends RenderProxyBox
   Rect? _lastReportedBounds;
   bool _enabled;
   OcclusionType _type;
+  bool _isRegistered = false;
 
-  ScrollPosition? _trackedScrollPosition;
+  /// Sliding window of bounds from last 50ms to handle rasterization lag.
+  static const int _boundsWindowMs = 50;
+  final _timestampedBounds = <TimestampedBounds>[];
 
   ModalRoute<dynamic>? _trackedRoute;
   bool _isRouteVisible = true;
-
-
-  double get _velocity {
-    if (_trackedScrollPosition == null) return 0.0;
-    return registry.getVelocity(_trackedScrollPosition!);
-  }
 
   bool get _shouldReport => _enabled && _isRouteVisible;
 
@@ -52,51 +55,12 @@ class OccludeRenderBox extends RenderProxyBox
   set type(OcclusionType value) {
     if (_type == value) return;
     _type = value;
-    if (_lastReportedBounds != null) {
-      registry.markDirty(this);
-    }
     markNeedsPaint();
   }
 
   void updateContext(BuildContext context) {
     _context = context;
-    _setupScrollListener(context);
     _setupRouteListener(context);
-  }
-
-  void _setupScrollListener(BuildContext context) {
-    _detachFromScrollable();
-
-    final scrollable = _findActiveScrollable(context);
-    if (scrollable != null) {
-      _trackedScrollPosition = scrollable.position;
-      registry.subscribeToScroll(_trackedScrollPosition!, this);
-    }
-  }
-
-  ScrollableState? _findActiveScrollable(BuildContext context) {
-    ScrollableState? result;
-    context.visitAncestorElements((element) {
-      if (element.widget is Scrollable) {
-        final state = (element as StatefulElement).state;
-        if (state is ScrollableState) {
-          final physics = state.position.physics;
-          if (physics is! NeverScrollableScrollPhysics) {
-            result = state;
-            return false;
-          }
-        }
-      }
-      return true;
-    });
-    return result;
-  }
-
-  void _detachFromScrollable() {
-    if (_trackedScrollPosition != null) {
-      registry.unsubscribeFromScroll(_trackedScrollPosition!, this);
-      _trackedScrollPosition = null;
-    }
   }
 
   void _setupRouteListener(BuildContext context) {
@@ -178,14 +142,19 @@ class OccludeRenderBox extends RenderProxyBox
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
-    registry.register(this);
+    if (!_isRegistered) {
+      _isRegistered = true;
+      registry.register(this);
+    }
   }
 
   @override
   void detach() {
-    _detachFromScrollable();
     _detachFromRoute();
-    registry.unregister(this);
+    if (_isRegistered) {
+      _isRegistered = false;
+      registry.unregister(this);
+    }
     super.detach();
   }
 
@@ -199,9 +168,10 @@ class OccludeRenderBox extends RenderProxyBox
     if (!attached || !hasSize) return;
 
     if (!_shouldReport) {
-      if (_lastReportedBounds != null) {
-        _lastReportedBounds = null;
-        registry.markDirty(this);
+      _lastReportedBounds = null;
+      if (_isRegistered) {
+        _isRegistered = false;
+        registry.unregister(this);
       }
       return;
     }
@@ -210,69 +180,41 @@ class OccludeRenderBox extends RenderProxyBox
     final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
 
     final effectiveClip = _calculateEffectiveClip();
-    Rect? clippedBounds;
+    Rect? finalBounds;
+
     if (effectiveClip != null) {
       final intersection = rawBounds.intersect(effectiveClip);
-      if (intersection.width > 0 && intersection.height > 0) {
-        clippedBounds = intersection;
+
+      final rawArea = rawBounds.width * rawBounds.height;
+      final clippedArea = intersection.width > 0 && intersection.height > 0
+          ? intersection.width * intersection.height
+          : 0.0;
+      final visibleRatio = rawArea > 0 ? clippedArea / rawArea : 0.0;
+
+      if (clippedArea <= 0) {
+        // Completely clipped - keep last bounds for scroll coverage
+        return;
+      } else if (visibleRatio < 0.5) {
+        // Mostly clipped - use raw bounds for over-occlusion
+        finalBounds = rawBounds;
+      } else {
+        finalBounds = intersection;
       }
     } else {
-      clippedBounds = rawBounds;
+      finalBounds = rawBounds;
     }
 
-    if (clippedBounds == null) {
-      if (_lastReportedBounds != null) {
-        _lastReportedBounds = null;
-        registry.markDirty(this);
-      }
-      return;
+    if (!_isRegistered) {
+      _isRegistered = true;
+      registry.register(this);
     }
 
     final devicePixelRatio = _getDevicePixelRatio();
-    var snappedBounds = _snapToDevicePixels(clippedBounds, devicePixelRatio);
-
-    snappedBounds = _applyVelocityExpansion(snappedBounds, effectiveClip);
+    final snappedBounds = _snapToDevicePixels(finalBounds, devicePixelRatio);
 
     if (!_rectsEqualWithinTolerance(_lastReportedBounds, snappedBounds)) {
       _lastReportedBounds = snappedBounds;
-      registry.markDirty(this);
     }
-  }
-
-  Rect _applyVelocityExpansion(Rect bounds, Rect? effectiveClip) {
-    final velocity = _velocity;
-    if (velocity.abs() < 100) return bounds;
-
-    const captureLatencySeconds = 0.05;
-    final expansionPixels =
-        (velocity.abs() * captureLatencySeconds).clamp(0.0, 80.0);
-
-    Rect expandedBounds;
-    if (velocity < 0) {
-      expandedBounds = Rect.fromLTRB(
-        bounds.left,
-        bounds.top,
-        bounds.right,
-        bounds.bottom + expansionPixels,
-      );
-    } else {
-      expandedBounds = Rect.fromLTRB(
-        bounds.left,
-        bounds.top - expansionPixels,
-        bounds.right,
-        bounds.bottom,
-      );
-    }
-
-    if (effectiveClip != null) {
-      final intersection = expandedBounds.intersect(effectiveClip);
-      if (intersection.width > 0 && intersection.height > 0) {
-        return intersection;
-      }
-      return bounds;
-    }
-
-    return expandedBounds;
   }
 
   Rect? _calculateEffectiveClip() {
@@ -355,8 +297,77 @@ class OccludeRenderBox extends RenderProxyBox
   int get stableId => _stableId;
 
   @override
+  bool get hasValidBounds => attached && hasSize;
+
+  @override
+  Rect? getUnionOfHistoricalBounds() {
+    if (_timestampedBounds.isEmpty) {
+      return _lastReportedBounds;
+    }
+
+    Rect? union;
+    for (final entry in _timestampedBounds) {
+      if (entry.bounds.width > 0 && entry.bounds.height > 0) {
+        if (union == null) {
+          union = entry.bounds;
+        } else {
+          union = union.expandToInclude(entry.bounds);
+        }
+      }
+    }
+
+    return union ?? _lastReportedBounds;
+  }
+
+  void _addToSlidingWindow(Rect bounds) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    _timestampedBounds.add(TimestampedBounds(now, bounds));
+
+    final cutoff = now - _boundsWindowMs;
+    _timestampedBounds.removeWhere((entry) => entry.timestampMs < cutoff);
+  }
+
+  @override
   void recalculateBounds() {
     if (!attached || !hasSize) return;
     _calculateAndReportBounds();
+  }
+
+  @override
+  void updateBoundsFromTransform() {
+    if (!attached || !hasSize) return;
+    if (!_shouldReport) return;
+
+    final transform = getTransformTo(null);
+    final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
+
+    final effectiveClip = _calculateEffectiveClip();
+    Rect? finalBounds;
+
+    if (effectiveClip != null) {
+      final intersection = rawBounds.intersect(effectiveClip);
+
+      final rawArea = rawBounds.width * rawBounds.height;
+      final clippedArea = intersection.width > 0 && intersection.height > 0
+          ? intersection.width * intersection.height
+          : 0.0;
+      final visibleRatio = rawArea > 0 ? clippedArea / rawArea : 0.0;
+
+      if (clippedArea <= 0) {
+        return;
+      } else if (visibleRatio < 0.5) {
+        finalBounds = rawBounds;
+      } else {
+        finalBounds = intersection;
+      }
+    } else {
+      finalBounds = rawBounds;
+    }
+
+    final dpr = _getDevicePixelRatio();
+    final snappedBounds = _snapToDevicePixels(finalBounds, dpr);
+
+    _lastReportedBounds = snappedBounds;
+    _addToSlidingWindow(snappedBounds);
   }
 }

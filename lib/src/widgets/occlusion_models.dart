@@ -11,7 +11,14 @@ abstract class OcclusionReportingRenderBox {
   double get devicePixelRatio;
   int get viewId;
 
+  bool get attached;
+  bool get hasSize;
+
+  bool get hasValidBounds;
+
+  Rect? getUnionOfHistoricalBounds();
   void recalculateBounds();
+  void updateBoundsFromTransform();
 }
 
 
