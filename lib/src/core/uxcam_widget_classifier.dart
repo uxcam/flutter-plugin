@@ -84,7 +84,6 @@ class UXCamWidgetClassifier {
   static final Set<Type> _imageTypes = {
     Image,
     Icon,
-    DecoratedBox,
     ImageIcon,
     CircleAvatar,
   };

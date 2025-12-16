@@ -95,11 +95,13 @@ class UXCamWidgetExtractor {
     // If non-interactive, check if it's a label for an interactive parent
     if (!_isInteractiveType(semanticType)) {
       final labelOwner = _findLabelOwner(semanticElement);
-      if (labelOwner != null) {
+      final interactiveOwner =
+          labelOwner ?? _findInteractiveOwner(semanticElement, position);
+      if (interactiveOwner != null) {
         return _ExtractionResult(
-          element: labelOwner,
-          hash: identityHashCode(labelOwner.renderObject),
-          type: UXCamWidgetClassifier.classifyElement(labelOwner),
+          element: interactiveOwner,
+          hash: targetHash!,
+          type: UXCamWidgetClassifier.classifyElement(interactiveOwner),
         );
       }
     }
@@ -165,6 +167,29 @@ class UXCamWidgetExtractor {
     return result;
   }
 
+  /// Finds the highest interactive ancestor that appears to contain the tap.
+  ///
+  /// This is a fallback for cases where internal implementation widgets are
+  /// hit-tested instead of the user's interactive widget.
+  Element? _findInteractiveOwner(Element element, Offset position) {
+    Element? highest;
+
+    element.visitAncestorElements((ancestor) {
+      final type = UXCamWidgetClassifier.classifyElement(ancestor);
+      if (_isInteractiveType(type)) {
+        final bounds = _getBestElementBounds(ancestor, position);
+        if (bounds != Rect.zero &&
+            (bounds.contains(position) ||
+                _containsWithTolerance(bounds, position, 10.0))) {
+          highest = ancestor;
+        }
+      }
+      return true;
+    });
+
+    return highest;
+  }
+
   /// Check if child is the only content widget inside parent.
   /// Recurses through nested interactive widgets to find the target.
   bool _isSoleContent(Element parent, Element target) {
@@ -174,9 +199,10 @@ class UXCamWidgetExtractor {
     void visit(Element el) {
       final type = UXCamWidgetClassifier.classifyElement(el);
 
+      if (identical(el, target)) foundTarget = true;
+
       if (type == UX_TEXT || type == UX_IMAGE) {
         contentCount++;
-        if (identical(el, target)) foundTarget = true;
         return; // Don't recurse into content widgets
       }
 
@@ -222,12 +248,52 @@ class UXCamWidgetExtractor {
     return Rect.zero;
   }
 
+  Rect _getBestElementBounds(Element element, Offset position) {
+    Rect best = Rect.zero;
+    double bestArea = -1;
+    Rect largestAny = Rect.zero;
+    double largestAnyArea = -1;
+
+    void consider(Element el) {
+      final bounds = _getElementBounds(el);
+      if (bounds == Rect.zero) return;
+
+      final anyArea = bounds.width * bounds.height;
+      if (anyArea > largestAnyArea) {
+        largestAnyArea = anyArea;
+        largestAny = bounds;
+      }
+
+      if (!bounds.contains(position) &&
+          !_containsWithTolerance(bounds, position, 10.0)) {
+        return;
+      }
+
+      final area = bounds.width * bounds.height;
+      if (area > bestArea) {
+        bestArea = area;
+        best = bounds;
+      }
+    }
+
+    void visit(Element el) {
+      consider(el);
+      el.visitChildElements(visit);
+    }
+
+    // Prefer the largest RenderBox inside this widget that contains the tap.
+    // This maps child hits (Text, DecoratedBox, etc.) to the whole control.
+    visit(element);
+
+    return best == Rect.zero ? largestAny : best;
+  }
+
   TrackData? _buildTrackData(Offset position, _ExtractionResult result) {
     final element = result.element;
     final type = result.type;
 
     final route = _routeTracker.getRouteForElement(element);
-    final bounds = _getElementBounds(element);
+    final bounds = _getBestElementBounds(element, position);
     if (bounds == Rect.zero) return null;
 
     final widgetType =
@@ -414,4 +480,3 @@ class _ExtractionResult {
     required this.type,
   });
 }
-

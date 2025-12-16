@@ -199,7 +199,7 @@ class GestureHandler {
       subTree = SummaryTree(
           ModalRoute.of(element)?.settings.name ?? "",
           element.widget.runtimeType.toString(),
-          UX_IMAGE,
+          UX_DECOR,
           element.renderObject?.hashCode ?? 0,
           value: _extractImageStringRepresentation(element),
           bound: element.getEffectiveBounds(),
