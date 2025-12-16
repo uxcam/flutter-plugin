@@ -15,22 +15,20 @@ class OcclusionPlatformChannel {
 
   /// Send batched occlusion updates to native side using a compact binary payload.
   ///
-  /// Binary format (v3 - accumulative bounds):
-  /// Header: [count:4 bytes][flags:4 bytes] = 8 bytes
-  ///   flags bit 0: resetAfterUpdate (1 = reset accumulators after applying bounds)
+  /// Binary format:
+  /// Header: [count:4 bytes][reserved:4 bytes] = 8 bytes
   /// Per item: [viewId:4][id:4][left:4][top:4][right:4][bottom:4][type:1] = 25 bytes
   ///
-  void sendBatchUpdate(List<OcclusionUpdate> updates, {bool resetAfterUpdate = false}) {
-    if (updates.isEmpty && !resetAfterUpdate) return;
+  void sendBatchUpdate(List<OcclusionUpdate> updates) {
+    if (updates.isEmpty) return;
 
     const headerSize = 8;
     const itemSize = 25;
-    const flagResetAfterUpdate = 1;
 
     final buffer = ByteData(headerSize + updates.length * itemSize);
 
     buffer.setInt32(0, updates.length, Endian.little);
-    buffer.setInt32(4, resetAfterUpdate ? flagResetAfterUpdate : 0, Endian.little);
+    buffer.setInt32(4, 0, Endian.little); // reserved for future use
 
     var offset = headerSize;
     for (final update in updates) {
@@ -78,8 +76,9 @@ class OcclusionPlatformChannel {
 
   /// Clear all occlusions (e.g., when app is backgrounded).
   void clearAll() {
-    final buffer = ByteData(4);
-    buffer.setInt32(0, -1, Endian.little);
+    final buffer = ByteData(8);
+    buffer.setInt32(0, -1, Endian.little); // count=-1 signals clear-all
+    buffer.setInt32(4, 0, Endian.little);
     _channel.send(buffer);
   }
 }

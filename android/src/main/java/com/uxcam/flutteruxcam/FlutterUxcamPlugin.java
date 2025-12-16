@@ -5,23 +5,19 @@ import android.os.Build;
 import android.util.Log;
 import android.os.Handler;
 import android.os.Looper;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.BinaryCodec;
-import io.flutter.plugin.common.BasicMessageChannel;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
-import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
+import com.uxcam.screenshot.screenshotTaker.OcclusionReadyCallback;
 import com.uxcam.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
@@ -50,7 +46,6 @@ import android.view.WindowInsets;
 
 import org.json.JSONArray;
 import androidx.annotation.NonNull;
-import java.util.TreeMap;
 
 /**
  * FlutterUxcamPlugin
@@ -89,11 +84,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private int cutoutBottom = 0;
     private Insets systemBars = Insets.NONE;
     private boolean hasNotch = false;
-    private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
-    private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private OcclusionHandlerV2 occlusionHandlerV2;
+    private MethodChannel occlusionRequestChannel;
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
@@ -102,37 +95,73 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         channel.setMethodCallHandler(this);
 
         delegate = UXCam.getDelegate();
-        occlusionHandlerV2 = new OcclusionHandlerV2(delegate);
-
-        final BasicMessageChannel<ByteBuffer> occlusionV2Channel = new BasicMessageChannel<>(
-                binding.getBinaryMessenger(),
-                "uxcam_occlusion_v2",
-                BinaryCodec.INSTANCE);
-        occlusionV2Channel.setMessageHandler((message, reply) -> {
-            if (message != null && occlusionHandlerV2 != null) {
-                occlusionHandlerV2.handleBinaryMessage(message);
-            }
-            reply.reply(null);
-        });
+        occlusionRequestChannel = new MethodChannel(binding.getBinaryMessenger(), "uxcam_occlusion_request");
 
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
-            public void processOcclusionRectsForCurrentFrame(long startTimeStamp, long stopTimeStamp) {
-                List<Rect> rects = Collections.emptyList();
-                if (occlusionHandlerV2 != null) {
-                    rects = occlusionHandlerV2.getRectsForCapture();
-                }
-                delegate.createScreenshotFromCollectedRects(new ArrayList<>(rects));
+            public void requestOcclusionRects(OcclusionReadyCallback callback) {
+                final long requestStartMs = System.currentTimeMillis();
+
+                mainHandler.post(() -> {
+                    occlusionRequestChannel.invokeMethod("requestOcclusionRects", null, new Result() {
+                        @Override
+                        public void success(Object result) {
+                            List<Rect> rects = parseRectsFromFlutter(result);
+                            callback.onRectsReady(rects);
+                        }
+
+                        @Override
+                        public void error(String errorCode, String errorMessage, Object errorDetails) {
+                            callback.onRectsReady(Collections.emptyList());
+                        }
+
+                        @Override
+                        public void notImplemented() {
+                            callback.onRectsReady(Collections.emptyList());
+                        }
+                    });
+                });
             }
         });
     }
 
+    @SuppressWarnings("unchecked")
+    private List<Rect> parseRectsFromFlutter(Object result) {
+        if (result == null) {
+            return Collections.emptyList();
+        }
+
+        try {
+            List<Map<String, Object>> rectMaps = (List<Map<String, Object>>) result;
+            List<Rect> rects = new ArrayList<>(rectMaps.size());
+
+            for (Map<String, Object> rectMap : rectMaps) {
+                double left = ((Number) rectMap.get("left")).doubleValue();
+                double top = ((Number) rectMap.get("top")).doubleValue();
+                double right = ((Number) rectMap.get("right")).doubleValue();
+                double bottom = ((Number) rectMap.get("bottom")).doubleValue();
+
+                Rect rect = new Rect(
+                        (int) Math.floor(left),
+                        (int) Math.floor(top),
+                        (int) Math.ceil(right),
+                        (int) Math.ceil(bottom)
+                );
+
+                if (rect.width() > 0 && rect.height() > 0) {
+                    rects.add(rect);
+                }
+            }
+
+            return rects;
+        } catch (Exception e) {
+            Log.e(TAG, "[Occlusion] Failed to parse rects: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-        if (occlusionHandlerV2 != null) {
-            occlusionHandlerV2.clear();
-            occlusionHandlerV2 = null;
-        }
     }
 
     @Override
@@ -141,23 +170,23 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, i) -> {
             WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(activity.getWindow().getDecorView());
             if (insets != null) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            WindowInsets insets1 = activity.getWindow()
-                .getDecorView()
-                .getRootWindowInsets();
-            if (insets1 != null) {
-                DisplayCutoutCompat cutout = insets.getDisplayCutout();
-                    if (cutout != null && cutout.getBoundingRects() != null && !cutout.getBoundingRects().isEmpty()) {
-                        hasNotch = true;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    WindowInsets insets1 = activity.getWindow()
+                        .getDecorView()
+                        .getRootWindowInsets();
+                    if (insets1 != null) {
+                        DisplayCutoutCompat cutout = insets.getDisplayCutout();
+                        if (cutout != null && cutout.getBoundingRects() != null && !cutout.getBoundingRects().isEmpty()) {
+                            hasNotch = true;
+                        }
                     }
-            }
-        }
+                }
                 DisplayCutoutCompat cutout = insets.getDisplayCutout();
                 if (cutout != null) {
                     cutoutTop = cutout.getSafeInsetTop();
                     cutoutBottom = cutout.getSafeInsetBottom();
                 }
-            }         
+            }
             int orientation = activity.getResources().getConfiguration().orientation;
             if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
                 Display display = ((WindowManager) activity.getSystemService(Context.WINDOW_SERVICE))
@@ -385,10 +414,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("startWithConfiguration".equals(call.method)) {
             Map<String, Object> configMap = call.argument("config");
             boolean success = startWithConfig(configMap);
-            //starting a new session when app returns from background, clear previous occlusions
-            if (occlusionHandlerV2 != null) {
-                occlusionHandlerV2.clear();
-            }
             UXCam.pluginType("flutter", TYPE_VERSION);
             result.success(success);
         } else if ("applyOcclusion".equals(call.method)) {
@@ -400,11 +425,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             Map<String, Object> occlusionMap = call.argument("occlusion");
             UXCamOcclusion occlusion = getOcclusion(occlusionMap);
             UXCam.removeOcclusion(occlusion);
-            result.success(true);
-        } else if ("addFrameData".equals(call.method)) {
-            long timestamp = call.argument("timestamp");
-            String frameData = call.argument("frameData");
-            frameDataMap.put(timestamp,frameData);
             result.success(true);
         } else if ("appendGestureContent".equals(call.method)) {
             double x = call.argument("x");
@@ -558,137 +578,4 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             return null;
         }
     }
-
-    private static class OcclusionHandlerV2 {
-        private static final int HEADER_SIZE = 8;
-        private static final int ITEM_SIZE = 25;
-
-        private final Map<Integer, AccumulatedRect> accumulators = new HashMap<>();
-        private final Object lock = new Object();
-
-        OcclusionHandlerV2(CrossPlatformDelegate delegate) {
-            // delegate parameter kept for API compatibility but no longer used
-        }
-
-        private static final int FLAG_RESET_AFTER_UPDATE = 1;
-
-        void handleBinaryMessage(ByteBuffer message) {
-            if (message == null) {
-                return;
-            }
-
-            message.order(ByteOrder.LITTLE_ENDIAN);
-            if (message.remaining() < HEADER_SIZE) {
-                return;
-            }
-
-            int count = message.getInt();
-            if (count == -1) {
-                clear();
-                return;
-            }
-
-            int flags = message.getInt();
-            boolean resetAfterUpdate = (flags & FLAG_RESET_AFTER_UPDATE) != 0;
-
-            synchronized (lock) {
-                for (int i = 0; i < count; i++) {
-                    if (message.remaining() < ITEM_SIZE) {
-                        break;
-                    }
-                    int viewId = message.getInt();
-                    int id = message.getInt();
-                    float left = message.getFloat();
-                    float top = message.getFloat();
-                    float right = message.getFloat();
-                    float bottom = message.getFloat();
-                    int type = message.get() & 0xFF;
-
-                    if (left < 0) {
-                        // Removal: remove accumulator entirely
-                        accumulators.remove(id);
-                    } else {
-                        // Add or update with accumulation
-                        AccumulatedRect acc = accumulators.get(id);
-                        if (acc == null) {
-                            accumulators.put(id, new AccumulatedRect(left, top, right, bottom, type, viewId));
-                        } else {
-                            acc.update(left, top, right, bottom, type, viewId);
-                        }
-                    }
-                }
-
-                if (resetAfterUpdate) {
-                    for (AccumulatedRect acc : accumulators.values()) {
-                        acc.resetAfterConsumption();
-                    }
-                }
-            }
-        }
-
-        List<Rect> getRectsForCapture() {
-            synchronized (lock) {
-                List<Rect> rects = new ArrayList<>();
-
-                for (AccumulatedRect acc : accumulators.values()) {
-                    rects.add(acc.getAccumulatedRect());
-                }
-
-                return rects;
-            }
-        }
-
-
-        /**
-         * Get current cached rects as List<Rect>.
-         * Thread-safe: can be called from any thread.
-         */
-        List<Rect> getCurrentRects() {
-            return getRectsForCapture();
-        }
-
-        void clear() {
-            synchronized (lock) {
-                accumulators.clear();
-            }
-        }
-
-      
-        private static class AccumulatedRect {
-            Rect current;
-            Rect accumulated;
-            int type;
-            int viewId;
-
-            AccumulatedRect(float left, float top, float right, float bottom, int type, int viewId) {
-                this.current = new Rect(
-                    Math.round(left), Math.round(top),
-                    Math.round(right), Math.round(bottom)
-                );
-                this.accumulated = new Rect(this.current);
-                this.type = type;
-                this.viewId = viewId;
-            }
-
-            void update(float left, float top, float right, float bottom, int type, int viewId) {
-                this.current = new Rect(
-                    Math.round(left), Math.round(top),
-                    Math.round(right), Math.round(bottom)
-                );
-                this.type = type;
-                this.viewId = viewId;
-
-                this.accumulated.union(this.current);
-            }
-
-            void resetAfterConsumption() {
-                this.accumulated = new Rect(this.current);
-            }
-
-            Rect getAccumulatedRect() {
-                return new Rect(accumulated);
-            }
-        }
-    }
-
 }

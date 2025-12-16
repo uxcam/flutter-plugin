@@ -1,181 +1,176 @@
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'occlusion_models.dart';
-import 'occlusion_platform_channel.dart';
 
 class OcclusionRegistry with WidgetsBindingObserver {
   OcclusionRegistry._() {
     WidgetsBinding.instance.addObserver(this);
+    _setupMethodChannelHandler();
+    _setupPersistentFrameCallback();
   }
 
   static final OcclusionRegistry instance = OcclusionRegistry._();
 
-  final _registered = <OcclusionReportingRenderBox>{};
-  final _dirty = <OcclusionReportingRenderBox>{};
+  static const _detachedTtlMs = 1500;
 
-  int _frameSequence = 0;
+  final Map<int, _OcclusionEntry> _entries = {};
 
-  int _lastResetTimestamp = 0;
-  static const int _resetIntervalMicros = 100000; // 100ms in microseconds
+  static const MethodChannel _requestChannel =
+      MethodChannel('uxcam_occlusion_request');
 
-  final OcclusionPlatformChannel _channel = const OcclusionPlatformChannel();
-
-  final Map<ScrollPosition, _ScrollSubscription> _scrollSubscriptions = {};
-
-  void subscribeToScroll(ScrollPosition position, ScrollSubscriber subscriber) {
-    if (!_scrollSubscriptions.containsKey(position)) {
-      final subscription = _ScrollSubscription(position, this);
-      _scrollSubscriptions[position] = subscription;
-      subscription.attach();
-    }
-    _scrollSubscriptions[position]!.subscribers.add(subscriber);
+  void _setupMethodChannelHandler() {
+    _requestChannel.setMethodCallHandler(_handleMethodCall);
   }
 
-  void unsubscribeFromScroll(
-    ScrollPosition position,
-    ScrollSubscriber subscriber,
-  ) {
-    final subscription = _scrollSubscriptions[position];
-    if (subscription == null) return;
+  void _setupPersistentFrameCallback() {
+    SchedulerBinding.instance.addPersistentFrameCallback(_onFrame);
+  }
 
-    subscription.subscribers.remove(subscriber);
+  void _onFrame(Duration timestamp) {
+    if (_entries.isEmpty) return;
 
-    if (subscription.subscribers.isEmpty) {
-      subscription.detach();
-      _scrollSubscriptions.remove(position);
+    final snapshot = _entries.values.toList();
+
+    for (final entry in snapshot) {
+      final box = entry.box;
+      if (entry.attached && box != null && box.attached && box.hasSize) {
+        box.updateBoundsFromTransform();
+        _refreshEntryFromBox(entry, box);
+      }
     }
   }
 
-  void _notifyScrollPositionChanged(ScrollPosition position) {
-    final subscription = _scrollSubscriptions[position];
-    if (subscription == null || subscription.subscribers.isEmpty) return;
-
-    for (final subscriber in subscription.subscribers) {
-      subscriber.onScrollPositionChanged();
+  Future<dynamic> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'requestOcclusionRects':
+        return _handleCachedRectsRequest();
+      default:
+        throw PlatformException(
+          code: 'UNSUPPORTED',
+          message: 'Method ${call.method} not supported',
+        );
     }
   }
 
-  void _notifyScrollStateChanged(ScrollPosition position) {
-    final subscription = _scrollSubscriptions[position];
-    if (subscription == null || subscription.subscribers.isEmpty) return;
+  List<Map<String, dynamic>> _handleCachedRectsRequest() {
+    final requestTimestamp = DateTime.now().millisecondsSinceEpoch;
 
-    final isScrolling = position.isScrollingNotifier.value;
+    _expireStaleEntries(requestTimestamp);
 
-    for (final subscriber in subscription.subscribers) {
-      subscriber.onScrollStateChanged(isScrolling);
+    final rects = <Map<String, dynamic>>[];
+    final snapshot = _entries.values.toList();
+
+    for (final entry in snapshot) {
+      if (entry.attached) {
+        final box = entry.box;
+        if (box == null || !box.attached || !box.hasSize) {
+          final canUseCache =
+              entry.lastBounds != null &&
+              (requestTimestamp - entry.lastUpdatedMs) <= _detachedTtlMs;
+          if (canUseCache) {
+            final rectData = _rectDataFromEntry(entry, entry.lastBounds!);
+            rects.add(rectData);
+          }
+          continue;
+        }
+
+        box.updateBoundsFromTransform();
+
+        final bounds = box.getUnionOfHistoricalBounds();
+        if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
+          continue;
+        }
+
+        _refreshEntryFromBox(entry, box, overrideBounds: bounds);
+        final rectData = _rectDataFromEntry(entry, bounds);
+        rects.add(rectData);
+      } else {
+        final bounds = entry.lastBounds;
+        if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
+          continue;
+        }
+        final rectData = _rectDataFromEntry(entry, bounds);
+        rects.add(rectData);
+      }
     }
+
+    return rects;
   }
 
   void register(OcclusionReportingRenderBox box) {
-    _registered.add(box);
-    _dirty.add(box);
-    _flushUpdates();
+    final entry = _entries[box.stableId] ?? _OcclusionEntry(id: box.stableId);
+    entry
+      ..box = box
+      ..attached = true;
+    _refreshEntryFromBox(entry, box);
+    _entries[box.stableId] = entry;
   }
 
-  void unregister(OcclusionReportingRenderBox box) {
-    _registered.remove(box);
-    _dirty.remove(box);
-    _channel.sendRemoval(box.stableId, box.viewId);
-  }
-
-  void markDirty(OcclusionReportingRenderBox box) {
-    if (!_registered.contains(box)) return;
-    _dirty.add(box);
-    _flushUpdates();
-  }
-
-  void _flushUpdates({bool resetAfterUpdate = false}) {
-    if (_dirty.isEmpty && !resetAfterUpdate) return;
-
-    _frameSequence++;
-
-    final currentTimestamp = DateTime.now().microsecondsSinceEpoch;
-    final shouldPeriodicReset = !resetAfterUpdate &&
-        _lastResetTimestamp > 0 &&
-        (currentTimestamp - _lastResetTimestamp) >= _resetIntervalMicros;
-
-    if (resetAfterUpdate || shouldPeriodicReset) {
-      _lastResetTimestamp = currentTimestamp;
+  void markDetached(OcclusionReportingRenderBox box) {
+    final entry = _entries[box.stableId];
+    if (entry == null) {
+      return;
     }
 
-    final updates = <OcclusionUpdate>[];
-    for (final box in _dirty) {
-      updates.add(OcclusionUpdate(
-        id: box.stableId,
-        bounds: box.currentBounds,
-        type: box.currentType,
-        devicePixelRatio: box.devicePixelRatio,
-        viewId: box.viewId,
-        frameSequence: _frameSequence,
-      ));
-    }
-    _dirty.clear();
+    entry
+      ..attached = false
+      ..box = null
+      ..lastBounds = box.getUnionOfHistoricalBounds()
+      ..lastUpdatedMs = DateTime.now().millisecondsSinceEpoch
+      ..devicePixelRatio = box.devicePixelRatio
+      ..viewId = box.viewId
+      ..type = box.currentType;
+  }
 
-    _channel.sendBatchUpdate(
-      updates,
-      resetAfterUpdate: resetAfterUpdate || shouldPeriodicReset,
+  void remove(OcclusionReportingRenderBox box) {
+    _entries.remove(box.stableId);
+  }
+
+  void _refreshEntryFromBox(
+    _OcclusionEntry entry,
+    OcclusionReportingRenderBox box, {
+    Rect? overrideBounds,
+  }) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    entry
+      ..lastBounds = overrideBounds ?? box.currentBounds
+      ..lastUpdatedMs = now
+      ..devicePixelRatio = box.devicePixelRatio
+      ..viewId = box.viewId
+      ..type = box.currentType;
+  }
+
+  Map<String, dynamic> _rectDataFromEntry(_OcclusionEntry entry, Rect bounds) {
+    final dpr = entry.devicePixelRatio ?? 1.0;
+    return {
+      'id': entry.id,
+      'left': (bounds.left * dpr).roundToDouble(),
+      'top': (bounds.top * dpr).roundToDouble(),
+      'right': (bounds.right * dpr).roundToDouble(),
+      'bottom': (bounds.bottom * dpr).roundToDouble(),
+      'type': (entry.type ?? OcclusionType.overlay).index,
+    };
+  }
+
+  void _expireStaleEntries(int nowMs) {
+    _entries.removeWhere(
+      (_, entry) =>
+          !entry.attached && (nowMs - entry.lastUpdatedMs) > _detachedTtlMs,
     );
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      _channel.clearAll();
-    } else if (state == AppLifecycleState.resumed) {
-      _dirty.addAll(_registered);
-      _flushUpdates();
-    }
-  }
-
-  void signalMotionStarted() {
-    _lastResetTimestamp = DateTime.now().microsecondsSinceEpoch;
-  }
-
-  void signalMotionEnded() {
-    _lastResetTimestamp = 0;
-
-    for (final box in _registered) {
-      box.recalculateBounds();
-    }
-
-    _dirty.addAll(_registered);
-
-    _flushUpdates(resetAfterUpdate: true);
-  }
-
-  static bool debugShowOcclusions = false;
-
-  void debugPrintState() {
-    debugPrint(
-        'OcclusionRegistry: ${_registered.length} registered, ${_dirty.length} dirty');
-    for (final box in _registered) {
-      debugPrint('  - ${box.stableId}: ${box.currentBounds}');
-    }
   }
 }
 
-class _ScrollSubscription {
-  _ScrollSubscription(this.position, this.registry);
+class _OcclusionEntry {
+  _OcclusionEntry({required this.id});
 
-  final ScrollPosition position;
-  final OcclusionRegistry registry;
-  final Set<ScrollSubscriber> subscribers = {};
-
-  void attach() {
-    position.addListener(_onPositionChanged);
-    position.isScrollingNotifier.addListener(_onScrollStateChanged);
-  }
-
-  void detach() {
-    position.removeListener(_onPositionChanged);
-    position.isScrollingNotifier.removeListener(_onScrollStateChanged);
-  }
-
-  void _onPositionChanged() {
-    registry._notifyScrollPositionChanged(position);
-  }
-
-  void _onScrollStateChanged() {
-    registry._notifyScrollStateChanged(position);
-  }
+  final int id;
+  OcclusionReportingRenderBox? box;
+  Rect? lastBounds;
+  double? devicePixelRatio;
+  int? viewId;
+  OcclusionType? type;
+  int lastUpdatedMs = 0;
+  bool attached = false;
 }
