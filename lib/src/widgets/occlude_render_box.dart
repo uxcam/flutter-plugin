@@ -114,6 +114,14 @@ class OccludeRenderBox extends RenderProxyBox
     _context = context;
   }
 
+  bool _isOffstageRoute() {
+    final context = _context;
+    if (context == null) return false;
+    final route = ModalRoute.of(context);
+    if (route == null) return false;
+    return route.offstage;
+  }
+
   int _deriveStableId() {
     if (_context != null) {
       final element = _context as Element;
@@ -169,6 +177,10 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   bool _isEffectivelyInvisible() {
+    if (_isOffstageRoute()) {
+      return true;
+    }
+
     RenderObject? child = this;
     RenderObject? ancestor = parent;
 
@@ -316,6 +328,12 @@ class OccludeRenderBox extends RenderProxyBox
 
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     _pruneSlidingWindow(nowMs);
+
+    if (_isOffstageRoute()) {
+      _timestampedBounds.clear();
+      _lastReportedBounds = null;
+      return;
+    }
 
     if (_isEffectivelyInvisible()) {
       _timestampedBounds.clear();
