@@ -114,14 +114,6 @@ class OccludeRenderBox extends RenderProxyBox
     _context = context;
   }
 
-  bool _isOffstageRoute() {
-    final context = _context;
-    if (context == null) return false;
-    final route = ModalRoute.of(context);
-    if (route == null) return false;
-    return route.offstage;
-  }
-
   int _deriveStableId() {
     if (_context != null) {
       final element = _context as Element;
@@ -177,10 +169,6 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   bool _isEffectivelyInvisible() {
-    if (_isOffstageRoute()) {
-      return true;
-    }
-
     RenderObject? child = this;
     RenderObject? ancestor = parent;
 
@@ -198,6 +186,41 @@ class OccludeRenderBox extends RenderProxyBox
       ancestor = ancestor.parent;
     }
     return false;
+  }
+
+  /// Returns true if this RenderBox is not in the top-most route. we can discard occlusion in that case.
+  /// In case of non-opaque routes (like dialogs and modals), we consider the underlying route as still visible.
+  bool _isNotInTopRoute() {
+    if (_context != null) {
+      final element = _context as Element;
+      if (!element.mounted) return true;
+      final route = ModalRoute.of(element);
+
+      if (route != null) {
+        if (route.isCurrent && route.isActive) {
+          return false;
+        }
+        final topRoute = _peekTopRoute(_context!);
+        if (topRoute != null) {
+          if (topRoute is PopupRoute && (topRoute).opaque == false) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  Route<dynamic>? _peekTopRoute(BuildContext context) {
+    final navigator = Navigator.maybeOf(context);
+    if (navigator == null) return null;
+
+    Route<dynamic>? top;
+    navigator.popUntil((route) {
+      top = route;
+      return true;
+    });
+    return top;
   }
 
   Rect? _calculateCurrentSnappedBounds({bool skipVisibilityCheck = false}) {
@@ -329,7 +352,7 @@ class OccludeRenderBox extends RenderProxyBox
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     _pruneSlidingWindow(nowMs);
 
-    if (_isOffstageRoute()) {
+    if (_isNotInTopRoute()) {
       _timestampedBounds.clear();
       _lastReportedBounds = null;
       return;
@@ -350,13 +373,13 @@ class OccludeRenderBox extends RenderProxyBox
 
     if (snappedBounds != null) {
       _addToSlidingWindow(snappedBounds, nowMs);
-
     } else {
       if (previousBounds != null) {
         _addToSlidingWindow(previousBounds, nowMs);
       } else {
         final transform = getTransformTo(null);
-        final rawBounds = MatrixUtils.transformRect(transform, Offset.zero & size);
+        final rawBounds =
+            MatrixUtils.transformRect(transform, Offset.zero & size);
         _addToSlidingWindow(rawBounds, nowMs);
       }
     }
