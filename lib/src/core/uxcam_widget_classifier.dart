@@ -187,7 +187,8 @@ class UXCamWidgetClassifier {
   static void registerInteractiveType(Type type) =>
       _customInteractiveTypes.add(type);
 
-  static void unregisterButtonType(Type type) => _customButtonTypes.remove(type);
+  static void unregisterButtonType(Type type) =>
+      _customButtonTypes.remove(type);
 
   static void unregisterFieldType(Type type) => _customFieldTypes.remove(type);
 
@@ -230,9 +231,10 @@ class UXCamWidgetClassifier {
     if (widget is DecoratedBox) {
       final decoration = widget.decoration;
       if (decoration is BoxDecoration) {
-        if (decoration.image != null ||
-            decoration.shape == BoxShape.circle ||
-            decoration.color != null) {
+        if (decoration.image != null) {
+          return UX_IMAGE;
+        }
+        if (decoration.shape == BoxShape.circle || decoration.color != null) {
           return UX_DECOR;
         }
       }
@@ -298,7 +300,8 @@ class UXCamWidgetClassifier {
       _customButtonTypes.contains(runtimeType);
 
   static bool isField(Type runtimeType) =>
-      _fieldTypes.contains(runtimeType) || _customFieldTypes.contains(runtimeType);
+      _fieldTypes.contains(runtimeType) ||
+      _customFieldTypes.contains(runtimeType);
 
   static bool isInteractive(Type runtimeType) =>
       isButton(runtimeType) ||
