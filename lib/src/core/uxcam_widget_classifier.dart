@@ -23,7 +23,6 @@ class UXCamWidgetClassifier {
     TextButton,
     OutlinedButton,
     FilledButton,
-    GestureDetector,
     InkWell,
     IconButton,
     FloatingActionButton,
