@@ -187,27 +187,25 @@ class OccludeRenderBox extends RenderProxyBox
     }
     return false;
   }
-
-  /// Returns true if this RenderBox is not in the top-most route. we can discard occlusion in that case.
-  /// In case of non-opaque routes (like dialogs and modals), we consider the underlying route as still visible.
   bool _isNotInTopRoute() {
-    if (_context != null) {
-      final element = _context as Element;
-      if (!element.mounted) return true;
-      final route = ModalRoute.of(element);
+    if (_context == null) return true;
 
-      if (route != null) {
-        if (route.isCurrent && route.isActive) {
-          return false;
-        }
-        final topRoute = _peekTopRoute(_context!);
-        if (topRoute != null) {
-          if (topRoute is PopupRoute && (topRoute).opaque == false) {
-            return false;
-          }
-        }
-      }
+    final element = _context as Element;
+    if (!element.mounted) return true;
+
+    final route = ModalRoute.of(element);
+    if (route == null) return true;
+    final topRoute = _peekTopRoute(_context!);
+    if (topRoute == null) return true;
+
+    if (topRoute == route) {
+      return false;
     }
+
+    if (topRoute is PopupRoute && !topRoute.opaque) {
+      return false;
+    }
+
     return true;
   }
 
