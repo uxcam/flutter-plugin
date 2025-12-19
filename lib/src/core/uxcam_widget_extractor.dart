@@ -13,7 +13,8 @@ import 'uxcam_widget_classifier.dart';
 /// Widget information extractor for smart events.
 class UXCamWidgetExtractor {
   // Use eager singleton to prevent resurrection issues
-  static final UXCamWidgetExtractor _instance = UXCamWidgetExtractor._internal();
+  static final UXCamWidgetExtractor _instance =
+      UXCamWidgetExtractor._internal();
   factory UXCamWidgetExtractor() => _instance;
   UXCamWidgetExtractor._internal();
 
@@ -409,37 +410,40 @@ class UXCamWidgetExtractor {
 
   String _extractButtonLabel(Element element, Offset position) {
     String label = '';
+    String fallbackLabel = '';
+
+    void setLabel(Rect bounds, String labelCandidate) {
+      if (labelCandidate.isEmpty) return;
+      if (bounds.contains(position)) {
+        label = labelCandidate;
+      } else if (fallbackLabel.isEmpty) {
+        fallbackLabel = labelCandidate;
+        label = '';
+      }
+    }
 
     void visitChildren(Element child) {
       if (label.isNotEmpty) return;
 
       // Only extract from children at tap position
       final bounds = _getElementBounds(child);
-      if (bounds != Rect.zero && !bounds.contains(position)) {
-        // Still recurse - the actual text widget might be deeper
-        child.visitChildElements(visitChildren);
-        return;
-      }
 
       final widget = child.widget;
       if (widget is Text && widget.data != null && widget.data!.isNotEmpty) {
-        label = widget.data!;
-        return;
+        setLabel(bounds, widget.data!);
       }
       if (widget is RichText && widget.text is TextSpan) {
         final text = _extractTextFromSpan(widget.text as TextSpan);
-        if (text.isNotEmpty) {
-          label = text;
-          return;
-        }
+        setLabel(bounds, text);
       }
       if (widget is Icon) {
         if (widget.semanticLabel != null) {
           label = widget.semanticLabel!;
         } else if (widget.icon != null) {
-          label = '${widget.icon!.fontFamily}-${widget.icon!.codePoint.toRadixString(16)}';
+          label =
+              '${widget.icon!.fontFamily}-${widget.icon!.codePoint.toRadixString(16)}';
         }
-        return;
+        setLabel(bounds, label);
       }
       if (label.isEmpty) {
         child.visitChildElements(visitChildren);
@@ -447,7 +451,7 @@ class UXCamWidgetExtractor {
     }
 
     element.visitChildElements(visitChildren);
-    return label;
+    return label.isNotEmpty ? label : fallbackLabel;
   }
 
   String _generateUiId(String route, String widgetType, String value) {
