@@ -187,38 +187,24 @@ class OccludeRenderBox extends RenderProxyBox
     }
     return false;
   }
-  bool _isNotInTopRoute() {
-    if (_context == null) return true;
+  
+  bool _hasOffstageAncestor() {
+    if (_context == null) return false;
 
     final element = _context as Element;
-    if (!element.mounted) return true;
+    if (!element.mounted) return false;
 
-    final route = ModalRoute.of(element);
-    if (route == null) return true;
-    final topRoute = _peekTopRoute(_context!);
-    if (topRoute == null) return true;
-
-    if (topRoute == route) {
-      return false;
-    }
-
-    if (topRoute is PopupRoute && !topRoute.opaque) {
-      return false;
-    }
-
-    return true;
-  }
-
-  Route<dynamic>? _peekTopRoute(BuildContext context) {
-    final navigator = Navigator.maybeOf(context);
-    if (navigator == null) return null;
-
-    Route<dynamic>? top;
-    navigator.popUntil((route) {
-      top = route;
+    bool found = false;
+    element.visitAncestorElements((ancestor) {
+      final widget = ancestor.widget;
+      if (widget is Offstage && widget.offstage) {
+        found = true;
+        return false;
+      }
       return true;
     });
-    return top;
+
+    return found;
   }
 
   Rect? _calculateCurrentSnappedBounds({bool skipVisibilityCheck = false}) {
@@ -350,13 +336,7 @@ class OccludeRenderBox extends RenderProxyBox
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     _pruneSlidingWindow(nowMs);
 
-    if (_isNotInTopRoute()) {
-      _timestampedBounds.clear();
-      _lastReportedBounds = null;
-      return;
-    }
-
-    if (_isEffectivelyInvisible()) {
+    if (_isEffectivelyInvisible() || _hasOffstageAncestor()) {
       _timestampedBounds.clear();
       _lastReportedBounds = null;
       return;
