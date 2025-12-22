@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_uxcam/src/core/uxcam_smart_events.dart';
-import 'package:flutter_uxcam/src/core/uxcam_widget_classifier.dart';
+import 'package:flutter_uxcam/src/smart_events/uxcam_smart_events.dart';
+import 'package:flutter_uxcam/src/smart_events/uxcam_widget_classifier.dart';
 import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/flutter_occlusion.dart';
