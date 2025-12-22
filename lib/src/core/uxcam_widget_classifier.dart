@@ -237,7 +237,14 @@ class UXCamWidgetClassifier {
           return UX_DECOR;
         }
       }
-      if (decoration is ShapeDecoration) return UX_DECOR;
+      if (decoration is ShapeDecoration) {
+        if (decoration.image != null) {
+          return UX_IMAGE;
+        }
+        if (decoration.shape == BoxShape.circle || decoration.color != null) {
+          return UX_DECOR;
+        }
+      }
     }
 
     final typeName = runtimeType.toString();
