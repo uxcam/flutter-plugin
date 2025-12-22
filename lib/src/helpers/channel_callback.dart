@@ -1,3 +1,4 @@
+
 import 'dart:async';
 
 import 'package:flutter/services.dart';
@@ -17,6 +18,7 @@ class ChannelCallback {
   static bool _isFrameDeferred = false;
 
   static Future<void> handleChannelCallBacks(MethodChannel channel) async {
+
     VisibilityDetectorController.instance.updateInterval = Duration(seconds: 1);
     channel.setMethodCallHandler((MethodCall call) async {
       try {
@@ -34,6 +36,7 @@ class ChannelCallback {
       }
     });
   }
+
 
   static Future<bool> _pauseRendering() async {
     if (_isRenderingPaused) {
@@ -58,10 +61,11 @@ class ChannelCallback {
         }
 
         _cachedData = _handleRequestData();
-
+        
         // Wait for frame to complete deferring
         await hasFrameEnded();
       }
+
 
       return true;
     } catch (e) {
@@ -101,6 +105,7 @@ class ChannelCallback {
       // Wait for frame to complete
       await hasFrameEnded();
 
+
       return true;
     } catch (e) {
       // Restore state on error
@@ -130,4 +135,5 @@ class ChannelCallback {
       return false;
     }
   }
+
 }
