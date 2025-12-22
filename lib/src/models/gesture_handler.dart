@@ -5,7 +5,6 @@ import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
-import 'package:flutter_uxcam/src/widgets/occlude_wrapper_android.dart';
 
 class GestureHandler {
   Offset position = Offset.zero;
