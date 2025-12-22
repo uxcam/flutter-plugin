@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
 
     FlutterUxcam.startWithConfiguration(config);
 
-    return UXCamHandler(child: const MaterialApp(home: UXCamPage()));
+    return const MaterialApp(home: UXCamPage());
   }
 }
 

@@ -2,18 +2,23 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_uxcam/src/smart_events/uxcam_smart_events.dart';
 import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
+import 'package:flutter_uxcam/src/models/flutter_occlusion.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
-import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
+import 'package:flutter_uxcam/src/models/uxcam_config.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
+import 'package:flutter_uxcam/uxcam.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 class FlutterUxcam {
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
 
   static UxCam? uxCam;
+
+  static final UXCamSmartEvents _smartEvents = UXCamSmartEvents();
 
   /// For getting platformVersion from Native Side.
   static Future<String> get platformVersion async {
@@ -22,18 +27,22 @@ class FlutterUxcam {
     return version!;
   }
 
-  /// This method is used to as a starting point for configuring and
-  /// starting point for setting up UXCam SDK.
+  /// Starts UXCam with the given [config].
   ///
-  /// [config] is a FlutterUxConfig Object
-  ///
-  /// * [FlutterUxConfig](https://pub.dev/documentation/flutter_uxcam/latest/uxcam/FlutterUxConfig-class.html)
+  /// Smart events are enabled by default. Set `config.enableSmartEvents = false` to disable.
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
+    WidgetsFlutterBinding.ensureInitialized();
+
     uxCam = UxCam();
     ChannelCallback.handleChannelCallBacks(_channel);
 
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
+
+    if (status == true) {
+      final enableSmartEvents = config.enableSmartEvents ?? true;
+      _smartEvents.initialize(enableGestureTracking: enableSmartEvents);
+    }
 
     return status!;
   }
@@ -474,27 +483,6 @@ class FlutterUxcam {
       "y": position.dy.toNative.toDouble(),
       "data": data,
     });
-  }
-
-  /// Set user defined types for tracing elements.
-  /// This will allow UXCam to recognize custom widgets as traceable elements.
-  /// [types] is a list of Type objects.
-  static void addUserDefinedType(Type type) {
-    UxTraceableElement.addUserDefinedType(type);
-  }
-
-  static void removeUserDefinedType(Type type) {
-    UxTraceableElement.removeUserDefinedType(type);
-  }
-
-  /// Set the entire userDefinedTypes list.
-  /// [types] is a list of Type objects.
-  static void setUserDefinedTypes(List<Type> types) {
-    UxTraceableElement.setUserDefinedTypes(types);
-  }
-
-  static void clearUserDefinedTypes() {
-    UxTraceableElement.clearUserDefinedTypes();
   }
 }
 
