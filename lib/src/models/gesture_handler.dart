@@ -5,6 +5,7 @@ import 'package:flutter_uxcam/flutter_uxcam.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_wrapper_android.dart';
 
 class GestureHandler {
   Offset position = Offset.zero;
@@ -40,7 +41,8 @@ class GestureHandler {
           bound: element.getEffectiveBounds(),
           isViewGroup: true,
           isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
+              element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
+                  null,
         );
         addTreeIfInsideBounds(parent, viewGroupNode);
         node = viewGroupNode;
@@ -159,7 +161,8 @@ class GestureHandler {
         value: widget.data ?? "",
         bound: element.getEffectiveBounds(),
         isOccluded:
-            element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
+            element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
+                null,
       );
     }
     if (element.widget is RichText) {
@@ -173,7 +176,8 @@ class GestureHandler {
           value: extractTextFromSpan(widget.text as TextSpan),
           bound: element.getEffectiveBounds(),
           isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
+              element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
+                  null,
         );
       }
     }
@@ -189,7 +193,8 @@ class GestureHandler {
           value: imageDataString,
           bound: element.getEffectiveBounds(),
           isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
+              element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
+                  null,
           custom: {
             "content_desc: ": imageDataString,
           });
@@ -203,7 +208,8 @@ class GestureHandler {
           value: _extractImageStringRepresentation(element),
           bound: element.getEffectiveBounds(),
           isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
+              element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
+                  null,
           custom: {
             "content_desc: ": _extractImageStringRepresentation(element),
           });
@@ -223,7 +229,8 @@ class GestureHandler {
           value: iconDataString,
           bound: element.getEffectiveBounds(),
           isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
+              element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
+                  null,
           custom: {
             "content_desc: ": iconDataString,
           });
