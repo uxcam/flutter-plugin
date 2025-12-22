@@ -80,7 +80,15 @@ class OccludeRenderBox extends RenderProxyBox
   bool _isRegistered = false;
 
   static const int _boundsWindowMs = 100;
+  // Snapshot-based transitions can temporarily detach layers while a snapshot
+  // is animated. Keep the last bounds briefly to avoid flicker.
+  static const int _layerDetachGraceMs = 500;
   final _timestampedBounds = <TimestampedBounds>[];
+  int? _layerDetachedSinceMs;
+
+  // Repaint boundary provides a layer for opacity-based visibility checks.
+  @override
+  bool get isRepaintBoundary => true;
 
   bool get enabled => _enabled;
   set enabled(bool value) {
@@ -185,26 +193,32 @@ class OccludeRenderBox extends RenderProxyBox
       child = ancestor;
       ancestor = ancestor.parent;
     }
+    return _isHiddenByLayerOpacity();
+  }
+
+  bool _isHiddenByLayerOpacity() {
+    final ContainerLayer? rootLayer = layer;
+    if (rootLayer == null || !rootLayer.attached) return false;
+
+    Layer? current = rootLayer.parent;
+    while (current != null) {
+      if (current is OpacityLayer && (current.alpha ?? 255) == 0) {
+        return true;
+      }
+      current = current.parent;
+    }
+
     return false;
   }
-  
-  bool _hasOffstageAncestor() {
-    if (_context == null) return false;
 
-    final element = _context as Element;
-    if (!element.mounted) return false;
-
-    bool found = false;
-    element.visitAncestorElements((ancestor) {
-      final widget = ancestor.widget;
-      if (widget is Offstage && widget.offstage) {
-        found = true;
-        return false;
-      }
+  bool _isLayerDetached(int nowMs) {
+    final ContainerLayer? rootLayer = layer;
+    if (rootLayer == null || !rootLayer.attached) {
+      _layerDetachedSinceMs ??= nowMs;
       return true;
-    });
-
-    return found;
+    }
+    _layerDetachedSinceMs = null;
+    return false;
   }
 
   Rect? _calculateCurrentSnappedBounds({bool skipVisibilityCheck = false}) {
@@ -334,9 +348,20 @@ class OccludeRenderBox extends RenderProxyBox
     if (_context == null || !(_context as Element).mounted) return;
 
     final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (_isLayerDetached(nowMs)) {
+      final detachedForMs = nowMs - (_layerDetachedSinceMs ?? nowMs);
+      if (detachedForMs > _layerDetachGraceMs) {
+        _timestampedBounds.clear();
+        _lastReportedBounds = null;
+      } else if (_lastReportedBounds != null) {
+        _addToSlidingWindow(_lastReportedBounds!, nowMs);
+      }
+      return;
+    }
+
     _pruneSlidingWindow(nowMs);
 
-    if (_isEffectivelyInvisible() || _hasOffstageAncestor()) {
+    if (_isEffectivelyInvisible()) {
       _timestampedBounds.clear();
       _lastReportedBounds = null;
       return;
