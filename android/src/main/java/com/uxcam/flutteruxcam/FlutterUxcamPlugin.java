@@ -5,27 +5,19 @@ import android.os.Build;
 import android.util.Log;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.HandlerThread;
-import java.util.concurrent.atomic.AtomicReference;
-import android.os.SystemClock;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.StandardMessageCodec;
-import io.flutter.plugin.common.BasicMessageChannel.MessageHandler;
-import io.flutter.plugin.common.BasicMessageChannel;
-import io.flutter.plugin.common.BasicMessageChannel.Reply;
-import io.flutter.plugin.common.StringCodec;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
-import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 
 import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
+import com.uxcam.screenshot.screenshotTaker.OcclusionReadyCallback;
 import com.uxcam.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
@@ -38,14 +30,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Objects;
 import android.graphics.Rect;
-import android.view.View;
-import android.util.DisplayMetrics;
-import android.view.WindowMetrics;
 import android.view.Display;
-import android.util.Log;
 
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -56,19 +43,15 @@ import android.view.Surface;
 import android.view.WindowManager;
 import android.content.Context;
 import android.view.WindowInsets;
-import androidx.core.view.DisplayCutoutCompat;
 
-import org.json.JSONObject;
 import org.json.JSONArray;
-import org.json.JSONException;
 import androidx.annotation.NonNull;
-import java.util.TreeMap;
 
 /**
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.7.2";
+    private static final String TYPE_VERSION = "2.7.3";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
@@ -101,118 +84,84 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private int cutoutBottom = 0;
     private Insets systemBars = Insets.NONE;
     private boolean hasNotch = false;
-    private TreeMap<Long, String> frameDataMap = new TreeMap<Long, String>();
-    private HashMap<String, Integer> keyVisibilityMap = new HashMap<String, Integer>();
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private HandlerThread occlusionThread = new HandlerThread("OcclusionProcessor");
-    private Handler occlusionHandler;
-    private final Map<String, Rect> occlusionRects = new HashMap<>();
-    private final Map<String, Rect> unionedocclusionRects = new HashMap<>();
-    private final AtomicReference<List<Rect>> rectsByFrame =
-      new AtomicReference<>(Collections.emptyList());
+    private MethodChannel occlusionRequestChannel;
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
-
-        //off-load thread to process existing occlusion Rects
-        occlusionThread.start();
-        occlusionHandler = new Handler(occlusionThread.getLooper());
-
         //general method channel for native and flutter communication
         final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
         channel.setMethodCallHandler(this);
 
-        //low latency communication channel for occlusion rect requests
-        final BasicMessageChannel<Object> uxcamMessageChannel = new BasicMessageChannel<>(
-                binding.getBinaryMessenger(),
-                "uxcam_occlusion_channel",
-                StandardMessageCodec.INSTANCE);
-        uxcamMessageChannel.setMessageHandler((message, reply) -> {
-            occlusionHandler.post(() -> {
-                processOcclusionRequest(message);
-            });
-        });
-
         delegate = UXCam.getDelegate();
+        occlusionRequestChannel = new MethodChannel(binding.getBinaryMessenger(), "uxcam_occlusion_request");
+
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
-            public void processOcclusionRectsForCurrentFrame(long startTimeStamp,long stopTimeStamp) {
+            public void requestOcclusionRects(OcclusionReadyCallback callback) {
+                final long requestStartMs = System.currentTimeMillis();
 
-                List<Rect> snapshot = rectsByFrame.getAndSet(Collections.emptyList());
-                //incase the user has stopped interacting with the app, make sure that the last occlusion data is still used
-                occlusionHandler.post(() -> {
-                    unionedocclusionRects.clear();
-                    occlusionRects.forEach((key, value) -> {
-                        updateRectsForFrame(key, value);
+                mainHandler.post(() -> {
+                    occlusionRequestChannel.invokeMethod("requestOcclusionRects", null, new Result() {
+                        @Override
+                        public void success(Object result) {
+                            List<Rect> rects = parseRectsFromFlutter(result);
+                            callback.onRectsReady(rects);
+                        }
+
+                        @Override
+                        public void error(String errorCode, String errorMessage, Object errorDetails) {
+                            callback.onRectsReady(Collections.emptyList());
+                        }
+
+                        @Override
+                        public void notImplemented() {
+                            callback.onRectsReady(Collections.emptyList());
+                        }
                     });
-               });
-                delegate.createScreenshotFromCollectedRects(new ArrayList<>(snapshot));
+                });
             }
         });
     }
 
+    @SuppressWarnings("unchecked")
+    private List<Rect> parseRectsFromFlutter(Object result) {
+        if (result == null) {
+            return Collections.emptyList();
+        }
 
-    private void processOcclusionRequest(Object message) {
         try {
-            JSONObject jsonObject = new JSONObject((Map) message);
-            String widgetKey = jsonObject.getString("key");
-            if(widgetKey == null || widgetKey.isEmpty()) {
-                return;
-            }   
-            JSONObject bound = jsonObject.optJSONObject("point");
-            if(bound!=null) {
-                //the widget is visible, update the rect
-                int transitionOffset = 10;
-                Rect rect = new Rect();
-                rect.left = bound.getInt("x0");
-                rect.top = bound.getInt("y0") + transitionOffset;
-                rect.right = bound.getInt("x1");
-                rect.bottom = bound.getInt("y1") + transitionOffset;
+            List<Map<String, Object>> rectMaps = (List<Map<String, Object>>) result;
+            List<Rect> rects = new ArrayList<>(rectMaps.size());
 
-                updateRectsForFrame(widgetKey, rect);
-            } else {
-                //the widget is not visible, remove the rect
-                occlusionRects.remove(widgetKey);
+            for (Map<String, Object> rectMap : rectMaps) {
+                double left = ((Number) rectMap.get("left")).doubleValue();
+                double top = ((Number) rectMap.get("top")).doubleValue();
+                double right = ((Number) rectMap.get("right")).doubleValue();
+                double bottom = ((Number) rectMap.get("bottom")).doubleValue();
+
+                Rect rect = new Rect(
+                        (int) Math.floor(left),
+                        (int) Math.floor(top),
+                        (int) Math.ceil(right),
+                        (int) Math.ceil(bottom)
+                );
+
+                if (rect.width() > 0 && rect.height() > 0) {
+                    rects.add(rect);
+                }
             }
-        } catch (JSONException e) {
-            Log.e(TAG, "Error processing occlusion request", e);
-        }
-    }
 
-    private void updateRectsForFrame(String widgetKey, Rect rect) {
-        occlusionRects.put(widgetKey, rect);
-        if(unionedocclusionRects.containsKey(widgetKey)) {
-            Rect existing = unionedocclusionRects.get(widgetKey);
-            existing.union(rect);
-            unionedocclusionRects.put(widgetKey, existing);
-        } else {
-            unionedocclusionRects.put(widgetKey, rect);
+            return rects;
+        } catch (Exception e) {
+            Log.e(TAG, "[Occlusion] Failed to parse rects: " + e.getMessage());
+            return Collections.emptyList();
         }
-
-        rectsByFrame.getAndUpdate(previous -> {
-            List<Rect> output = new ArrayList<>();
-            unionedocclusionRects.forEach((key, value) -> {
-                output.add(value);
-          });
-            return Collections.unmodifiableList(output);
-        });
     }
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-        if (occlusionHandler != null) {
-            occlusionHandler.removeCallbacksAndMessages(null);
-            occlusionHandler = null;
-        }
-        if (occlusionThread != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                occlusionThread.quitSafely();
-            } else {
-                occlusionThread.quit();
-            }
-            occlusionThread = null;
-        }
     }
 
     @Override
@@ -221,23 +170,23 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, i) -> {
             WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(activity.getWindow().getDecorView());
             if (insets != null) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            WindowInsets insets1 = activity.getWindow()
-                .getDecorView()
-                .getRootWindowInsets();
-            if (insets1 != null) {
-                DisplayCutoutCompat cutout = insets.getDisplayCutout();
-                    if (cutout != null && cutout.getBoundingRects() != null && !cutout.getBoundingRects().isEmpty()) {
-                        hasNotch = true;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    WindowInsets insets1 = activity.getWindow()
+                        .getDecorView()
+                        .getRootWindowInsets();
+                    if (insets1 != null) {
+                        DisplayCutoutCompat cutout = insets.getDisplayCutout();
+                        if (cutout != null && cutout.getBoundingRects() != null && !cutout.getBoundingRects().isEmpty()) {
+                            hasNotch = true;
+                        }
                     }
-            }
-        }
+                }
                 DisplayCutoutCompat cutout = insets.getDisplayCutout();
                 if (cutout != null) {
                     cutoutTop = cutout.getSafeInsetTop();
                     cutoutBottom = cutout.getSafeInsetBottom();
                 }
-            }         
+            }
             int orientation = activity.getResources().getConfiguration().orientation;
             if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
                 Display display = ((WindowManager) activity.getSystemService(Context.WINDOW_SERVICE))
@@ -465,9 +414,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if ("startWithConfiguration".equals(call.method)) {
             Map<String, Object> configMap = call.argument("config");
             boolean success = startWithConfig(configMap);
-            //starting a new session when app returns from background, clear previous occlusions
-            occlusionRects.clear();
-            rectsByFrame.getAndSet(Collections.emptyList());
             UXCam.pluginType("flutter", TYPE_VERSION);
             result.success(success);
         } else if ("applyOcclusion".equals(call.method)) {
@@ -479,11 +425,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             Map<String, Object> occlusionMap = call.argument("occlusion");
             UXCamOcclusion occlusion = getOcclusion(occlusionMap);
             UXCam.removeOcclusion(occlusion);
-            result.success(true);
-        } else if ("addFrameData".equals(call.method)) {
-            long timestamp = call.argument("timestamp");
-            String frameData = call.argument("frameData");
-            frameDataMap.put(timestamp,frameData);
             result.success(true);
         } else if ("appendGestureContent".equals(call.method)) {
             double x = call.argument("x");
@@ -637,5 +578,4 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             return null;
         }
     }
-
 }
