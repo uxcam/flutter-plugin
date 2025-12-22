@@ -46,44 +46,6 @@ class FlutterUxcam {
     return status!;
   }
 
-  /// Navigator observer for route tracking (supports Navigator 1.0 and 2.0).
-  static NavigatorObserver get navigatorObserver =>
-      _smartEvents.navigatorObserver;
-
-  /// Create a navigator observer for nested navigators (e.g., bottom tabs).
-  static NavigatorObserver createNestedNavigatorObserver(String navigatorId) =>
-      _smartEvents.createNestedNavigatorObserver(navigatorId);
-
-  /// Enable smart event tracking.
-  static void enableSmartEvents() {
-    _smartEvents.enable();
-  }
-
-  /// Disable smart event tracking.
-  static void disableSmartEvents() {
-    _smartEvents.disable();
-  }
-
-  /// Register a custom widget type as a button.
-  static void registerButtonType(Type type) {
-    UXCamWidgetClassifier.registerButtonType(type);
-  }
-
-  /// Register a custom widget type as a text field.
-  static void registerFieldType(Type type) {
-    UXCamWidgetClassifier.registerFieldType(type);
-  }
-
-  /// Register a custom widget type as an interactive control.
-  static void registerInteractiveType(Type type) {
-    UXCamWidgetClassifier.registerInteractiveType(type);
-  }
-
-  /// Notify UXCam of a hot reload (debug only). Clears caches and re-registers handlers.
-  static void notifyHotReload() {
-    UXCamSmartEvents.notifyHotReload();
-  }
-
   static Future<void> attachBridge() async {
     if (Platform.isIOS) {
       await _channel.invokeMethod('attachBridge');
