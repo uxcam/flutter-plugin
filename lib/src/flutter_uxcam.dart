@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/src/smart_events/uxcam_smart_events.dart';
-import 'package:flutter_uxcam/src/smart_events/uxcam_widget_classifier.dart';
 import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/flutter_occlusion.dart';
@@ -40,8 +39,10 @@ class FlutterUxcam {
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
 
-    final enableSmartEvents = config.enableSmartEvents ?? true;
-    _smartEvents.initialize(enableGestureTracking: enableSmartEvents);
+    if (status == true) {
+      final enableSmartEvents = config.enableSmartEvents ?? true;
+      _smartEvents.initialize(enableGestureTracking: enableSmartEvents);
+    }
 
     return status!;
   }
