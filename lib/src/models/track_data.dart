@@ -78,29 +78,3 @@ class TrackData {
     return result;
   }
 }
-
-class SummaryTree {
-  Rect bound;
-  String route;
-  String uiClass;
-  int type;
-  int hashCode;
-  String value;
-  Map<String, dynamic> custom;
-  List<SummaryTree> subTrees;
-  bool isViewGroup;
-  bool isOccluded;
-
-  SummaryTree(
-    this.route,
-    this.uiClass,
-    this.type,
-    this.hashCode, {
-    this.bound = Rect.zero,
-    this.value = "",
-    this.subTrees = const [],
-    this.custom = const {},
-    this.isViewGroup = false,
-    this.isOccluded = false,
-  });
-}
