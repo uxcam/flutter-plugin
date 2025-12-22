@@ -41,8 +41,7 @@ class GestureHandler {
           bound: element.getEffectiveBounds(),
           isViewGroup: true,
           isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
-                  null,
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
         );
         addTreeIfInsideBounds(parent, viewGroupNode);
         node = viewGroupNode;
@@ -161,8 +160,7 @@ class GestureHandler {
         value: widget.data ?? "",
         bound: element.getEffectiveBounds(),
         isOccluded:
-            element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
-                null,
+            element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
       );
     }
     if (element.widget is RichText) {
@@ -176,8 +174,7 @@ class GestureHandler {
           value: extractTextFromSpan(widget.text as TextSpan),
           bound: element.getEffectiveBounds(),
           isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
-                  null,
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
         );
       }
     }
@@ -193,8 +190,7 @@ class GestureHandler {
           value: imageDataString,
           bound: element.getEffectiveBounds(),
           isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
-                  null,
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
           custom: {
             "content_desc: ": imageDataString,
           });
@@ -208,8 +204,7 @@ class GestureHandler {
           value: _extractImageStringRepresentation(element),
           bound: element.getEffectiveBounds(),
           isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
-                  null,
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
           custom: {
             "content_desc: ": _extractImageStringRepresentation(element),
           });
@@ -229,8 +224,7 @@ class GestureHandler {
           value: iconDataString,
           bound: element.getEffectiveBounds(),
           isOccluded:
-              element.findAncestorWidgetOfExactType<OccludeWrapperAndroid>() !=
-                  null,
+              element.findAncestorWidgetOfExactType<OccludeWrapper>() != null,
           custom: {
             "content_desc: ": iconDataString,
           });
