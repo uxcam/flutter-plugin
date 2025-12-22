@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
+import 'package:flutter_uxcam/src/helpers/channel_callback.dart';
 import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/ux_traceable_element.dart';
@@ -28,6 +29,7 @@ class FlutterUxcam {
   /// * [FlutterUxConfig](https://pub.dev/documentation/flutter_uxcam/latest/uxcam/FlutterUxConfig-class.html)
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     uxCam = UxCam();
+    ChannelCallback.handleChannelCallBacks(_channel);
 
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
