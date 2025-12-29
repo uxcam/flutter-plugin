@@ -139,7 +139,7 @@ class UXCamElementRegistry {
   }
 
   void ensureFreshForTap(Set<int> hitTargetHashes) {
-    // Rebuild if tree is dirty (route change, hot reload, app resume)
+    // Rebuild if tree is dirty (route change, app resume)
     if (_treeDirty) {
       _rebuildCacheSync();
       return;
@@ -275,13 +275,6 @@ class UXCamElementRegistry {
     _routeCache.clear();
     _cache.clear();
     _elementRefs.clear();
-    _treeDirty = true;
-  }
-
-  void onHotReload() {
-    _elementRefs.clear();
-    _cache.clear();
-    _routeCache.clear();
     _treeDirty = true;
   }
 
