@@ -51,7 +51,7 @@ import androidx.annotation.NonNull;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.7.4";
+    private static final String TYPE_VERSION = "2.7.5";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
@@ -413,9 +413,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             result.success(null);
         } else if ("startWithConfiguration".equals(call.method)) {
             Map<String, Object> configMap = call.argument("config");
-            boolean success = startWithConfig(configMap);
+            startWithConfig(configMap, result);
             UXCam.pluginType("flutter", TYPE_VERSION);
-            result.success(success);
         } else if ("applyOcclusion".equals(call.method)) {
             Map<String, Object> occlusionMap = call.argument("occlusion");
             UXCamOcclusion occlusion = getOcclusion(occlusionMap);
@@ -438,8 +437,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     }
 
-    private boolean startWithConfig(Map<String, Object> configMap) {
+    private void startWithConfig(Map<String, Object> configMap, Result callback) {
         try {
+            addListener(callback);
             String appKey = (String) configMap.get(USER_APP_KEY);
             Boolean enableIntegrationLogging = (Boolean) configMap.get(ENABLE_INTEGRATION_LOGGING);
             Boolean enableMultiSessionRecord = (Boolean) configMap.get(ENABLE_MUTLI_SESSION_RECORD);
@@ -468,10 +468,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
             UXConfig config = uxConfigBuilder.build();
             UXCam.startWithConfigurationCrossPlatform(activity, config);
-            return true;
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
+            callback.success(false);
         }
     }
 

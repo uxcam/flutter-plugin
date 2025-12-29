@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'uxcam_element_registry.dart';
@@ -6,27 +5,6 @@ import 'uxcam_gesture_interceptor.dart';
 import 'uxcam_route_tracker.dart';
 import 'uxcam_widget_classifier.dart';
 import 'uxcam_widget_extractor.dart';
-
-class _UXCamBinding extends WidgetsFlutterBinding {
-  static WidgetsBinding ensureInitialized() {
-    try {
-      if (WidgetsBinding.instance is _UXCamBinding) {
-        return WidgetsBinding.instance as _UXCamBinding;
-      }
-    } catch (_) {}
-    try {
-      return _UXCamBinding();
-    } catch (_) {
-      return WidgetsBinding.instance;
-    }
-  }
-
-  @override
-  Future<void> performReassemble() async {
-    UXCamSmartEvents.notifyHotReload();
-    return super.performReassemble();
-  }
-}
 
 /// Initialization coordinator for automatic gesture tracking.
 class UXCamSmartEvents with WidgetsBindingObserver {
@@ -45,20 +23,14 @@ class UXCamSmartEvents with WidgetsBindingObserver {
   bool _routeTrackingOnlyInitialized = false;
   bool _wasExplicitlyConfigured = false;
 
-  static int _initGeneration = 0;
-  int _myGeneration = 0;
-
   /// Initialize smart events. Called automatically from `startWithConfiguration`.
   void initialize({bool enableGestureTracking = true}) {
-    _UXCamBinding.ensureInitialized();
+    WidgetsFlutterBinding.ensureInitialized();
 
     _wasExplicitlyConfigured = true;
     _gestureTrackingEnabled = enableGestureTracking;
 
-    final canSkip =
-        _isInitialized && _myGeneration == _initGeneration && !_routeTrackingOnlyInitialized;
-    if (canSkip) return;
-
+    // Handle upgrade from route-tracking-only to full initialization
     if (_routeTrackingOnlyInitialized) {
       try {
         WidgetsBinding.instance.removeObserver(this);
@@ -66,14 +38,11 @@ class UXCamSmartEvents with WidgetsBindingObserver {
       _routeTracker?.dispose();
       _routeTracker = null;
       _routeTrackingOnlyInitialized = false;
+      _isInitialized = false;
     }
 
-    if (_isInitialized && _myGeneration != _initGeneration) {
-      _cleanupForHotReload();
-    }
-
+    if (_isInitialized) return;
     _isInitialized = true;
-    _myGeneration = _initGeneration;
 
     _elementRegistry = UXCamElementRegistry();
     _routeTracker = UXCamRouteTracker();
@@ -92,56 +61,19 @@ class UXCamSmartEvents with WidgetsBindingObserver {
     }
 
     WidgetsBinding.instance.addObserver(this);
-
-    if (kDebugMode) {
-      _registerHotReloadCallback();
-    }
   }
 
   void _initializeRouteTrackingOnly() {
-    _UXCamBinding.ensureInitialized();
+    WidgetsFlutterBinding.ensureInitialized();
 
     if (_isInitialized) return;
     _isInitialized = true;
-    _myGeneration = _initGeneration;
     _routeTrackingOnlyInitialized = true;
 
     _routeTracker = UXCamRouteTracker();
     _routeTracker!.initialize(onRouteChanged: null);
 
     WidgetsBinding.instance.addObserver(this);
-  }
-
-  void _registerHotReloadCallback() {}
-
-  void _cleanupForHotReload() {
-    _gestureInterceptor?.dispose();
-    _widgetExtractor?.dispose();
-    _routeTracker?.dispose();
-    _elementRegistry?.onHotReload();
-    _elementRegistry?.dispose();
-
-    try {
-      WidgetsBinding.instance.removeObserver(this);
-    } catch (_) {}
-
-    _gestureInterceptor = null;
-    _widgetExtractor = null;
-    _routeTracker = null;
-    _elementRegistry = null;
-
-    _isInitialized = false;
-    _routeTrackingOnlyInitialized = false;
-  }
-
-  static void notifyHotReload() {
-    _initGeneration++;
-    final restoreTracking = _instance._wasExplicitlyConfigured;
-    final trackingEnabled = _instance._gestureTrackingEnabled;
-    _instance._cleanupForHotReload();
-    if (restoreTracking) {
-      _instance.initialize(enableGestureTracking: trackingEnabled);
-    }
   }
 
   void dispose() {
