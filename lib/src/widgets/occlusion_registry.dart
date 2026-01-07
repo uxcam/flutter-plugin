@@ -6,6 +6,7 @@ import 'occlusion_models.dart';
 
 class OcclusionRegistry with WidgetsBindingObserver {
   OcclusionRegistry._() {
+    print('[UXCam][OcclusionRegistry] init');
     WidgetsBinding.instance.addObserver(this);
     _setupMethodChannelHandler();
     _setupPersistentFrameCallback();
@@ -21,10 +22,12 @@ class OcclusionRegistry with WidgetsBindingObserver {
       MethodChannel('uxcam_occlusion_request');
 
   void _setupMethodChannelHandler() {
+    print('[UXCam][OcclusionRegistry] setMethodCallHandler');
     _requestChannel.setMethodCallHandler(_handleMethodCall);
   }
 
   void _setupPersistentFrameCallback() {
+    print('[UXCam][OcclusionRegistry] addPersistentFrameCallback');
     SchedulerBinding.instance.addPersistentFrameCallback(_onFrame);
   }
 
@@ -32,6 +35,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
     if (_entries.isEmpty) return;
 
     final snapshot = _entries.values.toList();
+    print('[UXCam][OcclusionRegistry] frame entries=${snapshot.length}');
 
     for (final entry in snapshot) {
       final box = entry.box;

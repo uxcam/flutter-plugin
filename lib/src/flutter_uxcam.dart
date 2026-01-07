@@ -35,6 +35,7 @@ class FlutterUxcam {
     WidgetsFlutterBinding.ensureInitialized();
     if (Platform.isAndroid) {
       // Ensure occlusion channel handler is registered before native polling.
+      print('[UXCam] init OcclusionRegistry');
       final _ = OcclusionRegistry.instance;
     }
 

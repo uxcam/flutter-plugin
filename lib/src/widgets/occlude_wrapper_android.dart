@@ -19,6 +19,7 @@ class OccludeWrapperAndroid extends SingleChildRenderObjectWidget {
 
   @override
   RenderObject createRenderObject(BuildContext context) {
+    print('[UXCam][OccludeWrapperAndroid] createRenderObject');
     return OccludeRenderBox(
       enabled: enabled,
       type: type,
@@ -31,6 +32,7 @@ class OccludeWrapperAndroid extends SingleChildRenderObjectWidget {
     BuildContext context,
     covariant OccludeRenderBox renderObject,
   ) {
+    print('[UXCam][OccludeWrapperAndroid] updateRenderObject enabled=$enabled type=$type');
     renderObject
       ..updateContext(context)
       ..enabled = enabled
