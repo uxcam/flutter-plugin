@@ -90,6 +90,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
+        Log.d(TAG, "[Occlusion] onAttachedToEngine engine=" + binding.getFlutterEngine().hashCode()
+                + " messenger=" + binding.getBinaryMessenger().hashCode());
         //general method channel for native and flutter communication
         final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
         channel.setMethodCallHandler(this);
