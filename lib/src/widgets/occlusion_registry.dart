@@ -45,6 +45,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'requestOcclusionRects':
+        print('[UXCam][OcclusionRegistry] requestOcclusionRects');
         return _handleCachedRectsRequest();
       default:
         throw PlatformException(
@@ -61,6 +62,8 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
     final rects = <Map<String, dynamic>>[];
     final snapshot = _entries.values.toList();
+    print(
+        '[UXCam][OcclusionRegistry] entries=${snapshot.length} attached=${snapshot.where((e) => e.attached).length}');
 
     for (final entry in snapshot) {
       if (entry.attached) {
@@ -96,6 +99,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
       }
     }
 
+    print('[UXCam][OcclusionRegistry] rects=${rects.length}');
     return rects;
   }
 
@@ -106,6 +110,8 @@ class OcclusionRegistry with WidgetsBindingObserver {
       ..attached = true;
     _refreshEntryFromBox(entry, box);
     _entries[box.stableId] = entry;
+    print(
+        '[UXCam][OcclusionRegistry] register id=${entry.id} hasSize=${box.hasSize} attached=${box.attached}');
   }
 
   void markDetached(OcclusionReportingRenderBox box) {

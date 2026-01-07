@@ -101,22 +101,26 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             @Override
             public void requestOcclusionRects(OcclusionReadyCallback callback) {
                 final long requestStartMs = System.currentTimeMillis();
+                Log.d(TAG, "[Occlusion] requestOcclusionRects");
 
                 mainHandler.post(() -> {
                     occlusionRequestChannel.invokeMethod("requestOcclusionRects", null, new Result() {
                         @Override
                         public void success(Object result) {
                             List<Rect> rects = parseRectsFromFlutter(result);
+                            Log.d(TAG, "[Occlusion] rects=" + rects.size());
                             callback.onRectsReady(rects);
                         }
 
                         @Override
                         public void error(String errorCode, String errorMessage, Object errorDetails) {
+                            Log.e(TAG, "[Occlusion] error=" + errorCode + " message=" + errorMessage);
                             callback.onRectsReady(Collections.emptyList());
                         }
 
                         @Override
                         public void notImplemented() {
+                            Log.e(TAG, "[Occlusion] notImplemented on uxcam_occlusion_request");
                             callback.onRectsReady(Collections.emptyList());
                         }
                     });
