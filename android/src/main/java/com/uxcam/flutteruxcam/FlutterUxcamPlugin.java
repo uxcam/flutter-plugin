@@ -95,7 +95,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
-        Log.d(TAG, "[Occlusion] onAttachedToEngine engine=" + binding.getFlutterEngine().hashCode()
+        Log.d(TAG, "[UXCam] onAttachedToEngine engine=" + binding.getFlutterEngine().hashCode()
                 + " messenger=" + binding.getBinaryMessenger().hashCode());
         //general method channel for native and flutter communication
         binaryMessenger = binding.getBinaryMessenger();
@@ -135,7 +135,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
             return rects;
         } catch (Exception e) {
-            Log.e(TAG, "[Occlusion] Failed to parse rects: " + e.getMessage());
+            Log.e(TAG, "[UXCam] Failed to parse rects: " + e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -216,12 +216,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if (call.method.equals("registerEngine")) {
             Integer messengerHash = call.argument("messengerHash");
             expectedMessengerHash = messengerHash;
-            Log.d(TAG, "[Occlusion] registerEngine messenger=" + messengerHash);
+            Log.d(TAG, "[UXCam] registerEngine messenger=" + messengerHash);
             if (binaryMessenger != null && messengerHash != null
                     && messengerHash.equals(binaryMessenger.hashCode())) {
                 attachOcclusionListenerIfNeeded();
             } else {
-                Log.w(TAG, "[Occlusion] registerEngine mismatch; skipping listener");
+                Log.w(TAG, "[UXCam] registerEngine mismatch; skipping listener");
             }
             result.success(true);
         } else if (call.method.equals("startWithKey")) {
@@ -436,26 +436,26 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
             public void requestOcclusionRects(OcclusionReadyCallback callback) {
-                Log.d(TAG, "[Occlusion] requestOcclusionRects");
+                Log.d(TAG, "[UXCam] requestOcclusionRects");
 
                 mainHandler.post(() -> {
                     occlusionRequestChannel.invokeMethod("requestOcclusionRects", null, new Result() {
                         @Override
                         public void success(Object result) {
                             List<Rect> rects = parseRectsFromFlutter(result);
-                            Log.d(TAG, "[Occlusion] rects=" + rects.size());
+                            Log.d(TAG, "[UXCam] rects=" + rects.size());
                             callback.onRectsReady(rects);
                         }
 
                         @Override
                         public void error(String errorCode, String errorMessage, Object errorDetails) {
-                            Log.e(TAG, "[Occlusion] error=" + errorCode + " message=" + errorMessage);
+                            Log.e(TAG, "[UXCam] error=" + errorCode + " message=" + errorMessage);
                             callback.onRectsReady(Collections.emptyList());
                         }
 
                         @Override
                         public void notImplemented() {
-                            Log.e(TAG, "[Occlusion] notImplemented on uxcam_occlusion_request");
+                            Log.e(TAG, "[UXCam] notImplemented on uxcam_occlusion_request");
                             callback.onRectsReady(Collections.emptyList());
                         }
                     });
@@ -463,7 +463,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             }
         });
         occlusionListenerAttached = true;
-        Log.d(TAG, "[Occlusion] listener attached");
+        Log.d(TAG, "[UXCam] listener attached");
     }
 
     private void startWithConfig(Map<String, Object> configMap, Result callback) {
