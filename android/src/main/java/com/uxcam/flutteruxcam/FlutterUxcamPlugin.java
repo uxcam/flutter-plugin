@@ -90,7 +90,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private MethodChannel occlusionRequestChannel;
     private MethodChannel uxcamChannel;
     private BinaryMessenger binaryMessenger;
-    private Integer expectedMessengerHash;
     private boolean occlusionListenerAttached = false;
 
     @Override
@@ -215,14 +214,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             result.success("Android " + Build.VERSION.RELEASE);
         } else if (call.method.equals("registerEngine")) {
             Integer messengerHash = call.argument("messengerHash");
-            expectedMessengerHash = messengerHash;
             Log.d(TAG, "[UXCam] registerEngine messenger=" + messengerHash);
-            if (binaryMessenger != null && messengerHash != null
-                    && messengerHash.equals(binaryMessenger.hashCode())) {
-                attachOcclusionListenerIfNeeded();
-            } else {
-                Log.w(TAG, "[UXCam] registerEngine mismatch; skipping listener");
-            }
+            attachOcclusionListenerIfNeeded();
             result.success(true);
         } else if (call.method.equals("startWithKey")) {
             String key = call.argument("key");
