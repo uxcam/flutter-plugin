@@ -37,6 +37,10 @@ class FlutterUxcam {
       // Ensure occlusion channel handler is registered before native polling.
       print('[UXCam] init OcclusionRegistry');
       final _ = OcclusionRegistry.instance;
+      await _channel.invokeMethod('registerEngine', {
+        'messengerHash':
+            ServicesBinding.instance.defaultBinaryMessenger.hashCode,
+      });
     }
 
     uxCam = UxCam();

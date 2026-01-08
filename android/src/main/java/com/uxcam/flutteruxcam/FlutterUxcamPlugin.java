@@ -10,6 +10,7 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
+import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
@@ -87,48 +88,21 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private MethodChannel occlusionRequestChannel;
+    private MethodChannel uxcamChannel;
+    private BinaryMessenger binaryMessenger;
+    private Integer expectedMessengerHash;
+    private boolean occlusionListenerAttached = false;
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
         Log.d(TAG, "[Occlusion] onAttachedToEngine engine=" + binding.getFlutterEngine().hashCode()
                 + " messenger=" + binding.getBinaryMessenger().hashCode());
         //general method channel for native and flutter communication
-        final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_uxcam");
-        channel.setMethodCallHandler(this);
+        binaryMessenger = binding.getBinaryMessenger();
+        uxcamChannel = new MethodChannel(binaryMessenger, "flutter_uxcam");
+        uxcamChannel.setMethodCallHandler(this);
 
         delegate = UXCam.getDelegate();
-        occlusionRequestChannel = new MethodChannel(binding.getBinaryMessenger(), "uxcam_occlusion_request");
-
-        delegate.setListener(new OcclusionRectRequestListener() {
-            @Override
-            public void requestOcclusionRects(OcclusionReadyCallback callback) {
-                final long requestStartMs = System.currentTimeMillis();
-                Log.d(TAG, "[Occlusion] requestOcclusionRects");
-
-                mainHandler.post(() -> {
-                    occlusionRequestChannel.invokeMethod("requestOcclusionRects", null, new Result() {
-                        @Override
-                        public void success(Object result) {
-                            List<Rect> rects = parseRectsFromFlutter(result);
-                            Log.d(TAG, "[Occlusion] rects=" + rects.size());
-                            callback.onRectsReady(rects);
-                        }
-
-                        @Override
-                        public void error(String errorCode, String errorMessage, Object errorDetails) {
-                            Log.e(TAG, "[Occlusion] error=" + errorCode + " message=" + errorMessage);
-                            callback.onRectsReady(Collections.emptyList());
-                        }
-
-                        @Override
-                        public void notImplemented() {
-                            Log.e(TAG, "[Occlusion] notImplemented on uxcam_occlusion_request");
-                            callback.onRectsReady(Collections.emptyList());
-                        }
-                    });
-                });
-            }
-        });
     }
 
     @SuppressWarnings("unchecked")
@@ -239,6 +213,17 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     public void onMethodCall(MethodCall call, Result result) {
         if (call.method.equals("getPlatformVersion")) {
             result.success("Android " + Build.VERSION.RELEASE);
+        } else if (call.method.equals("registerEngine")) {
+            Integer messengerHash = call.argument("messengerHash");
+            expectedMessengerHash = messengerHash;
+            Log.d(TAG, "[Occlusion] registerEngine messenger=" + messengerHash);
+            if (binaryMessenger != null && messengerHash != null
+                    && messengerHash.equals(binaryMessenger.hashCode())) {
+                attachOcclusionListenerIfNeeded();
+            } else {
+                Log.w(TAG, "[Occlusion] registerEngine mismatch; skipping listener");
+            }
+            result.success(true);
         } else if (call.method.equals("startWithKey")) {
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
@@ -441,6 +426,44 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         else {
             result.notImplemented();
         }
+    }
+
+    private void attachOcclusionListenerIfNeeded() {
+        if (occlusionListenerAttached) return;
+        if (binaryMessenger == null) return;
+
+        occlusionRequestChannel = new MethodChannel(binaryMessenger, "uxcam_occlusion_request");
+        delegate.setListener(new OcclusionRectRequestListener() {
+            @Override
+            public void requestOcclusionRects(OcclusionReadyCallback callback) {
+                Log.d(TAG, "[Occlusion] requestOcclusionRects");
+
+                mainHandler.post(() -> {
+                    occlusionRequestChannel.invokeMethod("requestOcclusionRects", null, new Result() {
+                        @Override
+                        public void success(Object result) {
+                            List<Rect> rects = parseRectsFromFlutter(result);
+                            Log.d(TAG, "[Occlusion] rects=" + rects.size());
+                            callback.onRectsReady(rects);
+                        }
+
+                        @Override
+                        public void error(String errorCode, String errorMessage, Object errorDetails) {
+                            Log.e(TAG, "[Occlusion] error=" + errorCode + " message=" + errorMessage);
+                            callback.onRectsReady(Collections.emptyList());
+                        }
+
+                        @Override
+                        public void notImplemented() {
+                            Log.e(TAG, "[Occlusion] notImplemented on uxcam_occlusion_request");
+                            callback.onRectsReady(Collections.emptyList());
+                        }
+                    });
+                });
+            }
+        });
+        occlusionListenerAttached = true;
+        Log.d(TAG, "[Occlusion] listener attached");
     }
 
     private void startWithConfig(Map<String, Object> configMap, Result callback) {
