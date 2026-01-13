@@ -3,14 +3,12 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_uxcam/src/helpers/synchronized_capture_handler.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager_ios.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class FlutterChannelCallBackName {
   static const pause = "pauseRendering";
   static const resumeWithData = "requestAllOcclusionRects";
-  static const setSynchronizedCaptureMode = "setSynchronizedCaptureMode";
 }
 
 class ChannelCallback {
@@ -19,26 +17,11 @@ class ChannelCallback {
   static List<Map<String, dynamic>> _cachedData = [];
   static bool _isFrameDeferred = false;
 
-  /// Feature flag to enable synchronized capture mode.
-  /// When enabled, native SDK will use the new synchronized capture pattern
-  /// instead of the legacy pause-resume pattern.
-  // ignore: unused_field
-  static bool _useSynchronizedCapture = false;
-
   static Future<void> handleChannelCallBacks(MethodChannel channel) async {
-    // Initialize the new synchronized capture handler
-    SynchronizedCaptureHandler.initialize();
 
     VisibilityDetectorController.instance.updateInterval = Duration(seconds: 1);
     channel.setMethodCallHandler((MethodCall call) async {
       try {
-        // Feature flag from native SDK to enable synchronized capture mode
-        if (call.method == FlutterChannelCallBackName.setSynchronizedCaptureMode) {
-          _useSynchronizedCapture = (call.arguments as Map?)?['enabled'] ?? false;
-          return true;
-        }
-
-        // Legacy handlers - kept for backward compatibility
         if (call.method == FlutterChannelCallBackName.resumeWithData) {
           var json = _cachedData;
           await _resumeRendering();

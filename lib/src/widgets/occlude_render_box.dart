@@ -79,29 +79,10 @@ class OccludeRenderBox extends RenderProxyBox
   OcclusionType _type;
   bool _isRegistered = false;
 
-  static const int _defaultBoundsWindowMs = 100;
-  static const int _extendedBoundsWindowMs = 150;
+  static const int _boundsWindowMs = 100;
   // Snapshot-based transitions can temporarily detach layers while a snapshot
   // is animated. Keep the last bounds briefly to avoid flicker.
   static const int _layerDetachGraceMs = 500;
-
-  // Global bounds window duration - can be temporarily extended during capture
-  static int _globalBoundsWindowMs = _defaultBoundsWindowMs;
-
-  /// Called before collecting rects for synchronized capture.
-  /// Temporarily extends the sliding window to capture more historical bounds,
-  /// which helps cover intermediate scroll positions during fast scrolling.
-  static void signalCaptureImminent() {
-    _globalBoundsWindowMs = _extendedBoundsWindowMs;
-  }
-
-  /// Called after synchronized capture completes.
-  /// Restores the sliding window to normal duration after a brief delay.
-  static void signalCaptureComplete() {
-    Future.delayed(const Duration(milliseconds: 50), () {
-      _globalBoundsWindowMs = _defaultBoundsWindowMs;
-    });
-  }
   final _timestampedBounds = <TimestampedBounds>[];
   int? _layerDetachedSinceMs;
 
@@ -346,7 +327,7 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _pruneSlidingWindow(int nowMs) {
-    final cutoff = nowMs - _globalBoundsWindowMs;
+    final cutoff = nowMs - _boundsWindowMs;
     _timestampedBounds.removeWhere((entry) => entry.timestampMs < cutoff);
   }
 

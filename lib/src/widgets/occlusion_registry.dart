@@ -54,12 +54,6 @@ class OcclusionRegistry with WidgetsBindingObserver {
     }
   }
 
-  /// Public method for synchronized capture handler to get cached rects.
-  /// Returns the current occlusion rects using historical bounds union.
-  List<Map<String, dynamic>> getCachedRects() {
-    return _handleCachedRectsRequest();
-  }
-
   List<Map<String, dynamic>> _handleCachedRectsRequest() {
     final requestTimestamp = DateTime.now().millisecondsSinceEpoch;
 

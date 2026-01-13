@@ -20,7 +20,6 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
 @interface FlutterUxcamPlugin ()
 @property(nonatomic, strong) FlutterMethodChannel *flutterChannel;
 @property(nonatomic, strong) FlutterBasicMessageChannel *flutterBasicMessageChannel;
-@property(nonatomic, strong) FlutterMethodChannel *synchronizedCaptureChannel;
 @property (nonatomic, copy) void (^occludeRectsRequestHandler)(void (^)(NSArray *));
 @property (nonatomic, copy) void (^pauseForOcclusionNextFrameRequestHandler)(void (^)(BOOL));
 // Whether plugin bridge is attached to native or not
@@ -43,21 +42,14 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
 
     instance.flutterChannel = channel;
     instance.flutterBasicMessageChannel = messageChannel;
-
-    // Set up synchronized capture channel for improved scroll synchronization
-    FlutterMethodChannel* syncCaptureChannel = [FlutterMethodChannel
-                                                 methodChannelWithName:@"uxcam_synchronized_capture"
-                                                 binaryMessenger:[registrar messenger]];
-    instance.synchronizedCaptureChannel = syncCaptureChannel;
-    [registrar addMethodCallDelegate:instance channel:syncCaptureChannel];
-
+    
     // Set the message handler for the basic channel
         [messageChannel setMessageHandler:^(id  _Nullable message, FlutterReply  _Nonnull callback) {
 
             // Optionally, send a reply back to Dart
             callback(@"Message received on iOS");
         }];
-
+    
     [registrar addMethodCallDelegate:instance channel:channel];
     [UXCam pluginType:@"flutter" version:@"2.7.6"];
 
@@ -149,7 +141,7 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
     NSNumber *positionX = call.arguments[@"x"];
     NSNumber *positionY = call.arguments[@"y"];
     NSDictionary *elementResult = call.arguments[@"data"];
-
+    
     NSString *pointString = [NSString stringWithFormat:@"{%@,%@}", positionX, positionY];
 
     if (positionX && positionY && elementResult) {
@@ -165,105 +157,9 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
         } else {
             NSLog(@"UXCam: handleGestureContent:event: method not available in current SDK version");
         }
-    }
+    } 
 
     result(nil);
-}
-
-#pragma mark - Synchronized Capture (Improved scroll synchronization)
-
-/// Handles synchronized capture request from Flutter.
-/// This method is called by Flutter WITH the occlusion rects already collected,
-/// ensuring the screenshot is taken at the exact moment the rects are valid.
-/// This solves timing issues during fast scrolling.
-- (void)takeScreenshotWithRects:(FlutterMethodCall*)call result:(FlutterResult)result
-{
-    NSArray *rects = call.arguments[@"rects"];
-    NSNumber *captureId = call.arguments[@"captureId"];
-    NSNumber *timestamp = call.arguments[@"timestamp"];
-
-    // Convert rects to native format
-    NSArray<NSArray<NSNumber*>*> *nativeRects = [self parseRectsFromFlutterSync:rects];
-
-    // CRITICAL: Take screenshot RIGHT NOW with these exact rects
-    // This ensures perfect synchronization between rect capture and screenshot
-    BOOL success = NO;
-
-    if ([UXCam respondsToSelector:@selector(captureFrameWithOcclusionRects:)]) {
-        NSMethodSignature *signature = [UXCam methodSignatureForSelector:@selector(captureFrameWithOcclusionRects:)];
-        NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-        [invocation setTarget:UXCam.class];
-        [invocation setSelector:@selector(captureFrameWithOcclusionRects:)];
-        [invocation setArgument:&nativeRects atIndex:2];
-        [invocation invoke];
-        [invocation getReturnValue:&success];
-    } else {
-        // Fallback: Log warning if method not available
-        NSLog(@"UXCam: captureFrameWithOcclusionRects: method not available in current SDK version");
-    }
-
-    result(@{
-        @"status": success ? @"success" : @"failed",
-        @"captureId": captureId ?: @0,
-        @"rectCount": @(nativeRects.count),
-        @"timestamp": timestamp ?: @0
-    });
-}
-
-/// Parse rects from Flutter synchronized capture format (left, top, right, bottom)
-- (NSArray<NSArray<NSNumber*>*>*)parseRectsFromFlutterSync:(NSArray*)rectsArray {
-    NSMutableArray<NSArray<NSNumber*>*> *parsedRect = [NSMutableArray array];
-
-    if (![rectsArray isKindOfClass:[NSArray class]]) {
-        return @[];
-    }
-
-    for (NSDictionary *rectDict in rectsArray) {
-        if (![rectDict isKindOfClass:[NSDictionary class]]) {
-            continue;
-        }
-
-        // Handle both formats: (left, top, right, bottom) and (x0, y0, x1, y1)
-        NSNumber *left = rectDict[@"left"] ?: rectDict[@"x0"];
-        NSNumber *top = rectDict[@"top"] ?: rectDict[@"y0"];
-        NSNumber *right = rectDict[@"right"] ?: rectDict[@"x1"];
-        NSNumber *bottom = rectDict[@"bottom"] ?: rectDict[@"y1"];
-
-        if (!left || !top || !right || !bottom) {
-            continue;
-        }
-
-        NSNumber *width = @(right.doubleValue - left.doubleValue);
-        NSNumber *height = @(bottom.doubleValue - top.doubleValue);
-
-        // Skip invalid rects
-        if (width.doubleValue <= 0 || height.doubleValue <= 0) {
-            continue;
-        }
-
-        NSArray<NSNumber*> *coordinates = @[left, top, width, height];
-        [parsedRect addObject:coordinates];
-    }
-
-    return [parsedRect copy];
-}
-
-/// Triggers a synchronized capture request to Flutter.
-/// Flutter will collect rects and call back with takeScreenshotWithRects.
-- (void)synchronizedCapture:(FlutterMethodCall*)call result:(FlutterResult)result
-{
-    NSNumber *captureId = call.arguments[@"captureId"] ?: @(arc4random());
-
-    // Invoke Flutter to handle synchronized capture
-    [self.synchronizedCaptureChannel invokeMethod:@"synchronizedCapture"
-                                        arguments:@{@"captureId": captureId}
-                                           result:^(id _Nullable response) {
-        if ([response isKindOfClass:[NSDictionary class]]) {
-            result(response);
-        } else {
-            result(@{@"status": @"error", @"reason": @"invalid_response"});
-        }
-    }];
 }
 
 -(NSArray*) getRectsFromJson:(NSArray*)jsonArray {
