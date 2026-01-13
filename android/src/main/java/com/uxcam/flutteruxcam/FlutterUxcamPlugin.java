@@ -87,6 +87,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private MethodChannel occlusionRequestChannel;
+    private MethodChannel synchronizedCaptureChannel;
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
@@ -96,6 +97,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         delegate = UXCam.getDelegate();
         occlusionRequestChannel = new MethodChannel(binding.getBinaryMessenger(), "uxcam_occlusion_request");
+
+        // Set up synchronized capture channel for improved scroll synchronization
+        synchronizedCaptureChannel = new MethodChannel(binding.getBinaryMessenger(), "uxcam_synchronized_capture");
+        synchronizedCaptureChannel.setMethodCallHandler(this::handleSynchronizedCaptureCall);
 
         delegate.setListener(new OcclusionRectRequestListener() {
             @Override
@@ -158,6 +163,168 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             Log.e(TAG, "[Occlusion] Failed to parse rects: " + e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    // ==================== Synchronized Capture (Improved scroll synchronization) ====================
+
+    /**
+     * Handles method calls on the synchronized capture channel.
+     */
+    private void handleSynchronizedCaptureCall(MethodCall call, Result result) {
+        switch (call.method) {
+            case "takeScreenshotWithRects":
+                handleTakeScreenshotWithRects(call, result);
+                break;
+            case "synchronizedCapture":
+                triggerSynchronizedCapture(call, result);
+                break;
+            default:
+                result.notImplemented();
+                break;
+        }
+    }
+
+    /**
+     * Handles synchronized capture request from Flutter.
+     * This method is called by Flutter WITH the occlusion rects already collected,
+     * ensuring the screenshot is taken at the exact moment the rects are valid.
+     * This solves timing issues during fast scrolling.
+     */
+    @SuppressWarnings("unchecked")
+    private void handleTakeScreenshotWithRects(MethodCall call, Result result) {
+        try {
+            List<Map<String, Object>> rects = call.argument("rects");
+            Integer captureId = call.argument("captureId");
+            Long timestamp = call.argument("timestamp");
+
+            // Parse rects to native format
+            List<Rect> nativeRects = parseRectsForSyncCapture(rects);
+
+            // CRITICAL: Take screenshot RIGHT NOW with these exact rects
+            // This ensures perfect synchronization between rect capture and screenshot
+            boolean success = false;
+
+            try {
+                // Try to use the captureFrameWithOcclusionRects method if available
+                java.lang.reflect.Method captureMethod = UXCam.class.getMethod(
+                        "captureFrameWithOcclusionRects", List.class);
+                Object returnValue = captureMethod.invoke(null, nativeRects);
+                if (returnValue instanceof Boolean) {
+                    success = (Boolean) returnValue;
+                }
+            } catch (NoSuchMethodException e) {
+                // Fallback: method not available in this SDK version
+                Log.w(TAG, "[SyncCapture] captureFrameWithOcclusionRects not available in current SDK version");
+            } catch (Exception e) {
+                Log.e(TAG, "[SyncCapture] Error invoking captureFrameWithOcclusionRects: " + e.getMessage());
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", success ? "success" : "failed");
+            response.put("captureId", captureId != null ? captureId : 0);
+            response.put("rectCount", nativeRects.size());
+            response.put("timestamp", timestamp != null ? timestamp : 0L);
+            result.success(response);
+        } catch (Exception e) {
+            Log.e(TAG, "[SyncCapture] Error in handleTakeScreenshotWithRects: " + e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("error", e.getMessage());
+            result.success(errorResponse);
+        }
+    }
+
+    /**
+     * Parse rects from Flutter synchronized capture format.
+     * Handles both (left, top, right, bottom) and (x0, y0, x1, y1) formats.
+     */
+    @SuppressWarnings("unchecked")
+    private List<Rect> parseRectsForSyncCapture(List<Map<String, Object>> rectMaps) {
+        if (rectMaps == null) {
+            return Collections.emptyList();
+        }
+
+        List<Rect> rects = new ArrayList<>(rectMaps.size());
+
+        for (Map<String, Object> rectMap : rectMaps) {
+            try {
+                // Handle both formats: (left, top, right, bottom) and (x0, y0, x1, y1)
+                Number leftNum = rectMap.containsKey("left") ?
+                        (Number) rectMap.get("left") : (Number) rectMap.get("x0");
+                Number topNum = rectMap.containsKey("top") ?
+                        (Number) rectMap.get("top") : (Number) rectMap.get("y0");
+                Number rightNum = rectMap.containsKey("right") ?
+                        (Number) rectMap.get("right") : (Number) rectMap.get("x1");
+                Number bottomNum = rectMap.containsKey("bottom") ?
+                        (Number) rectMap.get("bottom") : (Number) rectMap.get("y1");
+
+                if (leftNum == null || topNum == null || rightNum == null || bottomNum == null) {
+                    continue;
+                }
+
+                double left = leftNum.doubleValue();
+                double top = topNum.doubleValue();
+                double right = rightNum.doubleValue();
+                double bottom = bottomNum.doubleValue();
+
+                Rect rect = new Rect(
+                        (int) Math.floor(left),
+                        (int) Math.floor(top),
+                        (int) Math.ceil(right),
+                        (int) Math.ceil(bottom)
+                );
+
+                // Skip invalid rects
+                if (rect.width() > 0 && rect.height() > 0) {
+                    rects.add(rect);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "[SyncCapture] Error parsing rect: " + e.getMessage());
+            }
+        }
+
+        return rects;
+    }
+
+    /**
+     * Triggers a synchronized capture request to Flutter.
+     * Flutter will collect rects and call back with takeScreenshotWithRects.
+     */
+    private void triggerSynchronizedCapture(MethodCall call, Result result) {
+        Integer captureId = call.argument("captureId");
+        if (captureId == null) {
+            captureId = (int) (Math.random() * Integer.MAX_VALUE);
+        }
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("captureId", captureId);
+
+        final Integer finalCaptureId = captureId;
+        mainHandler.post(() -> {
+            synchronizedCaptureChannel.invokeMethod("synchronizedCapture", args, new Result() {
+                @Override
+                public void success(Object response) {
+                    result.success(response);
+                }
+
+                @Override
+                public void error(String errorCode, String errorMessage, Object errorDetails) {
+                    Map<String, Object> errorResult = new HashMap<>();
+                    errorResult.put("status", "error");
+                    errorResult.put("code", errorCode);
+                    errorResult.put("captureId", finalCaptureId);
+                    result.success(errorResult);
+                }
+
+                @Override
+                public void notImplemented() {
+                    Map<String, Object> notImplResult = new HashMap<>();
+                    notImplResult.put("status", "not_implemented");
+                    notImplResult.put("captureId", finalCaptureId);
+                    result.success(notImplResult);
+                }
+            });
+        });
     }
 
     @Override
