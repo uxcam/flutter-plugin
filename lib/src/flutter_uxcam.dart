@@ -80,9 +80,7 @@ class FlutterUxcam {
   /// [key] is String
   @Deprecated('Use `startWithConfiguration`')
   static Future<bool> startWithKey(String key) async {
-    final bool? status =
-        await _channel.invokeMethod<bool>('startWithKey', {"key": key});
-    return status!;
+    return startWithConfiguration(FlutterUxConfig(userAppKey: key));
   }
 
   /// This method is used for starting new session
