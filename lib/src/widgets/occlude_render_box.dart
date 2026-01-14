@@ -355,6 +355,12 @@ class OccludeRenderBox extends RenderProxyBox
         _lastReportedBounds = null;
       } else if (_lastReportedBounds != null) {
         _addToSlidingWindow(_lastReportedBounds!, nowMs);
+      } else {
+        final transform = getTransformTo(null);
+        final rawBounds =
+            MatrixUtils.transformRect(transform, Offset.zero & size);
+        _lastReportedBounds = rawBounds;
+        _addToSlidingWindow(rawBounds, nowMs);
       }
       return;
     }
