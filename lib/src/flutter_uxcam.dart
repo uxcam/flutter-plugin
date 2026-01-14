@@ -10,6 +10,7 @@ import 'package:flutter_uxcam/src/models/flutter_occlusion.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/uxcam_config.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
+import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
 import 'package:flutter_uxcam/uxcam.dart';
 import 'package:stack_trace/stack_trace.dart';
 
@@ -32,6 +33,11 @@ class FlutterUxcam {
   /// Smart events are enabled by default. Set `config.enableSmartEvents = false` to disable.
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     WidgetsFlutterBinding.ensureInitialized();
+    if (Platform.isAndroid) {
+      // Ensure occlusion channel handler is registered before native polling.
+      final _ = OcclusionRegistry.instance;
+      await _channel.invokeMethod('registerEngine');
+    }
 
     uxCam = UxCam();
     ChannelCallback.handleChannelCallBacks(_channel);
@@ -74,9 +80,7 @@ class FlutterUxcam {
   /// [key] is String
   @Deprecated('Use `startWithConfiguration`')
   static Future<bool> startWithKey(String key) async {
-    final bool? status =
-        await _channel.invokeMethod<bool>('startWithKey', {"key": key});
-    return status!;
+    return startWithConfiguration(FlutterUxConfig(userAppKey: key));
   }
 
   /// This method is used for starting new session
