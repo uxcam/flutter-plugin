@@ -3,7 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_wrapper_manager_ios.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class FlutterChannelCallBackName {
@@ -117,7 +117,7 @@ class ChannelCallback {
 
   /// This method collects the occlusionWrapper Rects as list.
   static List<Map<String, dynamic>> _handleRequestData() {
-    var instance = OcclusionWrapperManager();
+    var instance = OcclusionWrapperManagerIOS();
     var rects = instance.fetchOcclusionRects();
     return rects;
   }
