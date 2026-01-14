@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/flutter_uxcam.dart';
@@ -94,8 +93,7 @@ class OccludeWrapperIosState extends State<OccludeWrapperIos>
   }
 
   void unRegisterOcclusionWidget() {
-    if (Platform.isIOS)
-      OcclusionWrapperManagerIOS().unRegisterOcclusionWrapper(_uniqueId);
+    OcclusionWrapperManagerIOS().unRegisterOcclusionWrapper(_uniqueId);
   }
 
   void hideOcclusionWidget() {
