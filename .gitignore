@@ -14,3 +14,9 @@ local.properties
 /.dart_tool/package_config.json
 android/.gradle
 build
+
+# Auto-generated plugin registrant files
+**/GeneratedPluginRegistrant.h
+**/GeneratedPluginRegistrant.m
+**/GeneratedPluginRegistrant.swift
+**/GeneratedPluginRegistrant.java
