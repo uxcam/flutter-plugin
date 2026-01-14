@@ -383,19 +383,29 @@ class UXCamWidgetExtractor {
   }
 
   String? _findSemanticsValue(Element element) {
-  String? value;
-  element.visitAncestorElements((ancestor) {
-    final w = ancestor.widget;
-    if (w is Semantics) {
-      value = w.properties.value?.isNotEmpty == true
-          ? w.properties.value
-          : (w.properties.label?.isNotEmpty == true ? w.properties.label : null);
-      if (value != null) return false; 
-    }
-    return true;
-  });
-  return value;
-}
+    final direct = _semanticsValueFromWidget(element.widget);
+    if (direct != null) return direct;
+
+    String? value;
+    element.visitAncestorElements((ancestor) {
+      value = _semanticsValueFromWidget(ancestor.widget);
+      return value == null;
+    });
+    return value;
+  }
+
+  String? _semanticsValueFromWidget(Widget widget) {
+    if (widget is! Semantics) return null;
+
+    final props = widget.properties;
+    final value = props.value;
+    if (value != null && value.isNotEmpty) return value;
+
+    final label = props.label;
+    if (label != null && label.isNotEmpty) return label;
+
+    return null;
+  }
 
   String? _extractImagePath(String input) {
     final regex = RegExp(r'"([^"]+)"');
