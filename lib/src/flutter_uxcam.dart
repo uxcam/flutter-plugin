@@ -474,10 +474,7 @@ class FlutterUxcam {
   /// Methods declared to handle smart events.
   static Future<void> appendGestureContent(
       Offset position, TrackData trackData) async {
-    var instance = OcclusionWrapperManagerIOS();
-    var rects = instance.fetchOcclusionRects();
     final data = trackData.toJson();
-    data['occlusionRects'] = rects;
     await _channel.invokeMethod<void>("appendGestureContent", {
       "x": position.dx.toNative.toDouble(),
       "y": position.dy.toNative.toDouble(),
