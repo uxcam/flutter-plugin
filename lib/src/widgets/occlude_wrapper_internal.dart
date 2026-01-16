@@ -6,8 +6,8 @@ import 'occlusion_registry.dart';
 
 export 'occlusion_models.dart' show OcclusionType;
 
-class OccludeWrapperAndroid extends SingleChildRenderObjectWidget {
-  const OccludeWrapperAndroid({
+class OccludeWrapperInternal extends SingleChildRenderObjectWidget {
+  const OccludeWrapperInternal({
     super.key,
     required super.child,
     this.enabled = true,

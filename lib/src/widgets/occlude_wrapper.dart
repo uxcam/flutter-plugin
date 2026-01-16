@@ -1,6 +1,6 @@
 
 import 'package:flutter/material.dart';
-import 'package:flutter_uxcam/src/widgets/occlude_wrapper_android.dart';
+import 'package:flutter_uxcam/src/widgets/occlude_wrapper_internal.dart';
 
 class OccludeWrapper extends StatelessWidget {
   final Widget child;
@@ -8,7 +8,7 @@ class OccludeWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OccludeWrapperAndroid(
+    return OccludeWrapperInternal(
       child: child,
     );
   }

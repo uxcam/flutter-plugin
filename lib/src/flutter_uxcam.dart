@@ -38,7 +38,6 @@ class FlutterUxcam {
     }
 
     uxCam = UxCam();
-    // ChannelCallback.handleChannelCallBacks(_channel);
 
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});
