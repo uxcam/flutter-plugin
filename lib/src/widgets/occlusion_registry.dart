@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -20,8 +22,12 @@ class OcclusionRegistry with WidgetsBindingObserver {
   static const MethodChannel _requestChannel =
       MethodChannel('uxcam_occlusion_request');
 
+  static const MethodChannel _requestChannelIOS =
+      MethodChannel('flutter_uxcam');
+
   void _setupMethodChannelHandler() {
     _requestChannel.setMethodCallHandler(_handleMethodCall);
+    _requestChannelIOS.setMethodCallHandler(_handleMethodCall);
   }
 
   void _setupPersistentFrameCallback() {
@@ -46,6 +52,10 @@ class OcclusionRegistry with WidgetsBindingObserver {
     switch (call.method) {
       case 'requestOcclusionRects':
         return _handleCachedRectsRequest();
+      case 'requestAllOcclusionRects': //Currently iOS only
+        return _handleCachedRectsRequest();
+      case 'pauseRendering':  //Currently iOS only
+        return true;
       default:
         throw PlatformException(
           code: 'UNSUPPORTED',
@@ -144,6 +154,14 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   Map<String, dynamic> _rectDataFromEntry(_OcclusionEntry entry, Rect bounds) {
     final dpr = entry.devicePixelRatio ?? 1.0;
+    if (Platform.isIOS) {
+      return {
+        'x0': bounds.left.toInt(),
+        'y0': bounds.top.toInt(),
+        'x1': bounds.right.toInt(),
+        'y1': bounds.bottom.toInt(),
+      };
+    }
     return {
       'id': entry.id,
       'left': (bounds.left * dpr).roundToDouble(),
