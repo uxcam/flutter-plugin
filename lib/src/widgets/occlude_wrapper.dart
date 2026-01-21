@@ -1,23 +1,39 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_uxcam/src/widgets/occlude_wrapper_android.dart';
-import 'package:flutter_uxcam/src/widgets/occlude_wrapper_ios.dart';
 
-class OccludeWrapper extends StatelessWidget {
-  final Widget child;
-  const OccludeWrapper({super.key, required this.child});
+import 'occlude_render_box.dart';
+import 'occlusion_models.dart';
+import 'occlusion_registry.dart';
+
+export 'occlusion_models.dart' show OcclusionType;
+
+class OccludeWrapper extends SingleChildRenderObjectWidget {
+
+  const OccludeWrapper({
+    super.key,
+    required super.child,
+  });
+
+  final bool enabled = true;
+  final OcclusionType type = OcclusionType.overlay;
 
   @override
-  Widget build(BuildContext context) {
-    if (Platform.isIOS) {
-      return OccludeWrapperIos(
-        child: child,
-      );
-    } else {
-      return OccludeWrapperAndroid(
-        child: child,
-      );
-    }
+  RenderObject createRenderObject(BuildContext context) {
+    return OccludeRenderBox(
+      enabled: enabled,
+      type: type,
+      registry: OcclusionRegistry.instance,
+    )..updateContext(context);
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant OccludeRenderBox renderObject,
+  ) {
+    renderObject
+      ..updateContext(context)
+      ..enabled = enabled
+      ..type = type;
   }
 }
