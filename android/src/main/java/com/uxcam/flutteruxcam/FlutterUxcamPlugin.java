@@ -34,9 +34,6 @@ import java.util.HashMap;
 import java.util.Objects;
 import android.graphics.Rect;
 
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-
 import org.json.JSONArray;
 import androidx.annotation.NonNull;
 
@@ -129,9 +126,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
         activity = activityPluginBinding.getActivity();
-        ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, insets) -> {
-            return ViewCompat.onApplyWindowInsets(v, insets);
-        });
     }
 
     @Override
