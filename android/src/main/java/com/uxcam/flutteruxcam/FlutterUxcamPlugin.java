@@ -143,8 +143,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
         activity = activityPluginBinding.getActivity();
-        ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, i) -> {
-            WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(activity.getWindow().getDecorView());
+        ViewCompat.setOnApplyWindowInsetsListener(activity.getWindow().getDecorView(), (v, insets) -> {
             if (insets != null) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     WindowInsets insets1 = activity.getWindow()
@@ -173,11 +172,15 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                     if (hasNotch) {
                         topInset = systemBars.top;
                     }
-                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    if (insets != null) {
+                        systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    }
                     Log.d("bars","landscape_90" + systemBars.toString());
                     leftPadding = Math.max(topInset, cutoutTop);
                 } else if (rotation == Surface.ROTATION_270) {
-                    systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    if (insets != null) {
+                        systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    }
                     Log.d("bars","landscape_270" + systemBars.toString());
                     leftPadding = Math.max(systemBars.left, cutoutBottom);
                 }
