@@ -41,5 +41,5 @@ android {
 
 dependencies {
     //To use the alpha version please use the following dependency pattern: implementation 'com.uxcam:uxcam-debug:<sdk-version>-alpha.1+<branch-commit-hash>'
-    implementation 'com.uxcam:uxcam:3.8.10'
+    implementation 'com.uxcam:uxcam:3.8.11'
 }
