@@ -33,7 +33,7 @@ flutter:
         pluginClass: FlutterUxcamPlugin
       web:
         pluginClass: FlutterUxcamWeb
-        fileName: src/web/flutter_uxcam_web.dart
+        fileName: src/flutter_uxcam_web.dart
 
   # To add assets to your plugin package, add an assets section, like this:
   # assets:
