@@ -30,7 +30,7 @@ class FlutterUxcamWeb {
         _injectWebSdk(appKey);
         
         //test event: remove later
-        _sendEvent('flutter_plugin_connected', {'source': 'flutter_uxcam_web'});
+        _sendEvent('flutter_plugin_connected', {'source': 'flutter_uxcam_web', 'version':'1.0.1'});
         return true;
       case 'getPlatformVersion':
         return 'web';

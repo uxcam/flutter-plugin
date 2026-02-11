@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 class TrackData {
@@ -70,9 +71,9 @@ class TrackData {
         "bottom": bound.bottom,
       },
       "custom": custom ?? {},
-      "id": Platform.isAndroid ? jsonEncode(uiId) : uiId,
-      "value": Platform.isAndroid ? value : uiValue,
-      "name": Platform.isAndroid ? value : uiValue,
+      "id": !kIsWeb ? Platform.isAndroid ? jsonEncode(uiId) : uiId : '',
+      "value": !kIsWeb ? Platform.isAndroid ? value : uiValue : '',
+      "name": !kIsWeb ? Platform.isAndroid ? value : uiValue : '',
       "class": effectiveclass,
     };
     return result;

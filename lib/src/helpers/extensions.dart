@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
@@ -68,14 +69,14 @@ extension GlobalKeyExtension on GlobalKey {
 
 extension UtilIntExtension on double {
   int get toNative {
-    final bool isAndroid = Platform.isAndroid;
+    final bool isAndroid = !kIsWeb ? Platform.isAndroid : false;
     final double pixelRatio =
         PlatformDispatcher.instance.views.first.devicePixelRatio;
     return (this * (isAndroid ? pixelRatio : 1.0)).toInt();
   }
 
   int get toFlutter {
-    final bool isAndroid = Platform.isAndroid;
+    final bool isAndroid = !kIsWeb ? Platform.isAndroid : false;
     final double pixelRatio =
         PlatformDispatcher.instance.views.first.devicePixelRatio;
     return (this / (isAndroid ? pixelRatio : 1.0)).toInt();

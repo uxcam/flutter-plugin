@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/src/smart_events/uxcam_smart_events.dart';
@@ -31,10 +32,13 @@ class FlutterUxcam {
   /// Smart events are enabled by default. Set `config.enableSmartEvents = false` to disable.
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     WidgetsFlutterBinding.ensureInitialized();
-    if (Platform.isAndroid) {
-      // Ensure occlusion channel handler is registered before native polling.
-      final _ = OcclusionRegistry.instance;
-      await _channel.invokeMethod('registerEngine');
+
+    if(!kIsWeb) {
+      if (Platform.isAndroid) {
+        // Ensure occlusion channel handler is registered before native polling.
+        final _ = OcclusionRegistry.instance;
+        await _channel.invokeMethod('registerEngine');
+      }
     }
 
     uxCam = UxCam();
