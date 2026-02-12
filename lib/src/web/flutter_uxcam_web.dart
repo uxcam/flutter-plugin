@@ -1,6 +1,7 @@
 import 'dart:js_interop';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_uxcam/src/web/flutter_web_registry.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 @JS('window.uxc')
@@ -28,6 +29,8 @@ class FlutterUxcamWeb {
         final config = call.arguments['config'] as Map;
         final appKey = config['userAppKey'] as String;
         _injectWebSdk(appKey);
+
+        final _ = FlutterWebRegistry.instance;
         
         //test event: remove later
         _sendEvent('flutter_plugin_connected', {'source': 'flutter_uxcam_web', 'version':'1.0.1'});
