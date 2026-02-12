@@ -1,7 +1,6 @@
 import 'dart:js_interop';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_uxcam/src/web/flutter_web_registry.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 @JS('window.uxc')
@@ -30,10 +29,20 @@ class FlutterUxcamWeb {
         final appKey = config['userAppKey'] as String;
         _injectWebSdk(appKey);
 
-        final _ = FlutterWebRegistry.instance;
+        //final _ = FlutterWebRegistry.instance;
         
         //test event: remove later
-        _sendEvent('flutter_plugin_connected', {'source': 'flutter_uxcam_web', 'version':'1.0.1'});
+        //_sendEvent('flutter_plugin_connected', {'source': 'flutter_uxcam_web', 'version':'1.0.1'});
+        return true;
+      case 'logEvent':
+        final name = call.arguments['key'] as String;
+        _sendEvent(name, {});
+        return true;
+      case 'logEventWithProperties':
+        final name = call.arguments['eventName'] as String;
+        final properties = Map<String, dynamic>.from(call.arguments['properties'] as Map);
+        final stringProps = properties.map((k, v) => MapEntry(k, v.toString()));
+        _sendEvent(name, stringProps);
         return true;
       case 'getPlatformVersion':
         return 'web';

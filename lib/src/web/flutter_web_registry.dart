@@ -17,7 +17,6 @@ class FlutterWebRegistry with WidgetsBindingObserver {
 
   Timer? _scanTimer;
   web.HTMLElement? _semanticsContainer;
-  bool _initialSnapshotDone = false;
 
   /// Wait for the semantic tree to be ready, then inject once.
   void _waitForFirstFrame() {
@@ -35,8 +34,6 @@ class FlutterWebRegistry with WidgetsBindingObserver {
   }
 
   void _onTick() {
-    // For static content, inject once and stop
-    if (_initialSnapshotDone) return;
 
     for (final renderView in RendererBinding.instance.renderViews) {
       final owner = renderView.owner?.semanticsOwner;
@@ -49,7 +46,6 @@ class FlutterWebRegistry with WidgetsBindingObserver {
       if (!root.hasChildren) continue;
 
       _injectSemanticsDom(root);
-      _initialSnapshotDone = true;
 
       // Stop the timer — we only needed one snapshot
       _scanTimer?.cancel();
@@ -86,15 +82,22 @@ class FlutterWebRegistry with WidgetsBindingObserver {
     final globalRect =
         MatrixUtils.transformRect(accumulatedTransform, node.rect);
 
+    // Convert from physical pixels to CSS (logical) pixels.
+    final dpr = web.window.devicePixelRatio;
+    final cssLeft   = globalRect.left   / dpr;
+    final cssTop    = globalRect.top    / dpr;
+    final cssWidth  = globalRect.width  / dpr;
+    final cssHeight = globalRect.height / dpr;
+
     final tag = node.hasChildren ? 'div' : 'span';
     final el = web.document.createElement(tag) as web.HTMLElement;
 
     el.setAttribute('data-sem-id', 'sem_${node.id}');
     el.style.setProperty('position', 'absolute');
-    el.style.setProperty('left', '${globalRect.left.toStringAsFixed(1)}px');
-    el.style.setProperty('top', '${globalRect.top.toStringAsFixed(1)}px');
-    el.style.setProperty('width', '${globalRect.width.toStringAsFixed(1)}px');
-    el.style.setProperty('height', '${globalRect.height.toStringAsFixed(1)}px');
+    el.style.setProperty('left', '${cssLeft.toStringAsFixed(1)}px');
+    el.style.setProperty('top', '${cssTop.toStringAsFixed(1)}px');
+    el.style.setProperty('width', '${cssWidth.toStringAsFixed(1)}px');
+    el.style.setProperty('height', '${cssHeight.toStringAsFixed(1)}px');
 
     if (node.label.isNotEmpty) {
       el.setAttribute('data-label', node.label);
