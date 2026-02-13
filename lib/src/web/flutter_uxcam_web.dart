@@ -30,10 +30,8 @@ class FlutterUxcamWeb {
         final appKey = config['userAppKey'] as String;
         _injectWebSdk(appKey);
 
-        final _ = FlutterWebRegistry.instance;
-        
-        //test event: remove later
-        //_sendEvent('flutter_plugin_connected', {'source': 'flutter_uxcam_web', 'version':'1.0.1'});
+        FlutterWebRegistry.instance.start();
+      
         return true;
       case 'logEvent':
         final name = call.arguments['key'] as String;

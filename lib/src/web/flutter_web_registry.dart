@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:js_interop';
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
@@ -7,110 +9,209 @@ import 'package:web/web.dart' as web;
 /// Injects the Flutter semantics tree as DOM elements behind
 /// the Flutter canvas so the UXCam Web SDK captures them
 /// via its MutationObserver.
-class FlutterWebRegistry with WidgetsBindingObserver {
-  FlutterWebRegistry._() {
-    WidgetsBinding.instance.addObserver(this);
-    _waitForFirstFrame();
-  }
+class FlutterWebRegistry {
+  FlutterWebRegistry._();
 
   static final FlutterWebRegistry instance = FlutterWebRegistry._();
 
-  Timer? _scanTimer;
-  web.HTMLElement? _semanticsContainer;
+  Timer? _debounce;
+  Map<int, String> _lastSentMap = {};
+  bool _isListening = false;
 
-  /// Wait for the semantic tree to be ready, then inject once.
-  void _waitForFirstFrame() {
-    _scanTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
-      _onTick();
+    void start() {
+    if (_isListening) return;
+    _isListening = true;
+
+    // Poll until semantics owner is available, then attach listener
+    Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      for (final renderView in RendererBinding.instance.renderViews) {
+        final owner = renderView.owner?.semanticsOwner;
+        if (owner == null) continue;
+
+        owner.addListener(_onSemanticsChanged);
+        timer.cancel();
+
+        // Do initial scan
+        _scheduleCollect();
+        return;
+      }
     });
   }
 
-  void dispose() {
-    _scanTimer?.cancel();
-    _scanTimer = null;
-    _semanticsContainer?.remove();
-    _semanticsContainer = null;
-    WidgetsBinding.instance.removeObserver(this);
+  void _onSemanticsChanged() {
+    _scheduleCollect();
   }
 
-  void _onTick() {
+    /// Debounce: wait 200ms after last change before walking trees
+  void _scheduleCollect() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 200), _collectAndPush);
+  }
 
+  void _collectAndPush() {
+    // Step 1: Walk semantics tree → collect {nodeId: globalRect}
+    final semanticsRects = <int, Rect>{};
     for (final renderView in RendererBinding.instance.renderViews) {
       final owner = renderView.owner?.semanticsOwner;
       if (owner == null) continue;
-
       final root = owner.rootSemanticsNode;
       if (root == null) continue;
-
-      // Check the tree has actual content (more than just root)
-      if (!root.hasChildren) continue;
-
-      _injectSemanticsDom(root);
-
-      // Stop the timer — we only needed one snapshot
-      _scanTimer?.cancel();
-      _scanTimer = null;
+      _collectSemanticsRects(root, Matrix4.identity(), semanticsRects);
     }
-  }
 
-  void _injectSemanticsDom(SemanticsNode root) {
-    _semanticsContainer?.remove();
+    // Step 2: Walk element tree → collect {globalRect: imageUrl}
+    final imageRects = <Rect, String>{};
+    final rootElement = WidgetsBinding.instance.rootElement;
+    if (rootElement != null) {
+      _collectImageRects(rootElement, imageRects);
+    }
 
-    final container = web.document.createElement('div') as web.HTMLElement;
-    container.id = 'uxcam-flutter-semantics';
-    container.style.setProperty('position', 'absolute');
-    container.style.setProperty('top', '0');
-    container.style.setProperty('left', '0');
-    container.style.setProperty('width', '100%');
-    container.style.setProperty('height', '100%');
-    container.style.setProperty('pointer-events', 'none');
-    container.style.setProperty('overflow', 'hidden');
-    container.style.setProperty('z-index', '-1');
-
-    _buildDomNode(root, container, Matrix4.identity());
-
-    web.document.body?.appendChild(container);
-    _semanticsContainer = container;
-  }
-
-  void _buildDomNode(
-      SemanticsNode node, web.HTMLElement parent, Matrix4 parentTransform) {
-    final Matrix4 accumulatedTransform = node.transform != null
-        ? parentTransform.multiplied(node.transform!)
-        : parentTransform;
-
-    final globalRect =
-        MatrixUtils.transformRect(accumulatedTransform, node.rect);
-
-    // Convert from physical pixels to CSS (logical) pixels.
+    // Step 3: Match by rect overlap → build {nodeId: imageUrl}
+    // For each image, find the SMALLEST semantic node that overlaps it.
+    // This avoids matching parent containers (root, scaffold, etc.)
     final dpr = web.window.devicePixelRatio;
-    final cssLeft   = globalRect.left   / dpr;
-    final cssTop    = globalRect.top    / dpr;
-    final cssWidth  = globalRect.width  / dpr;
-    final cssHeight = globalRect.height / dpr;
+    final imageMap = <int, String>{};
 
-    final tag = node.hasChildren ? 'div' : 'span';
-    final el = web.document.createElement(tag) as web.HTMLElement;
+    // Pre-convert semantics rects to logical pixels
+    final logicalSemRects = <int, Rect>{};
+    for (final semEntry in semanticsRects.entries) {
+      logicalSemRects[semEntry.key] = Rect.fromLTWH(
+        semEntry.value.left / dpr,
+        semEntry.value.top / dpr,
+        semEntry.value.width / dpr,
+        semEntry.value.height / dpr,
+      );
+    }
 
-    el.setAttribute('data-sem-id', 'sem_${node.id}');
-    el.style.setProperty('position', 'absolute');
-    el.style.setProperty('left', '${cssLeft.toStringAsFixed(1)}px');
-    el.style.setProperty('top', '${cssTop.toStringAsFixed(1)}px');
-    el.style.setProperty('width', '${cssWidth.toStringAsFixed(1)}px');
-    el.style.setProperty('height', '${cssHeight.toStringAsFixed(1)}px');
+    for (final imgEntry in imageRects.entries) {
+      final imgRect = imgEntry.key;
+      final imgUrl = imgEntry.value;
 
-    if (node.label.isNotEmpty) {
-      el.setAttribute('data-label', node.label);
-      if (!node.hasChildren) {
-        el.textContent = node.label;
+      int? bestNodeId;
+      double bestArea = double.infinity;
+
+      for (final semEntry in logicalSemRects.entries) {
+        if (_rectsOverlap(semEntry.value, imgRect)) {
+          final area = semEntry.value.width * semEntry.value.height;
+          if (area < bestArea) {
+            bestArea = area;
+            bestNodeId = semEntry.key;
+          }
+        }
+      }
+
+      if (bestNodeId != null) {
+        imageMap[bestNodeId] = imgUrl;
       }
     }
 
-    parent.appendChild(el);
+
+    // Step 4: Diff against last sent — only push if changed
+    if (!_mapsEqual(imageMap, _lastSentMap)) {
+      _lastSentMap = Map.from(imageMap);
+      _pushToJs(imageMap);
+    }
+  }
+
+  /// Walk semantics tree, accumulate transforms, store {nodeId: globalRect}
+  void _collectSemanticsRects(
+    SemanticsNode node,
+    Matrix4 parentTransform,
+    Map<int, Rect> out,
+  ) {
+    final transform = node.transform != null
+        ? parentTransform.multiplied(node.transform!)
+        : parentTransform;
+
+    final globalRect = MatrixUtils.transformRect(transform, node.rect);
+    out[node.id] = globalRect;
 
     node.visitChildren((child) {
-      _buildDomNode(child, el, accumulatedTransform);
+      _collectSemanticsRects(child, transform, out);
       return true;
     });
   }
+
+  /// Walk element tree, find Image widgets, store {globalRect: imageUrl}
+  void _collectImageRects(Element element, Map<Rect, String> out) {
+    final widget = element.widget;
+
+    if (widget is Image) {
+      final url = _extractImageUrl(widget);
+      if (url != null) {
+        final ro = element.renderObject;
+        if (ro is RenderBox && ro.hasSize) {
+          final translation = ro.getTransformTo(null).getTranslation();
+          final rect = ro.paintBounds.shift(
+            Offset(translation.x, translation.y),
+          );
+          out[rect] = url;
+        }
+      }
+    }
+
+    element.visitChildElements((child) {
+      _collectImageRects(child, out);
+    });
+  }
+
+  /// Extract URL from Image widget's ImageProvider
+  String? _extractImageUrl(Image widget) {
+    final provider = widget.image;
+    if (provider is AssetImage) return provider.assetName;
+    if (provider is ExactAssetImage) return provider.assetName;
+    if (provider is NetworkImage) return provider.url;
+
+    // Fallback: parse from toString()
+    final str = provider.toString();
+    final regex = RegExp(r'"([^"]+)"');
+    final match = regex.firstMatch(str);
+    if (match != null && match.group(1) != 'null') {
+      return match.group(1);
+    }
+    return null;
+  }
+
+  /// Check if two rects overlap significantly
+  bool _rectsOverlap(Rect a, Rect b) {
+    final intersection = a.intersect(b);
+    if (intersection.isEmpty) return false;
+    final overlapArea = intersection.width * intersection.height;
+    final smallerArea =
+        (a.width * a.height) < (b.width * b.height)
+            ? a.width * a.height
+            : b.width * b.height;
+    // Image rect should be at least 30% inside the semantics rect
+    return smallerArea > 0 && overlapArea / smallerArea > 0.3;
+  }
+
+  bool _mapsEqual(Map<int, String> a, Map<int, String> b) {
+    if (a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (a[key] != b[key]) return false;
+    }
+    return true;
+  }
+
+  /// Push the map to JS as window.__uxcamImageMap
+  void _pushToJs(Map<int, String> imageMap) {
+    final jsonStr = jsonEncode(
+      imageMap.map((k, v) => MapEntry(k.toString(), v)),
+    );
+    print("scan result:" + imageMap.toString());
+    _evalJs('''
+      window.__uxcamImageMap = $jsonStr;
+      window.dispatchEvent(new CustomEvent('uxcam-image-update'));
+    '''.toJS);
+  }
+
+  void dispose() {
+    _debounce?.cancel();
+    _debounce = null;
+    _lastSentMap.clear();
+    _isListening = false;
+  }
 }
+
+@JS('eval')
+external void _evalJs(JSString code);
