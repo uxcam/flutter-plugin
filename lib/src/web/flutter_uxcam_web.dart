@@ -1,6 +1,7 @@
 import 'dart:js_interop';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_uxcam/src/web/flutter_web_registry.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 @JS('window.uxc')
@@ -29,7 +30,7 @@ class FlutterUxcamWeb {
         final appKey = config['userAppKey'] as String;
         _injectWebSdk(appKey);
 
-        //final _ = FlutterWebRegistry.instance;
+        final _ = FlutterWebRegistry.instance;
         
         //test event: remove later
         //_sendEvent('flutter_plugin_connected', {'source': 'flutter_uxcam_web', 'version':'1.0.1'});
@@ -43,6 +44,19 @@ class FlutterUxcamWeb {
         final properties = Map<String, dynamic>.from(call.arguments['properties'] as Map);
         final stringProps = properties.map((k, v) => MapEntry(k, v.toString()));
         _sendEvent(name, stringProps);
+        return true;
+      case 'testImage':
+        _evalJs('''
+          var node = document.getElementById('flt-semantic-node-10');
+          if (node) {
+            var img = document.createElement('img');
+            img.src = 'https://thumbs.dreamstime.com/b/western-wall-jerusalem-israel-ancient-stones-blue-sky-background-37714202.jpg';
+            img.style.width = '200px';
+            img.style.height = '150px';
+            img.style.pointerEvents = 'none';
+            node.appendChild(img);
+          }
+          '''.toJS);
         return true;
       case 'getPlatformVersion':
         return 'web';

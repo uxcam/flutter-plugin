@@ -207,6 +207,10 @@ class FlutterUxcam {
         {"eventName": eventName, "properties": properties});
   }
 
+  static Future<void> testImage() async {
+    await _channel.invokeMethod('testImage',{});
+  }
+
   /// This method is used for verifying if the recording is currently active
   static Future<bool> isRecording() async {
     final bool? starter = await _channel.invokeMethod<bool>('isRecording');
