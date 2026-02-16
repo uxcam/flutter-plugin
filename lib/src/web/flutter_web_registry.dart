@@ -15,6 +15,7 @@ class FlutterWebRegistry {
   Timer? _debounce;
   bool _isListening = false;
   web.HTMLElement? _container;
+  final Set<ScrollPosition> _trackedPositions = {};
 
   void start() {
     if (_isListening) return;
@@ -130,14 +131,30 @@ class FlutterWebRegistry {
       }
     }
 
+    // Detect active scroll positions and listen for changes
+    if (ro is RenderAbstractViewport && ro is RenderBox && (ro as RenderBox).hasSize) {
+      final widget = element.widget;
+      if (widget is Scrollable) {
+        final position = widget.controller?.position;
+        if (position != null && !_trackedPositions.contains(position)) {
+          _trackedPositions.add(position);
+          position.addListener(_onScrollChanged);
+        }
+      }
+    }
+
     element.visitChildElements((child) {
       _walkRenderTree(child, textOut, boxOut);
     });
   }
 
+  void _onScrollChanged() {
+    _scheduleCollect();
+  }
+
 
   /// Inject text snapshots as DOM elements
-void _injectDom(List<_TextSnapshot> textSnapshots, List<_BoxSnapshot> boxSnapshots) {
+  void _injectDom(List<_TextSnapshot> textSnapshots, List<_BoxSnapshot> boxSnapshots) {
   _container?.remove();
 
   final container = web.document.createElement('div') as web.HTMLElement;
@@ -229,6 +246,10 @@ void _injectDom(List<_TextSnapshot> textSnapshots, List<_BoxSnapshot> boxSnapsho
   void dispose() {
     _debounce?.cancel();
     _debounce = null;
+    for (final pos in _trackedPositions) {
+      pos.removeListener(_onScrollChanged);
+    }
+    _trackedPositions.clear();
     _container?.remove();
     _container = null;
     _isListening = false;
