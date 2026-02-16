@@ -131,6 +131,42 @@ class FlutterWebRegistry {
       }
     }
 
+    if (ro is RenderImage && ro.hasSize) {
+      final widget = element.widget;
+      String? url;
+
+      // Walk up to find the Image widget that owns this RenderImage
+      if (widget is Image) {
+        url = _extractImageUrl(widget);
+      } else {
+        // Sometimes RenderImage is nested under RawImage, walk up
+        element.visitAncestorElements((ancestor) {
+          if (ancestor.widget is Image) {
+            url = _extractImageUrl(ancestor.widget as Image);
+            return false; // stop
+          }
+          return true; // keep looking
+        });
+      }
+
+      if (url != null) {
+        final transform = ro.getTransformTo(null);
+        final translation = transform.getTranslation();
+        final rect = ro.paintBounds.shift(
+          Offset(translation.x, translation.y),
+        );
+
+        boxOut.add(_BoxSnapshot(
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+          imageUrl: url,
+        ));
+      }
+    }
+
+
     // Detect active scroll positions and listen for changes
     if (ro is RenderAbstractViewport && ro is RenderBox && (ro as RenderBox).hasSize) {
       final widget = element.widget;
@@ -150,6 +186,22 @@ class FlutterWebRegistry {
 
   void _onScrollChanged() {
     _scheduleCollect();
+  }
+
+  String? _extractImageUrl(Image widget) {
+    final provider = widget.image;
+    if (provider is NetworkImage) return provider.url;
+    if (provider is AssetImage) return provider.assetName;
+    if (provider is ExactAssetImage) return provider.assetName;
+
+    // Fallback: parse from toString()
+    final str = provider.toString();
+    final regex = RegExp(r'"([^"]+)"');
+    final match = regex.firstMatch(str);
+    if (match != null && match.group(1) != 'null') {
+      return match.group(1);
+    }
+    return null;
   }
 
 
@@ -198,6 +250,16 @@ class FlutterWebRegistry {
       _applyBorderSide(el, 'right', b.right);
       _applyBorderSide(el, 'bottom', b.bottom);
       _applyBorderSide(el, 'left', b.left);
+    }
+
+    if (box.imageUrl != null) {
+      final img = web.document.createElement('img') as web.HTMLImageElement;
+      img.src = box.imageUrl!;
+      img.style.setProperty('width', '100%');
+      img.style.setProperty('height', '100%');
+      img.style.setProperty('object-fit', 'cover');
+      img.style.setProperty('pointer-events', 'none');
+      el.appendChild(img);
     }
 
     container.appendChild(el);
@@ -286,6 +348,7 @@ class _BoxSnapshot {
   final Color? color;
   final BorderRadiusGeometry? borderRadius;
   final BoxBorder? border;
+  final String? imageUrl;
 
   _BoxSnapshot({
     required this.left,
@@ -295,8 +358,10 @@ class _BoxSnapshot {
     this.color,
     this.borderRadius,
     this.border,
+    this.imageUrl,
   });
 }
+
 
 
 @JS('eval')
