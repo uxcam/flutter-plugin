@@ -13,7 +13,9 @@ class FlutterWebRegistry {
   static final FlutterWebRegistry instance = FlutterWebRegistry._();
 
   Timer? _debounce;
+  Timer? _rescanTimer;     
   bool _isListening = false;
+  int _lastSnapshotHash = 0;
   web.HTMLElement? _container;
   final Set<ScrollPosition> _trackedPositions = {};
 
@@ -32,6 +34,10 @@ class FlutterWebRegistry {
 
         // Do initial scan
         _scheduleCollect();
+        _rescanTimer = Timer.periodic(
+          const Duration(milliseconds: 500),
+          (_) => _scheduleCollect(),
+        );
         return;
       }
     });
@@ -55,6 +61,13 @@ class FlutterWebRegistry {
       _walkRenderTree(rootElement, snapshots, boxSnapshots);
     }
 
+    final hash = Object.hashAll([
+      ...snapshots.map((s) => Object.hash(s.text, s.left.round(), s.top.round())),
+      ...boxSnapshots.map((b) => Object.hash(b.imageUrl, b.left.round(), b.top.round())),
+    ]);
+    if (hash == _lastSnapshotHash) return;
+    _lastSnapshotHash = hash;
+
     // Build DOM and inject
     _injectDom(snapshots, boxSnapshots);
   }
@@ -67,6 +80,17 @@ class FlutterWebRegistry {
   ) {
     final ro = element.renderObject;
 
+    // Skip entire subtree if offstage or hidden
+    if (ro is RenderOffstage && ro.offstage) return;
+    if (ro is RenderAnimatedOpacity && ro.opacity.value == 0.0) return;
+    if (ro is RenderOpacity && ro.opacity == 0.0) return;
+
+    // Skip entire subtree if this element's render object is a RepaintBoundary
+    // with a detached layer (Flutter's _RenderTheater detaches inactive route layers)
+    if (ro != null && ro.isRepaintBoundary && ro.layer != null) {
+      if (!(ro.layer?.attached ?? false)) return;
+    }
+
     if (ro is RenderParagraph && ro.hasSize) {
       final text = ro.text.toPlainText();
       if (text.trim().isNotEmpty) {
@@ -75,6 +99,7 @@ class FlutterWebRegistry {
         final rect = ro.paintBounds.shift(
           Offset(translation.x, translation.y),
         );
+        if (!_isInViewport(rect)) return;
 
         double? fontSize;
         Color? color;
@@ -117,6 +142,7 @@ class FlutterWebRegistry {
           final rect = ro.paintBounds.shift(
             Offset(translation.x, translation.y),
           );
+          if (!_isInViewport(rect)) return;
 
           boxOut.add(_BoxSnapshot(
             left: rect.left,
@@ -132,6 +158,14 @@ class FlutterWebRegistry {
     }
 
     if (ro is RenderImage && ro.hasSize) {
+      final transform = ro.getTransformTo(null);
+      final translation = transform.getTranslation();
+      final rect = ro.paintBounds.shift(
+        Offset(translation.x, translation.y),
+      );
+
+      if (!_isInViewport(rect)) return;
+
       final widget = element.widget;
       String? url;
 
@@ -150,12 +184,6 @@ class FlutterWebRegistry {
       }
 
       if (url != null) {
-        final transform = ro.getTransformTo(null);
-        final translation = transform.getTranslation();
-        final rect = ro.paintBounds.shift(
-          Offset(translation.x, translation.y),
-        );
-
         boxOut.add(_BoxSnapshot(
           left: rect.left,
           top: rect.top,
@@ -186,6 +214,24 @@ class FlutterWebRegistry {
 
   void _onScrollChanged() {
     _scheduleCollect();
+  }
+
+  bool _isInViewport(Rect rect) {
+    final viewWidth = web.window.innerWidth.toDouble();
+    final viewHeight = web.window.innerHeight.toDouble();
+    return rect.right > 0 && rect.left < viewWidth &&
+          rect.bottom > 0 && rect.top < viewHeight;
+  }
+
+  bool _isVisible(RenderObject ro) {
+    RenderObject? current = ro;
+    while (current != null) {
+      if (current is RenderOffstage && current.offstage) return false;
+      if (current is RenderAnimatedOpacity && current.opacity.value == 0.0) return false;
+      if (current is RenderOpacity && current.opacity == 0.0) return false;
+      current = current.parent;
+    }
+    return true;
   }
 
   String? _extractImageUrl(Image widget) {
@@ -308,6 +354,9 @@ class FlutterWebRegistry {
   void dispose() {
     _debounce?.cancel();
     _debounce = null;
+    _rescanTimer?.cancel();
+    _rescanTimer = null;
+    _lastSnapshotHash = 0; 
     for (final pos in _trackedPositions) {
       pos.removeListener(_onScrollChanged);
     }
