@@ -86,8 +86,9 @@ class FlutterWebRegistry {
     if (ro is RenderOpacity && ro.opacity == 0.0) return;
 
     // Skip entire subtree if this element's render object is a RepaintBoundary
-    if (ro != null && ro.isRepaintBoundary && ro.layer != null) {
-      if (!(ro.layer?.attached ?? false)) return;
+    if (ro != null && ro.isRepaintBoundary) {
+      // ignore: invalid_use_of_protected_member
+      if (ro.layer != null && !(ro.layer?.attached ?? false)) return;
     }
 
     if (ro is RenderParagraph && ro.hasSize) {
@@ -314,6 +315,7 @@ class FlutterWebRegistry {
     if (box.color != null) {
       final c = box.color!;
       el.style.setProperty('background-color',
+          // ignore: deprecated_member_use
           'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
     }
 
@@ -364,6 +366,7 @@ class FlutterWebRegistry {
     if (snap.color != null) {
       final c = snap.color!;
       el.style.setProperty('color',
+          // ignore: deprecated_member_use
           'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
     }
 
@@ -383,6 +386,7 @@ class FlutterWebRegistry {
       final c = bs.color;
       el.style.setProperty('border-$side',
           '${bs.width.toStringAsFixed(1)}px solid '
+          // ignore: deprecated_member_use
           'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
     }
   }
