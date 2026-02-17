@@ -86,7 +86,6 @@ class FlutterWebRegistry {
     if (ro is RenderOpacity && ro.opacity == 0.0) return;
 
     // Skip entire subtree if this element's render object is a RepaintBoundary
-    // with a detached layer (Flutter's _RenderTheater detaches inactive route layers)
     if (ro != null && ro.isRepaintBoundary && ro.layer != null) {
       if (!(ro.layer?.attached ?? false)) return;
     }
@@ -271,17 +270,6 @@ class FlutterWebRegistry {
           rect.bottom > 0 && rect.top < viewHeight;
   }
 
-  bool _isVisible(RenderObject ro) {
-    RenderObject? current = ro;
-    while (current != null) {
-      if (current is RenderOffstage && current.offstage) return false;
-      if (current is RenderAnimatedOpacity && current.opacity.value == 0.0) return false;
-      if (current is RenderOpacity && current.opacity == 0.0) return false;
-      current = current.parent;
-    }
-    return true;
-  }
-
   String? _extractImageUrl(Image widget) {
     final provider = widget.image;
     if (provider is NetworkImage) return provider.url;
@@ -458,8 +446,3 @@ class _BoxSnapshot {
     this.imageUrl,
   });
 }
-
-
-
-@JS('eval')
-external void _evalJs(JSString code);
