@@ -157,6 +157,54 @@ class FlutterWebRegistry {
       }
     }
 
+    // Capture Card/Material backgrounds (RenderPhysicalShape)
+    if (ro is RenderPhysicalShape && ro.hasSize) {
+      final transform = ro.getTransformTo(null);
+      final translation = transform.getTranslation();
+      final rect = ro.paintBounds.shift(
+        Offset(translation.x, translation.y),
+      );
+      if (_isInViewport(rect)) {
+        // Extract border radius from the clipper if available
+        BorderRadiusGeometry? borderRadius;
+        final clipper = ro.clipper;
+        if (clipper is ShapeBorderClipper) {
+          final shape = clipper.shape;
+          if (shape is RoundedRectangleBorder) {
+            borderRadius = shape.borderRadius;
+          }
+        }
+
+        boxOut.add(_BoxSnapshot(
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+          color: ro.color,
+          borderRadius: borderRadius,
+        ));
+      }
+    }
+
+    // Capture Material/Scaffold/AppBar backgrounds (RenderPhysicalModel)
+    if (ro is RenderPhysicalModel && ro.hasSize) {
+      final transform = ro.getTransformTo(null);
+      final translation = transform.getTranslation();
+      final rect = ro.paintBounds.shift(
+        Offset(translation.x, translation.y),
+      );
+      if (_isInViewport(rect)) {
+        boxOut.add(_BoxSnapshot(
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+          color: ro.color,
+          borderRadius: ro.borderRadius,
+        ));
+      }
+    }
+
     if (ro is RenderImage && ro.hasSize) {
       final transform = ro.getTransformTo(null);
       final translation = transform.getTranslation();
