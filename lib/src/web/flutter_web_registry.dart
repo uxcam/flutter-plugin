@@ -3,6 +3,7 @@ import 'dart:js_interop';
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_uxcam/src/web/snapshot.dart';
 import 'package:web/web.dart' as web;
 
 /// Walks the Flutter render tree and injects a DOM snapshot
@@ -54,29 +55,26 @@ class FlutterWebRegistry {
 
   void _collectAndPush() {
     // Walk render tree, collect text snapshots
-    final snapshots = <_TextSnapshot>[];
-    final boxSnapshots = <_BoxSnapshot>[];
+    final snapshots = <Snapshot>[];
     final rootElement = WidgetsBinding.instance.rootElement;
     if (rootElement != null) {
-      _walkRenderTree(rootElement, snapshots, boxSnapshots);
+      _walkRenderTree(rootElement, snapshots);
     }
 
     final hash = Object.hashAll([
       ...snapshots.map((s) => Object.hash(s.text, s.left.round(), s.top.round())),
-      ...boxSnapshots.map((b) => Object.hash(b.imageUrl, b.left.round(), b.top.round())),
     ]);
     if (hash == _lastSnapshotHash) return;
     _lastSnapshotHash = hash;
 
     // Build DOM and inject
-    _injectDom(snapshots, boxSnapshots);
+    _injectDom(snapshots);
   }
 
   /// Walk element tree, find RenderParagraph nodes, extract text info
   void _walkRenderTree(
     Element element,
-    List<_TextSnapshot> textOut,
-    List<_BoxSnapshot> boxOut,
+    List<Snapshot> out,
   ) {
     final ro = element.renderObject;
 
@@ -119,7 +117,9 @@ class FlutterWebRegistry {
           }
         }
 
-        textOut.add(_TextSnapshot(
+        out.add(Snapshot(
+          type: SnapType.text,
+          order: out.length,
           text: text,
           left: rect.left,
           top: rect.top,
@@ -144,7 +144,9 @@ class FlutterWebRegistry {
           );
           if (!_isInViewport(rect)) return;
 
-          boxOut.add(_BoxSnapshot(
+          out.add(Snapshot(
+            type: SnapType.box,
+            order: out.length,
             left: rect.left,
             top: rect.top,
             width: rect.width,
@@ -175,7 +177,9 @@ class FlutterWebRegistry {
           }
         }
 
-        boxOut.add(_BoxSnapshot(
+        out.add(Snapshot(
+          type: SnapType.box,
+          order: out.length,
           left: rect.left,
           top: rect.top,
           width: rect.width,
@@ -194,7 +198,9 @@ class FlutterWebRegistry {
         Offset(translation.x, translation.y),
       );
       if (_isInViewport(rect)) {
-        boxOut.add(_BoxSnapshot(
+        out.add(Snapshot(
+          type: SnapType.box,
+          order: out.length,
           left: rect.left,
           top: rect.top,
           width: rect.width,
@@ -232,7 +238,9 @@ class FlutterWebRegistry {
       }
 
       if (url != null) {
-        boxOut.add(_BoxSnapshot(
+        out.add(Snapshot(
+          type: SnapType.box,
+          order: out.length,
           left: rect.left,
           top: rect.top,
           width: rect.width,
@@ -256,7 +264,7 @@ class FlutterWebRegistry {
     }
 
     element.visitChildElements((child) {
-      _walkRenderTree(child, textOut, boxOut);
+      _walkRenderTree(child, out);
     });
   }
 
@@ -289,97 +297,98 @@ class FlutterWebRegistry {
 
 
   /// Inject text snapshots as DOM elements
-  void _injectDom(List<_TextSnapshot> textSnapshots, List<_BoxSnapshot> boxSnapshots) {
-  _container?.remove();
+  void _injectDom(List<Snapshot> snapshots) {
+    _container?.remove();
 
-  final container = web.document.createElement('div') as web.HTMLElement;
-  container.id = 'uxcam-render-snapshot';
-  container.style.setProperty('position', 'absolute');
-  container.style.setProperty('top', '0');
-  container.style.setProperty('left', '0');
-  container.style.setProperty('width', '100%');
-  container.style.setProperty('height', '100%');
-  container.style.setProperty('pointer-events', 'none');
-  container.style.setProperty('overflow', 'hidden');
-  container.style.setProperty('z-index', '-1');
+    final container = web.document.createElement('div') as web.HTMLElement;
+    container.id = 'uxcam-render-snapshot';
+    container.style.setProperty('position', 'absolute');
+    container.style.setProperty('top', '0');
+    container.style.setProperty('left', '0');
+    container.style.setProperty('width', '100%');
+    container.style.setProperty('height', '100%');
+    container.style.setProperty('pointer-events', 'none');
+    container.style.setProperty('overflow', 'hidden');
+    container.style.setProperty('z-index', '-1');
 
-  // Inject boxes first (behind text)
-  for (final box in boxSnapshots) {
-    final el = web.document.createElement('div') as web.HTMLElement;
-    el.style.setProperty('position', 'absolute');
-    el.style.setProperty('left', '${box.left.toStringAsFixed(1)}px');
-    el.style.setProperty('top', '${box.top.toStringAsFixed(1)}px');
-    el.style.setProperty('width', '${box.width.toStringAsFixed(1)}px');
-    el.style.setProperty('height', '${box.height.toStringAsFixed(1)}px');
+    for (final snap in snapshots) {
+      if (snap.type == SnapType.box) {
+        final el = web.document.createElement('div') as web.HTMLElement;
+        el.style.setProperty('position', 'absolute');
+        el.style.setProperty('left', '${snap.left.toStringAsFixed(1)}px');
+        el.style.setProperty('top', '${snap.top.toStringAsFixed(1)}px');
+        el.style.setProperty('width', '${snap.width.toStringAsFixed(1)}px');
+        el.style.setProperty('height', '${snap.height.toStringAsFixed(1)}px');
+        el.style.setProperty('z-index', '${snap.order}');
 
-    if (box.color != null) {
-      final c = box.color!;
-      el.style.setProperty('background-color',
-          // ignore: deprecated_member_use
-          'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
+        if (snap.color != null) {
+          final c = snap.color!;
+          el.style.setProperty('background-color',
+              // ignore: deprecated_member_use
+              'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
+        }
+
+        if (snap.borderRadius != null) {
+          final br = snap.borderRadius!.resolve(TextDirection.ltr);
+          el.style.setProperty('border-radius',
+              '${br.topLeft.x.toStringAsFixed(1)}px '
+              '${br.topRight.x.toStringAsFixed(1)}px '
+              '${br.bottomRight.x.toStringAsFixed(1)}px '
+              '${br.bottomLeft.x.toStringAsFixed(1)}px');
+        }
+
+        if (snap.border != null && snap.border is Border) {
+          final b = snap.border! as Border;
+          _applyBorderSide(el, 'top', b.top);
+          _applyBorderSide(el, 'right', b.right);
+          _applyBorderSide(el, 'bottom', b.bottom);
+          _applyBorderSide(el, 'left', b.left);
+        }
+
+        if (snap.imageUrl != null) {
+          final img = web.document.createElement('img') as web.HTMLImageElement;
+          img.src = snap.imageUrl!;
+          img.style.setProperty('width', '100%');
+          img.style.setProperty('height', '100%');
+          img.style.setProperty('object-fit', 'cover');
+          img.style.setProperty('pointer-events', 'none');
+          el.appendChild(img);
+        }
+
+        container.appendChild(el);
+      } else {
+        final el = web.document.createElement('span') as web.HTMLElement;
+        el.textContent = snap.text;
+        el.style.setProperty('position', 'absolute');
+        el.style.setProperty('left', '${snap.left.toStringAsFixed(1)}px');
+        el.style.setProperty('top', '${snap.top.toStringAsFixed(1)}px');
+        el.style.setProperty('width', '${snap.width.toStringAsFixed(1)}px');
+        el.style.setProperty('height', '${snap.height.toStringAsFixed(1)}px');
+        el.style.setProperty('font-size', '${snap.fontSize.toStringAsFixed(1)}px');
+        el.style.setProperty('line-height', '${snap.height.toStringAsFixed(1)}px');
+        el.style.setProperty('overflow', 'hidden');
+        el.style.setProperty('white-space', 'nowrap');
+        el.style.setProperty('z-index', '${snap.order}');
+
+        if (snap.fontColor != null) {
+          final c = snap.fontColor!;
+          el.style.setProperty('color',
+              // ignore: deprecated_member_use
+              'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
+        }
+
+        if (snap.fontWeight != null && snap.fontWeight != FontWeight.normal) {
+          el.style.setProperty('font-weight', '${snap.fontWeight!.value}');
+        }
+
+        container.appendChild(el);
+      }
     }
 
-    if (box.borderRadius != null) {
-      final br = box.borderRadius!.resolve(TextDirection.ltr);
-      el.style.setProperty('border-radius',
-          '${br.topLeft.x.toStringAsFixed(1)}px '
-          '${br.topRight.x.toStringAsFixed(1)}px '
-          '${br.bottomRight.x.toStringAsFixed(1)}px '
-          '${br.bottomLeft.x.toStringAsFixed(1)}px');
-    }
-
-    if (box.border != null && box.border is Border) {
-      final b = box.border! as Border;
-      _applyBorderSide(el, 'top', b.top);
-      _applyBorderSide(el, 'right', b.right);
-      _applyBorderSide(el, 'bottom', b.bottom);
-      _applyBorderSide(el, 'left', b.left);
-    }
-
-    if (box.imageUrl != null) {
-      final img = web.document.createElement('img') as web.HTMLImageElement;
-      img.src = box.imageUrl!;
-      img.style.setProperty('width', '100%');
-      img.style.setProperty('height', '100%');
-      img.style.setProperty('object-fit', 'cover');
-      img.style.setProperty('pointer-events', 'none');
-      el.appendChild(img);
-    }
-
-    container.appendChild(el);
+    web.document.body?.appendChild(container);
+    _container = container;
   }
 
-  // Inject text on top
-  for (final snap in textSnapshots) {
-    final el = web.document.createElement('span') as web.HTMLElement;
-    el.textContent = snap.text;
-    el.style.setProperty('position', 'absolute');
-    el.style.setProperty('left', '${snap.left.toStringAsFixed(1)}px');
-    el.style.setProperty('top', '${snap.top.toStringAsFixed(1)}px');
-    el.style.setProperty('width', '${snap.width.toStringAsFixed(1)}px');
-    el.style.setProperty('height', '${snap.height.toStringAsFixed(1)}px');
-    el.style.setProperty('font-size', '${snap.fontSize.toStringAsFixed(1)}px');
-    el.style.setProperty('line-height', '${snap.height.toStringAsFixed(1)}px');
-    el.style.setProperty('overflow', 'hidden');
-    el.style.setProperty('white-space', 'nowrap');
-
-    if (snap.color != null) {
-      final c = snap.color!;
-      el.style.setProperty('color',
-          // ignore: deprecated_member_use
-          'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
-    }
-
-    if (snap.fontWeight != null && snap.fontWeight != FontWeight.normal) {
-      el.style.setProperty('font-weight', '${snap.fontWeight!.value}');
-    }
-
-    container.appendChild(el);
-  }
-
-  web.document.body?.appendChild(container);
-  _container = container;
-}
 
   void _applyBorderSide(web.HTMLElement el, String side, BorderSide bs) {
     if (bs.width > 0 && bs.style != BorderStyle.none) {
@@ -405,48 +414,4 @@ class FlutterWebRegistry {
     _container = null;
     _isListening = false;
   }
-}
-
-class _TextSnapshot {
-  final String text;
-  final double left;
-  final double top;
-  final double width;
-  final double height;
-  final double fontSize;
-  final Color? color;
-  final FontWeight? fontWeight;
-
-  _TextSnapshot({
-    required this.text,
-    required this.left,
-    required this.top,
-    required this.width,
-    required this.height,
-    required this.fontSize,
-    this.color,
-    this.fontWeight,
-  });
-}
-
-class _BoxSnapshot {
-  final double left;
-  final double top;
-  final double width;
-  final double height;
-  final Color? color;
-  final BorderRadiusGeometry? borderRadius;
-  final BoxBorder? border;
-  final String? imageUrl;
-
-  _BoxSnapshot({
-    required this.left,
-    required this.top,
-    required this.width,
-    required this.height,
-    this.color,
-    this.borderRadius,
-    this.border,
-    this.imageUrl,
-  });
 }
