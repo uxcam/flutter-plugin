@@ -109,6 +109,33 @@ class FlutterWebRegistry {
           fontWeight = span.style!.fontWeight;
         }
 
+        if (color == null) {
+          try {
+            final defaultStyle = DefaultTextStyle.of(element);
+            color = defaultStyle.style.color;
+          } catch (_) {}
+        }
+
+        if (color == null) {
+          try {
+            element.visitAncestorElements((ancestor) {
+              final w = ancestor.widget;
+              if (w is DefaultTextStyle && w.style.color != null) {
+                color = w.style.color;
+                return false;
+              }
+              return true;
+            });
+          } catch (_) {}
+        }
+
+        if (color == null) {
+          try {
+            final resolved = ro.text.style;
+            color = resolved?.color;
+          } catch (_) {}
+        }
+
         if (fontSize == null && ro.size.height > 0) {
           final lineCount =
               ro.computeMaxIntrinsicHeight(double.infinity) / ro.size.height;
@@ -126,7 +153,7 @@ class FlutterWebRegistry {
           width: rect.width,
           height: rect.height,
           fontSize: fontSize ?? 14.0,
-          color: color,
+          fontColor: color,
           fontWeight: fontWeight,
         ));
       }
@@ -156,6 +183,27 @@ class FlutterWebRegistry {
             border: decoration.border,
           ));
         }
+      }
+    }
+
+    // Capture ColoredBox (Container(color:) uses private _RenderColoredBox)
+    if (element.widget is ColoredBox && ro is RenderBox && ro.hasSize) {
+      final coloredBox = element.widget as ColoredBox;
+      final transform = ro.getTransformTo(null);
+      final translation = transform.getTranslation();
+      final rect = ro.paintBounds.shift(
+        Offset(translation.x, translation.y),
+      );
+      if (_isInViewport(rect)) {
+        out.add(Snapshot(
+          type: SnapType.box,
+          order: out.length,
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+          color: coloredBox.color,
+        ));
       }
     }
 
