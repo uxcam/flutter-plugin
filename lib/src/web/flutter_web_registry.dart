@@ -461,9 +461,18 @@ void _injectDom(List<Snapshot> snapshots) {
           el.textContent = snap.text;
         }
         el.style.setProperty('font-size', '${snap.fontSize.toStringAsFixed(1)}px');
-        el.style.setProperty('line-height', '${snap.height.toStringAsFixed(1)}px');
         el.style.setProperty('overflow', 'hidden');
-        el.style.setProperty('white-space', 'nowrap');
+
+        // Detect multi-line: if height is significantly taller than fontSize,
+        // the text wraps to multiple lines
+        final isMultiLine = snap.height > snap.fontSize * 1.8;
+        if (isMultiLine) {
+          el.style.setProperty('white-space', 'normal');
+          el.style.setProperty('line-height', '${(snap.fontSize * 1.4).toStringAsFixed(1)}px');
+        } else {
+          el.style.setProperty('white-space', 'nowrap');
+          el.style.setProperty('line-height', '${snap.height.toStringAsFixed(1)}px');
+        }
 
         if (snap.fontColor != null) {
           final c = snap.fontColor!;
