@@ -353,7 +353,8 @@ void _collectAndPush() {
 
 
   /// Inject text snapshots as DOM elements
-  void _injectDom(List<Snapshot> snapshots) {
+  
+void _injectDom(List<Snapshot> snapshots) {
     var container = _container;
     if (container == null) {
       container = web.document.createElement('div') as web.HTMLElement;
@@ -370,23 +371,45 @@ void _collectAndPush() {
       _container = container;
     }
 
-    container.innerHTML = ''.toJS;
+    final newCount = snapshots.length;
+    final existing = container.children;
+    final oldCount = existing.length;
 
-    for (final snap in snapshots) {
+    for (var i = 0; i < newCount; i++) {
+      final snap = snapshots[i];
+      web.HTMLElement el;
+
+      if (i < oldCount) {
+        // Reuse existing element
+        el = existing.item(i)! as web.HTMLElement;
+      } else {
+        // Create new element
+        el = web.document.createElement(
+          snap.type == SnapType.text ? 'span' : 'div',
+        ) as web.HTMLElement;
+        container.appendChild(el);
+      }
+
+      // Update styles
+      el.style.setProperty('position', 'absolute');
+      el.style.setProperty('left', '${snap.left.toStringAsFixed(1)}px');
+      el.style.setProperty('top', '${snap.top.toStringAsFixed(1)}px');
+      el.style.setProperty('width', '${snap.width.toStringAsFixed(1)}px');
+      el.style.setProperty('height', '${snap.height.toStringAsFixed(1)}px');
+      el.style.setProperty('z-index', '${snap.order}');
+
       if (snap.type == SnapType.box) {
-        final el = web.document.createElement('div') as web.HTMLElement;
-        el.style.setProperty('position', 'absolute');
-        el.style.setProperty('left', '${snap.left.toStringAsFixed(1)}px');
-        el.style.setProperty('top', '${snap.top.toStringAsFixed(1)}px');
-        el.style.setProperty('width', '${snap.width.toStringAsFixed(1)}px');
-        el.style.setProperty('height', '${snap.height.toStringAsFixed(1)}px');
-        el.style.setProperty('z-index', '${snap.order}');
+        // Clear text content if reusing a span as div
+        if ((el.textContent ?? '').isNotEmpty) {
+          el.textContent = '';
+        }
 
         if (snap.color != null) {
           final c = snap.color!;
           el.style.setProperty('background-color',
-              // ignore: deprecated_member_use
               'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
+        } else {
+          el.style.removeProperty('background-color');
         }
 
         if (snap.borderRadius != null) {
@@ -396,6 +419,8 @@ void _collectAndPush() {
               '${br.topRight.x.toStringAsFixed(1)}px '
               '${br.bottomRight.x.toStringAsFixed(1)}px '
               '${br.bottomLeft.x.toStringAsFixed(1)}px');
+        } else {
+          el.style.removeProperty('border-radius');
         }
 
         if (snap.border != null && snap.border is Border) {
@@ -404,48 +429,160 @@ void _collectAndPush() {
           _applyBorderSide(el, 'right', b.right);
           _applyBorderSide(el, 'bottom', b.bottom);
           _applyBorderSide(el, 'left', b.left);
+        } else {
+          el.style.removeProperty('border-top');
+          el.style.removeProperty('border-right');
+          el.style.removeProperty('border-bottom');
+          el.style.removeProperty('border-left');
         }
 
         if (snap.imageUrl != null) {
-          final img = web.document.createElement('img') as web.HTMLImageElement;
-          img.src = snap.imageUrl!;
-          img.style.setProperty('width', '100%');
-          img.style.setProperty('height', '100%');
-          img.style.setProperty('object-fit', 'cover');
-          img.style.setProperty('pointer-events', 'none');
-          el.appendChild(img);
+          // Reuse existing <img> if same src, else create
+          var img = el.querySelector('img') as web.HTMLImageElement?;
+          if (img == null) {
+            img = web.document.createElement('img') as web.HTMLImageElement;
+            img.style.setProperty('width', '100%');
+            img.style.setProperty('height', '100%');
+            img.style.setProperty('object-fit', 'cover');
+            img.style.setProperty('pointer-events', 'none');
+            el.appendChild(img);
+          }
+          if (img.getAttribute('src') != snap.imageUrl!) {
+            img.src = snap.imageUrl!;
+          }
+        } else {
+          // Remove img child if present
+          final existingImg = el.querySelector('img');
+          existingImg?.remove();
         }
-
-        container.appendChild(el);
       } else {
-        final el = web.document.createElement('span') as web.HTMLElement;
-        el.textContent = snap.text;
-        el.style.setProperty('position', 'absolute');
-        el.style.setProperty('left', '${snap.left.toStringAsFixed(1)}px');
-        el.style.setProperty('top', '${snap.top.toStringAsFixed(1)}px');
-        el.style.setProperty('width', '${snap.width.toStringAsFixed(1)}px');
-        el.style.setProperty('height', '${snap.height.toStringAsFixed(1)}px');
+        // Text element
+        if (el.textContent != snap.text) {
+          el.textContent = snap.text;
+        }
         el.style.setProperty('font-size', '${snap.fontSize.toStringAsFixed(1)}px');
         el.style.setProperty('line-height', '${snap.height.toStringAsFixed(1)}px');
         el.style.setProperty('overflow', 'hidden');
         el.style.setProperty('white-space', 'nowrap');
-        el.style.setProperty('z-index', '${snap.order}');
 
         if (snap.fontColor != null) {
           final c = snap.fontColor!;
           el.style.setProperty('color',
-              // ignore: deprecated_member_use
               'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
+        } else {
+          el.style.removeProperty('color');
         }
 
         if (snap.fontWeight != null && snap.fontWeight != FontWeight.normal) {
           el.style.setProperty('font-weight', '${snap.fontWeight!.value}');
+        } else {
+          el.style.removeProperty('font-weight');
         }
-
-        container.appendChild(el);
       }
     }
+
+    // Remove extra old elements
+    while (container.children.length > newCount) {
+      container.lastElementChild?.remove();
+    }
   }
+
+
+  // void _injectDom(List<Snapshot> snapshots) {
+  //   var container = _container;
+  //   if (container == null) {
+  //     container = web.document.createElement('div') as web.HTMLElement;
+  //     container.id = 'uxcam-render-snapshot';
+  //     container.style.setProperty('position', 'absolute');
+  //     container.style.setProperty('top', '0');
+  //     container.style.setProperty('left', '0');
+  //     container.style.setProperty('width', '100%');
+  //     container.style.setProperty('height', '100%');
+  //     container.style.setProperty('pointer-events', 'none');
+  //     container.style.setProperty('overflow', 'hidden');
+  //     container.style.setProperty('z-index', '-1');
+  //     web.document.body?.appendChild(container);
+  //     _container = container;
+  //   }
+
+  //   final fragment = web.document.createDocumentFragment();
+
+  //   for (final snap in snapshots) {
+  //     if (snap.type == SnapType.box) {
+  //       final el = web.document.createElement('div') as web.HTMLElement;
+  //       el.style.setProperty('position', 'absolute');
+  //       el.style.setProperty('left', '${snap.left.toStringAsFixed(1)}px');
+  //       el.style.setProperty('top', '${snap.top.toStringAsFixed(1)}px');
+  //       el.style.setProperty('width', '${snap.width.toStringAsFixed(1)}px');
+  //       el.style.setProperty('height', '${snap.height.toStringAsFixed(1)}px');
+  //       el.style.setProperty('z-index', '${snap.order}');
+
+  //       if (snap.color != null) {
+  //         final c = snap.color!;
+  //         el.style.setProperty('background-color',
+  //             // ignore: deprecated_member_use
+  //             'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
+  //       }
+
+  //       if (snap.borderRadius != null) {
+  //         final br = snap.borderRadius!.resolve(TextDirection.ltr);
+  //         el.style.setProperty('border-radius',
+  //             '${br.topLeft.x.toStringAsFixed(1)}px '
+  //             '${br.topRight.x.toStringAsFixed(1)}px '
+  //             '${br.bottomRight.x.toStringAsFixed(1)}px '
+  //             '${br.bottomLeft.x.toStringAsFixed(1)}px');
+  //       }
+
+  //       if (snap.border != null && snap.border is Border) {
+  //         final b = snap.border! as Border;
+  //         _applyBorderSide(el, 'top', b.top);
+  //         _applyBorderSide(el, 'right', b.right);
+  //         _applyBorderSide(el, 'bottom', b.bottom);
+  //         _applyBorderSide(el, 'left', b.left);
+  //       }
+
+  //       if (snap.imageUrl != null) {
+  //         final img = web.document.createElement('img') as web.HTMLImageElement;
+  //         img.src = snap.imageUrl!;
+  //         img.style.setProperty('width', '100%');
+  //         img.style.setProperty('height', '100%');
+  //         img.style.setProperty('object-fit', 'cover');
+  //         img.style.setProperty('pointer-events', 'none');
+  //         el.appendChild(img);
+  //       }
+
+  //       fragment.appendChild(el);
+  //     } else {
+  //       final el = web.document.createElement('span') as web.HTMLElement;
+  //       el.textContent = snap.text;
+  //       el.style.setProperty('position', 'absolute');
+  //       el.style.setProperty('left', '${snap.left.toStringAsFixed(1)}px');
+  //       el.style.setProperty('top', '${snap.top.toStringAsFixed(1)}px');
+  //       el.style.setProperty('width', '${snap.width.toStringAsFixed(1)}px');
+  //       el.style.setProperty('height', '${snap.height.toStringAsFixed(1)}px');
+  //       el.style.setProperty('font-size', '${snap.fontSize.toStringAsFixed(1)}px');
+  //       el.style.setProperty('line-height', '${snap.height.toStringAsFixed(1)}px');
+  //       el.style.setProperty('overflow', 'hidden');
+  //       el.style.setProperty('white-space', 'nowrap');
+  //       el.style.setProperty('z-index', '${snap.order}');
+
+  //       if (snap.fontColor != null) {
+  //         final c = snap.fontColor!;
+  //         el.style.setProperty('color',
+  //             // ignore: deprecated_member_use
+  //             'rgba(${c.red},${c.green},${c.blue},${c.opacity.toStringAsFixed(2)})');
+  //       }
+
+  //       if (snap.fontWeight != null && snap.fontWeight != FontWeight.normal) {
+  //         el.style.setProperty('font-weight', '${snap.fontWeight!.value}');
+  //       }
+
+  //       fragment.appendChild(el);
+  //     }
+  //   }
+
+  //   container.replaceChildren(fragment as JSAny);
+  // }
 
 
   void _applyBorderSide(web.HTMLElement el, String side, BorderSide bs) {
