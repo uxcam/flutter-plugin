@@ -67,7 +67,8 @@ void _collectAndPush() {
       }
 
       final hash = Object.hashAll([
-        ...snapshots.map((s) => Object.hash(s.text, (s.left / 10).round(), (s.top / 10).round())),
+        ...snapshots.map((s) => Object.hash(s.text, (s.left / 10).round(), (s.top / 10).round(),s.color?.value ?? 0,
+          s.fontColor?.value ?? 0,)),
       ]);
       if (hash == _lastSnapshotHash) return;
       _lastSnapshotHash = hash;
@@ -385,10 +386,14 @@ void _injectDom(List<Snapshot> snapshots) {
     }
 
     final usedKeys = <String>{};
+    final keyCounter = <String, int>{};
 
     for (final snap in snapshots) {
       // Generate a stable key based on content identity, not position
-      final key = _snapshotKey(snap);
+      final baseKey = _snapshotKey(snap); 
+      final count = keyCounter[baseKey] ?? 0;   
+      keyCounter[baseKey] = count + 1; 
+      final key = '${baseKey}_$count';
 
       web.HTMLElement? el = existingByKey[key];
       final isNew = el == null;
@@ -516,18 +521,14 @@ void _injectDom(List<Snapshot> snapshots) {
   /// to the same DOM node.
   String _snapshotKey(Snapshot snap) {
     if (snap.type == SnapType.text) {
-      // Text identity = the text content + font size (rounded)
       return 'txt_${snap.text.hashCode}_${snap.fontSize.round()}';
     }
     if (snap.imageUrl != null) {
-      // Image identity = the image URL
       return 'img_${snap.imageUrl.hashCode}';
     }
-    // Box identity = color + size (rounded to 10px grid)
-    final colorVal = snap.color?.value ?? 0;
-    return 'box_${colorVal}_${(snap.width / 10).round()}_${(snap.height / 10).round()}';
+    // Box identity = just "box" — uniqueness comes from the keyCounter
+    return 'box';
   }
-
 
   void _applyBorderSide(web.HTMLElement el, String side, BorderSide bs) {
     if (bs.width > 0 && bs.style != BorderStyle.none) {
