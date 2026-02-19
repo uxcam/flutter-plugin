@@ -6,6 +6,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/src/web/snapshot.dart';
 import 'package:web/web.dart' as web;
 
+@JS('console.log')
+external void _consoleLog(JSString message);
+
 /// Walks the Flutter render tree and injects a DOM snapshot
 /// that the UXCam Web SDK captures via MutationObserver.
 class FlutterWebRegistry {
@@ -20,27 +23,29 @@ class FlutterWebRegistry {
   web.HTMLElement? _container;
   final Set<ScrollPosition> _trackedPositions = {};
 
-  void start() {
+void start() {
     if (_isListening) return;
     _isListening = true;
 
-    // Poll until semantics owner is available, then attach listener
     Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      final rootElement = WidgetsBinding.instance.rootElement;
+      if (rootElement == null) return;
+
+      timer.cancel();
+
       for (final renderView in RendererBinding.instance.renderViews) {
         final owner = renderView.owner?.semanticsOwner;
-        if (owner == null) continue;
-
-        owner.addListener(_onSemanticsChanged);
-        timer.cancel();
-
-        // Do initial scan
-        _scheduleCollect();
-        _rescanTimer = Timer.periodic(
-          const Duration(milliseconds: 500),
-          (_) => _scheduleCollect(),
-        );
-        return;
+        if (owner != null) {
+          owner.addListener(_onSemanticsChanged);
+          break;
+        }
       }
+
+      _scheduleCollect();
+      _rescanTimer = Timer.periodic(
+        const Duration(milliseconds: 500),
+        (_) => _scheduleCollect(),
+      );
     });
   }
 
@@ -49,27 +54,30 @@ class FlutterWebRegistry {
   }
 
   void _scheduleCollect() {
-    _debounce?.cancel();
+    if (_debounce?.isActive ?? false) return;
     _debounce = Timer(const Duration(milliseconds: 200), _collectAndPush);
   }
 
-  void _collectAndPush() {
-    // Walk render tree, collect text snapshots
-    final snapshots = <Snapshot>[];
-    final rootElement = WidgetsBinding.instance.rootElement;
-    if (rootElement != null) {
-      _walkRenderTree(rootElement, snapshots);
+void _collectAndPush() {
+    try {
+      final snapshots = <Snapshot>[];
+      final rootElement = WidgetsBinding.instance.rootElement;
+      if (rootElement != null) {
+        _walkRenderTree(rootElement, snapshots);
+      }
+
+      final hash = Object.hashAll([
+        ...snapshots.map((s) => Object.hash(s.text, (s.left / 10).round(), (s.top / 10).round())),
+      ]);
+      if (hash == _lastSnapshotHash) return;
+      _lastSnapshotHash = hash;
+
+      _injectDom(snapshots);
+    } catch (e, st) {
+      _consoleLog('[UXCam-Flutter] ERROR: $e\n$st'.toJS);
     }
-
-    final hash = Object.hashAll([
-      ...snapshots.map((s) => Object.hash(s.text, s.left.round(), s.top.round())),
-    ]);
-    if (hash == _lastSnapshotHash) return;
-    _lastSnapshotHash = hash;
-
-    // Build DOM and inject
-    _injectDom(snapshots);
   }
+
 
   /// Walk element tree, find RenderParagraph nodes, extract text info
   void _walkRenderTree(
@@ -346,18 +354,23 @@ class FlutterWebRegistry {
 
   /// Inject text snapshots as DOM elements
   void _injectDom(List<Snapshot> snapshots) {
-    _container?.remove();
+    var container = _container;
+    if (container == null) {
+      container = web.document.createElement('div') as web.HTMLElement;
+      container.id = 'uxcam-render-snapshot';
+      container.style.setProperty('position', 'absolute');
+      container.style.setProperty('top', '0');
+      container.style.setProperty('left', '0');
+      container.style.setProperty('width', '100%');
+      container.style.setProperty('height', '100%');
+      container.style.setProperty('pointer-events', 'none');
+      container.style.setProperty('overflow', 'hidden');
+      container.style.setProperty('z-index', '-1');
+      web.document.body?.appendChild(container);
+      _container = container;
+    }
 
-    final container = web.document.createElement('div') as web.HTMLElement;
-    container.id = 'uxcam-render-snapshot';
-    container.style.setProperty('position', 'absolute');
-    container.style.setProperty('top', '0');
-    container.style.setProperty('left', '0');
-    container.style.setProperty('width', '100%');
-    container.style.setProperty('height', '100%');
-    container.style.setProperty('pointer-events', 'none');
-    container.style.setProperty('overflow', 'hidden');
-    container.style.setProperty('z-index', '-1');
+    container.innerHTML = ''.toJS;
 
     for (final snap in snapshots) {
       if (snap.type == SnapType.box) {
@@ -432,9 +445,6 @@ class FlutterWebRegistry {
         container.appendChild(el);
       }
     }
-
-    web.document.body?.appendChild(container);
-    _container = container;
   }
 
 
