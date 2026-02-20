@@ -92,6 +92,24 @@ void _collectAndPush() {
     if (ro is RenderAnimatedOpacity && ro.opacity.value == 0.0) return;
     if (ro is RenderOpacity && ro.opacity == 0.0) return;
 
+    // Skip subtree if inside a clip that's fully collapsed
+    if (ro is RenderClipPath && ro.hasSize) {
+      final clipper = ro.clipper;
+      if (clipper != null) {
+        final clipPath = clipper.getClip(ro.size);
+        final clipBounds = clipPath.getBounds();
+        if (clipBounds.width < 1.0 || clipBounds.height < 1.0) return;
+      }
+    }
+    if (ro is RenderClipRect && ro.hasSize) {
+      final clipper = ro.clipper;
+      if (clipper != null) {
+        final clipRect = clipper.getClip(ro.size);
+        if (clipRect.width < 1.0 || clipRect.height < 1.0) return;
+      }
+    }
+
+
     // Skip entire subtree if this element's render object is a RepaintBoundary
     if (ro != null && ro.isRepaintBoundary) {
       // ignore: invalid_use_of_protected_member
