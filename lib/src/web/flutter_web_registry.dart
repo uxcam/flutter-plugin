@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/src/web/snapshot.dart';
@@ -185,6 +186,92 @@ void _collectAndPush() {
         ));
       }
     }
+
+    // Capture editable text (TextField, TextFormField)
+    if (ro is RenderEditable && ro.hasSize) {
+      final text = ro.text?.toPlainText() ?? '';
+      if (text.trim().isNotEmpty) {
+        final transform = ro.getTransformTo(null);
+        final translation = transform.getTranslation();
+        final rect = ro.paintBounds.shift(
+          Offset(translation.x, translation.y),
+        );
+        if (_isInViewport(rect)) {
+          double? fontSize;
+          Color? color;
+          FontWeight? fontWeight;
+          final span = ro.text;
+          if (span is TextSpan && span.style != null) {
+            fontSize = span.style!.fontSize;
+            color = span.style!.color;
+            fontWeight = span.style!.fontWeight;
+          }
+
+          out.add(Snapshot(
+            type: SnapType.text,
+            order: out.length,
+            text: text,
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+            fontSize: fontSize ?? 14.0,
+            fontColor: color,
+            fontWeight: fontWeight,
+          ));
+        }
+      }
+    }
+
+        // Capture TextField/TextFormField borders (InputDecorator uses private _RenderDecoration)
+    if (element.widget is InputDecorator && ro is RenderBox && ro.hasSize) {
+      final inputDecorator = element.widget as InputDecorator;
+      final decoration = inputDecorator.decoration;
+      final transform = ro.getTransformTo(null);
+      final translation = transform.getTranslation();
+      final rect = ro.paintBounds.shift(
+        Offset(translation.x, translation.y),
+      );
+      if (_isInViewport(rect)) {
+        // Determine the border to use based on state
+        final isFocused = inputDecorator.isFocused;
+        final isEmpty = inputDecorator.isEmpty;
+        InputBorder? border = isFocused
+            ? (decoration.focusedBorder ?? decoration.border)
+            : (decoration.enabledBorder ?? decoration.border);
+        border ??= const UnderlineInputBorder();
+
+        final borderColor = border.borderSide.color;
+        final borderWidth = border.borderSide.width;
+
+        if (border is OutlineInputBorder) {
+          out.add(Snapshot(
+            type: SnapType.box,
+            order: out.length,
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+            borderRadius: border.borderRadius,
+            border: Border.all(color: borderColor, width: borderWidth),
+          ));
+        } else {
+          // UnderlineInputBorder — just a bottom border
+          out.add(Snapshot(
+            type: SnapType.box,
+            order: out.length,
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+            border: Border(
+              bottom: BorderSide(color: borderColor, width: borderWidth),
+            ),
+          ));
+        }
+      }
+    }
+
 
     if (ro is RenderDecoratedBox && ro.hasSize) {
       final decoration = ro.decoration;
