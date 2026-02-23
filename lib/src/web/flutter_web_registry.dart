@@ -22,51 +22,37 @@ class FlutterWebRegistry {
   bool _isListening = false;
   int _lastSnapshotHash = 0;
   web.HTMLElement? _container;
-  final Set<ScrollPosition> _trackedPositions = {};
 
-void start() {
-    if (_isListening) return;
-    _isListening = true;
+  void start() {
+      if (_isListening) return;
+      _isListening = true;
 
-    Timer.periodic(const Duration(milliseconds: 200), (timer) {
-      final rootElement = WidgetsBinding.instance.rootElement;
-      if (rootElement == null) return;
-
-      timer.cancel();
-
-      _scheduleCollect();
       _rescanTimer = Timer.periodic(
         const Duration(milliseconds: 500),
-        (_) => _scheduleCollect(),
+        (_) => _collectAndPush(),
       );
-    });
-  }
-
-  void _scheduleCollect() {
-    if (_debounce?.isActive ?? false) return;
-    _debounce = Timer(const Duration(milliseconds: 200), _collectAndPush);
-  }
-
-void _collectAndPush() {
-    try {
-      final snapshots = <Snapshot>[];
-      final rootElement = WidgetsBinding.instance.rootElement;
-      if (rootElement != null) {
-        _walkRenderTree(rootElement, snapshots);
-      }
-
-      final hash = Object.hashAll([
-        ...snapshots.map((s) => Object.hash(s.text, (s.left / 10).round(), (s.top / 10).round(),s.color?.value ?? 0,
-          s.fontColor?.value ?? 0,)),
-      ]);
-      if (hash == _lastSnapshotHash) return;
-      _lastSnapshotHash = hash;
-
-      _injectDom(snapshots);
-    } catch (e, st) {
-      _consoleLog('[UXCam-Flutter] ERROR: $e\n$st'.toJS);
     }
-  }
+
+  void _collectAndPush() {
+      try {
+        final snapshots = <Snapshot>[];
+        final rootElement = WidgetsBinding.instance.rootElement;
+        if (rootElement != null) {
+          _walkRenderTree(rootElement, snapshots);
+        }
+
+        final hash = Object.hashAll([
+          ...snapshots.map((s) => Object.hash(s.text, (s.left / 10).round(), (s.top / 10).round(),s.color?.value ?? 0,
+            s.fontColor?.value ?? 0,)),
+        ]);
+        if (hash == _lastSnapshotHash) return;
+        _lastSnapshotHash = hash;
+
+        _injectDom(snapshots);
+      } catch (e, st) {
+        _consoleLog('[UXCam-Flutter] ERROR: $e\n$st'.toJS);
+      }
+    }
 
 
   /// Walk element tree, find RenderParagraph nodes, extract text info
@@ -270,7 +256,6 @@ void _collectAndPush() {
         rect = visRect;
         // Determine the border to use based on state
         final isFocused = inputDecorator.isFocused;
-        final isEmpty = inputDecorator.isEmpty;
         InputBorder? border = isFocused
             ? (decoration.focusedBorder ?? decoration.border)
             : (decoration.enabledBorder ?? decoration.border);
@@ -457,25 +442,9 @@ void _collectAndPush() {
     }
 
 
-    // Detect active scroll positions and listen for changes
-    if (ro is RenderAbstractViewport && ro is RenderBox && (ro as RenderBox).hasSize) {
-      final widget = element.widget;
-      if (widget is Scrollable) {
-        final position = widget.controller?.position;
-        if (position != null && !_trackedPositions.contains(position)) {
-          _trackedPositions.add(position);
-          position.addListener(_onScrollChanged);
-        }
-      }
-    }
-
     element.visitChildElements((child) {
       _walkRenderTree(child, out, clipBounds: effectiveClip);
     });
-  }
-
-  void _onScrollChanged() {
-    _scheduleCollect();
   }
 
   /// Returns the visible portion of [rect] after clipping to the browser
@@ -716,10 +685,6 @@ void _injectDom(List<Snapshot> snapshots) {
     _rescanTimer?.cancel();
     _rescanTimer = null;
     _lastSnapshotHash = 0; 
-    for (final pos in _trackedPositions) {
-      pos.removeListener(_onScrollChanged);
-    }
-    _trackedPositions.clear();
     _container?.remove();
     _container = null;
     _isListening = false;
