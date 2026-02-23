@@ -3,12 +3,9 @@ import 'dart:js_interop';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter_uxcam/src/web/js_bridge.dart';
 import 'package:flutter_uxcam/src/web/snapshot.dart';
 import 'package:web/web.dart' as web;
-
-@JS('console.log')
-external void _consoleLog(JSString message);
 
 /// Walks the Flutter render tree and injects a DOM snapshot
 /// that the UXCam Web SDK captures via MutationObserver.
@@ -49,7 +46,7 @@ class FlutterWebRegistry {
 
         _injectDom(snapshots);
       } catch (e, st) {
-        _consoleLog('[UXCam-Flutter] ERROR: $e\n$st'.toJS);
+        consoleLog('[UXCam-Flutter] ERROR: $e\n$st'.toJS);
       }
     }
 

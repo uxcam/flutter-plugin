@@ -2,10 +2,8 @@ import 'dart:js_interop';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/src/web/flutter_web_registry.dart';
+import 'package:flutter_uxcam/src/web/js_bridge.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
-
-@JS('window.uxc')
-external JSObject? get _uxc;
 
 /// Web implementation of the FlutterUxcam plugin.
 ///
@@ -44,7 +42,7 @@ class FlutterUxcamWeb {
         _sendEvent(name, stringProps);
         return true;
       case 'testImage':
-        _evalJs('''
+        evalJs('''
           var node = document.getElementById('flt-semantic-node-10');
           if (node) {
             var img = document.createElement('img');
@@ -71,7 +69,7 @@ class FlutterUxcamWeb {
   }
 
   void _injectWebSdk(String appKey) {
-    _evalJs('''
+    evalJs('''
       window.uxc = {
         __t: [],
         __ak: "$appKey",
@@ -95,14 +93,8 @@ class FlutterUxcamWeb {
   }
 
   void _sendEvent(String name, Map<String, String> properties) {
-    final uxc = _uxc;
-    if (uxc == null) return;
-    _uxcEvent(name.toJS, properties.jsify());
+    final _uxc = uxc;
+    if (_uxc == null) return;
+    uxcEvent(name.toJS, properties.jsify());
   }
 }
-
-@JS('window.uxc.event')
-external void _uxcEvent(JSString name, JSAny? properties);
-
-@JS('eval')
-external void _evalJs(JSString code);
