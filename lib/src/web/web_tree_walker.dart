@@ -177,7 +177,7 @@ class WebTreeWalker {
     _uuidCounter = 0;
   }
 
-  List<Map<String, dynamic>> _walk(Element element, {Rect? clipBounds}) {
+  List<Map<String, dynamic>> _walk(Element element, {Rect? clipBounds, Offset parentOffset = Offset.zero,}) {
     final ro = element.renderObject;
 
     // Skip entire subtree if offstage or hidden
@@ -251,12 +251,15 @@ class WebTreeWalker {
     }
 
     Map<String, dynamic>? node;
+    Offset nodeGlobalTopLeft = parentOffset;
 
     if (ro is RenderParagraph && ro.hasSize) {
       final text = ro.text.toPlainText();
       if (text.trim().isNotEmpty) {
         final rect = _globalRect(ro, effectiveClip);
         if (rect != null) {
+          nodeGlobalTopLeft = rect.topLeft;
+          final localRect = rect.shift(-parentOffset);
           double? fontSize;
           Color? color;
           FontWeight? fontWeight;
@@ -304,7 +307,7 @@ class WebTreeWalker {
           }
 
           node = _textINode(
-            rect,
+            localRect,
             text,
             fontSize: fontSize ?? 14.0,
             fontColor: color,
@@ -318,6 +321,8 @@ class WebTreeWalker {
       if (text.trim().isNotEmpty) {
         final rect = _globalRect(ro, effectiveClip);
         if (rect != null) {
+          nodeGlobalTopLeft = rect.topLeft;
+          final localRect = rect.shift(-parentOffset);
           double? fontSize;
           Color? color;
           FontWeight? fontWeight;
@@ -328,7 +333,7 @@ class WebTreeWalker {
             fontWeight = span.style!.fontWeight;
           }
           node = _textINode(
-            rect,
+            localRect,
             text,
             fontSize: fontSize ?? 14.0,
             fontColor: color,
@@ -342,6 +347,8 @@ class WebTreeWalker {
         ro.hasSize) {
       final rect = _globalRect(ro, effectiveClip);
       if (rect != null) {
+        nodeGlobalTopLeft = rect.topLeft;
+        final localRect = rect.shift(-parentOffset);
         final inputDeco = element.widget as InputDecorator;
         final decoration = inputDeco.decoration;
         final isFocused = inputDeco.isFocused;
@@ -373,7 +380,8 @@ class WebTreeWalker {
           final rect = _globalRect(ro, effectiveClip);
           if (rect == null) return [];
 
-          final style = _baseStyle(rect);
+          nodeGlobalTopLeft = rect.topLeft;
+          final style = _baseStyle(rect.shift(-parentOffset));
           if (decoration.color != null) {
             style.add('background-color:${_css(decoration.color!)}');
           }
@@ -391,7 +399,8 @@ class WebTreeWalker {
     } else if (element.widget is ColoredBox && ro is RenderBox && ro.hasSize) {
       final rect = _globalRect(ro, effectiveClip);
       if (rect != null) {
-        final style = _baseStyle(rect);
+        nodeGlobalTopLeft = rect.topLeft;
+        final style = _baseStyle(rect.shift(-parentOffset));
         style.add(
             'background-color:${_css((element.widget as ColoredBox).color)}');
         node = _elementNode('DIV', _uuid('cbox'), style);
@@ -399,7 +408,8 @@ class WebTreeWalker {
     } else if (ro is RenderPhysicalShape && ro.hasSize) {
       final rect = _globalRect(ro, effectiveClip);
       if (rect != null) {
-        final style = _baseStyle(rect);
+        nodeGlobalTopLeft = rect.topLeft;
+        final style = _baseStyle(rect.shift(-parentOffset));
         style.add('background-color:${_css(ro.color)}');
 
         final clipper = ro.clipper;
@@ -416,7 +426,8 @@ class WebTreeWalker {
     } else if (ro is RenderPhysicalModel && ro.hasSize) {
       final rect = _globalRect(ro, effectiveClip);
       if (rect != null) {
-        final style = _baseStyle(rect);
+        nodeGlobalTopLeft = rect.topLeft;
+        final style = _baseStyle(rect.shift(-parentOffset));
         style.add('background-color:${_css(ro.color)}');
 
         if (ro.borderRadius != null && ro.borderRadius != BorderRadius.zero) {
@@ -429,6 +440,8 @@ class WebTreeWalker {
     } else if (ro is RenderImage && ro.hasSize) {
       final rect = _globalRect(ro, effectiveClip);
       if (rect == null) return [];
+
+      nodeGlobalTopLeft = rect.topLeft;
 
       final widget = element.widget;
       String? url;
@@ -478,9 +491,12 @@ class WebTreeWalker {
       }
     }
 
+    final childParentOffset =
+        (node != null) ? nodeGlobalTopLeft : parentOffset;
+
     final childNodes = <Map<String, dynamic>>[];
     element.visitChildElements((child) {
-      childNodes.addAll(_walk(child, clipBounds: effectiveClip));
+      childNodes.addAll(_walk(child, clipBounds: effectiveClip, parentOffset: childParentOffset));
     });
 
     if (node != null) {
