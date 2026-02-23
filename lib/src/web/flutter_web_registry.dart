@@ -17,7 +17,6 @@ class FlutterWebRegistry {
 
   static final FlutterWebRegistry instance = FlutterWebRegistry._();
 
-  Timer? _debounce;
   Timer? _rescanTimer;     
   bool _isListening = false;
   int _lastSnapshotHash = 0;
@@ -680,8 +679,6 @@ void _injectDom(List<Snapshot> snapshots) {
   }
 
   void dispose() {
-    _debounce?.cancel();
-    _debounce = null;
     _rescanTimer?.cancel();
     _rescanTimer = null;
     _lastSnapshotHash = 0; 
