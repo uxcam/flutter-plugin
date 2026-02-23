@@ -34,24 +34,12 @@ void start() {
 
       timer.cancel();
 
-      for (final renderView in RendererBinding.instance.renderViews) {
-        final owner = renderView.owner?.semanticsOwner;
-        if (owner != null) {
-          owner.addListener(_onSemanticsChanged);
-          break;
-        }
-      }
-
       _scheduleCollect();
       _rescanTimer = Timer.periodic(
         const Duration(milliseconds: 500),
         (_) => _scheduleCollect(),
       );
     });
-  }
-
-  void _onSemanticsChanged() {
-    _scheduleCollect();
   }
 
   void _scheduleCollect() {
