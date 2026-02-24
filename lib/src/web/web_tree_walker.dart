@@ -244,6 +244,28 @@ class WebTreeWalker {
       if (effectiveClip.isEmpty) return [];
     }
 
+    // RenderPhysicalShape / RenderPhysicalModel represent Material containers.
+    // Always propagate their bounds as clip — even when clipBehavior == Clip.none,
+    // CSS position:absolute children escape their parent without overflow:hidden.
+    // Filtering children here also reduces snapshot payload.
+    if (ro is RenderPhysicalShape && ro.hasSize) {
+      final transform = ro.getTransformTo(null);
+      final translation = transform.getTranslation();
+      final globalClip =
+          (Offset.zero & ro.size).shift(Offset(translation.x, translation.y));
+      effectiveClip = effectiveClip?.intersect(globalClip) ?? globalClip;
+      if (effectiveClip.isEmpty) return [];
+    }
+
+    if (ro is RenderPhysicalModel && ro.hasSize) {
+      final transform = ro.getTransformTo(null);
+      final translation = transform.getTranslation();
+      final globalClip =
+          (Offset.zero & ro.size).shift(Offset(translation.x, translation.y));
+      effectiveClip = effectiveClip?.intersect(globalClip) ?? globalClip;
+      if (effectiveClip.isEmpty) return [];
+    }
+
     // Skip entire subtree if this element's render object is a RepaintBoundary
     if (ro != null && ro.isRepaintBoundary) {
       // ignore: invalid_use_of_protected_member
@@ -421,6 +443,10 @@ class WebTreeWalker {
           }
         }
 
+        // Always clip in CSS — even when Flutter uses Clip.none, position:absolute
+        // children would escape their parent bounds without overflow:hidden.
+        style.add('overflow:hidden');
+
         node = _elementNode('DIV', _uuid('pshape'), style);
       }
     } else if (ro is RenderPhysicalModel && ro.hasSize) {
@@ -434,6 +460,8 @@ class WebTreeWalker {
           style.add(
               _borderRadiusCSS(ro.borderRadius!.resolve(TextDirection.ltr)));
         }
+
+        style.add('overflow:hidden');
 
         node = _elementNode('DIV', _uuid('pmodel'), style);
       }
@@ -468,7 +496,7 @@ class WebTreeWalker {
           'nn': 'DIV',
           't': 'DIV',
           'nt': 1,
-          'a': {'style': _baseStyle(rect).join(';')},
+          'a': {'style': _baseStyle(rect.shift(-parentOffset)).join(';')},
           'u': parentUuid,
           'c': <Map<String, dynamic>>[
             {
