@@ -91,7 +91,7 @@ class FlutterUxcamWeb {
       head.appendChild(script);
     '''.toJS);
   }
-
+//http://127.0.0.1:5500/uxcam-websdk-frontend/dist/index.js
   void _sendEvent(String name, Map<String, String> properties) {
     final _uxc = uxc;
     if (_uxc == null) return;
