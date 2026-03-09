@@ -2,12 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/src/web/js_bridge.dart';
-import 'package:flutter_uxcam/src/web/web_tree_walker.dart';
+import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
 
-/// Periodically walks the Flutter render tree and pushes an INodeMin
-/// snapshot to the UXCam Web SDK via window.uxc.injectSnapshot().
+/// Periodically pushes occlusion rects to the UXCam Web SDK.
 class FlutterWebRegistry {
   FlutterWebRegistry._();
 
@@ -15,7 +13,7 @@ class FlutterWebRegistry {
 
   Timer? _rescanTimer;
   bool _isListening = false;
-  int _lastSnapshotHash = 0;
+  int _lastOcclusionHash = 0;
 
   void start() {
     if (_isListening) return;
@@ -23,35 +21,31 @@ class FlutterWebRegistry {
 
     _rescanTimer = Timer.periodic(
       const Duration(milliseconds: 500),
-      (_) => _collectAndPush(),
+      (_) => _pushOcclusionRects(),
     );
   }
 
-  void _collectAndPush() {
+  void _pushOcclusionRects() {
     try {
-      final rootElement = WidgetsBinding.instance.rootElement;
-      if (rootElement == null) return;
-
-      final nodes = WebTreeWalker.instance.buildSnapshot(rootElement);
-
-      final jsonStr = jsonEncode(nodes);
-      final hash = jsonStr.hashCode;
-      if (hash == _lastSnapshotHash) return;
-      _lastSnapshotHash = hash;
-
       if (uxc == null) return;
-      final jsNodes = jsonParse(jsonStr.toJS) as JSArray;
-      uxcInjectSnapshot(jsNodes);
+
+      final rects = OcclusionRegistry.instance.getOcclusionRects();
+      final jsonStr = jsonEncode(rects);
+      final hash = jsonStr.hashCode;
+      if (hash == _lastOcclusionHash) return;
+      _lastOcclusionHash = hash;
+
+      final jsRects = jsonParse(jsonStr.toJS) as JSArray;
+      uxcInjectOcclusionRects(jsRects);
     } catch (e, st) {
-      consoleLog('[UXCam-Flutter] ERROR: $e\n$st'.toJS);
+      consoleLog('[UXCam-Flutter] Occlusion ERROR: $e\n$st'.toJS);
     }
   }
 
   void dispose() {
     _rescanTimer?.cancel();
     _rescanTimer = null;
-    _lastSnapshotHash = 0;
-    WebTreeWalker.instance.resetUuids();
+    _lastOcclusionHash = 0;
     _isListening = false;
   }
 }
