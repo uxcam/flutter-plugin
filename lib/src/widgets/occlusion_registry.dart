@@ -31,6 +31,8 @@ class OcclusionRegistry with WidgetsBindingObserver {
     _requestChannelIOS.setMethodCallHandler(_handleMethodCall);
   }
 
+  List<Map<String, dynamic>> getOcclusionRects() => _handleCachedRectsRequest();
+
   void _setupPersistentFrameCallback() {
     SchedulerBinding.instance.addPersistentFrameCallback(_onFrame);
   }

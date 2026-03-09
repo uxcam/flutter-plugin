@@ -3,6 +3,8 @@ import 'dart:js_interop';
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/src/web/flutter_web_registry.dart';
 import 'package:flutter_uxcam/src/web/js_bridge.dart';
+import 'package:flutter_uxcam/src/widgets/occlusion_models.dart';
+import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 /// Web implementation of the FlutterUxcam plugin.
@@ -29,7 +31,7 @@ class FlutterUxcamWeb {
         _injectWebSdk(appKey);
 
         FlutterWebRegistry.instance.start();
-        _sendEvent("initialized",{});
+        OcclusionRegistry.instance.rectFormat = OcclusionPlatform.web;
         return true;
       case 'logEvent':
         final name = call.arguments['key'] as String;
@@ -79,6 +81,7 @@ class FlutterUxcamWeb {
         setUserProperty: function(k, v) { this.__t.push(['setUserProperty', k, v]); },
         setUserProperties: function(p) { this.__t.push(['setUserProperties', p]); },
         abort: function() { this.__t.push(['abort']); }
+        injectOcclusionRects: function(r) { this.__t.push(['injectOcclusionRects', r]); }
       };
       var head = document.getElementsByTagName('head')[0];
       var script = document.createElement('script');
@@ -92,7 +95,6 @@ class FlutterUxcamWeb {
       head.appendChild(script);
     '''.toJS);
   }
-//http://127.0.0.1:5500/uxcam-websdk-frontend/dist/index.js
   void _sendEvent(String name, Map<String, String> properties) {
     final _uxc = uxc;
     if (_uxc == null) return;
