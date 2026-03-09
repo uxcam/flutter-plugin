@@ -73,7 +73,7 @@ class FlutterUxcamWeb {
       window.uxc = {
         __t: [],
         __ak: "$appKey",
-        __o: { recordFlutterCanvas: false },
+        __o: { recordFlutterCanvas: true },
         event: function(n, p) { this.__t.push(['event', n, p]); },
         setUserIdentity: function(i) { this.__t.push(['setUserIdentity', i]); },
         setUserProperty: function(k, v) { this.__t.push(['setUserProperty', k, v]); },
@@ -83,7 +83,8 @@ class FlutterUxcamWeb {
       var head = document.getElementsByTagName('head')[0];
       var script = document.createElement('script');
       script.type = 'text/javascript';
-      script.src = '//websdk-recording-stg.uxcam.com/index.js';
+      // script.src = '//websdk-recording-stg.uxcam.com/index.js';
+      script.src = 'http://127.0.0.1:5500/uxcam-websdk-frontend/dist/index.js';
       script.async = true;
       script.defer = true;
       script.id = 'uxcam-web-sdk';
