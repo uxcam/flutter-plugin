@@ -3,6 +3,8 @@ import 'dart:ui';
 /// Supported occlusion styles for the wrapper.
 enum OcclusionType { overlay, blur, none }
 
+enum OcclusionPlatform { android, ios, web }
+
 /// Contract implemented by render objects that report occlusion bounds.
 abstract class OcclusionReportingRenderBox {
   int get stableId;

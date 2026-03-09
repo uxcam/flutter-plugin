@@ -9,6 +9,7 @@ import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/flutter_occlusion.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/uxcam_config.dart';
+import 'package:flutter_uxcam/src/widgets/occlusion_models.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
 import 'package:flutter_uxcam/uxcam.dart';
 import 'package:stack_trace/stack_trace.dart';
@@ -38,6 +39,9 @@ class FlutterUxcam {
         // Ensure occlusion channel handler is registered before native polling.
         final _ = OcclusionRegistry.instance;
         await _channel.invokeMethod('registerEngine');
+      }
+      if (Platform.isIOS) {
+        OcclusionRegistry.instance.rectFormat = OcclusionPlatform.ios;
       }
     }
 

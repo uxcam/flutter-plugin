@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -16,6 +14,9 @@ class OcclusionRegistry with WidgetsBindingObserver {
   static final OcclusionRegistry instance = OcclusionRegistry._();
 
   static const _detachedTtlMs = 1500;
+
+  /// Set by the platform-specific initialization code before rects are requested.
+  OcclusionPlatform rectFormat = OcclusionPlatform.android;
 
   final Map<int, _OcclusionEntry> _entries = {};
 
@@ -154,22 +155,26 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   Map<String, dynamic> _rectDataFromEntry(_OcclusionEntry entry, Rect bounds) {
     final dpr = entry.devicePixelRatio ?? 1.0;
-    if (Platform.isIOS) {
-      return {
-        'x0': bounds.left.toInt(),
-        'y0': bounds.top.toInt(),
-        'x1': bounds.right.toInt(),
-        'y1': bounds.bottom.toInt(),
-      };
+    switch(rectFormat) {
+      case OcclusionPlatform.ios:
+        return {
+          'x0': bounds.left.toInt(),
+          'y0': bounds.top.toInt(),
+          'x1': bounds.right.toInt(),
+          'y1': bounds.bottom.toInt(),
+        };
+      case OcclusionPlatform.web:
+      default:
+        return {
+          'id': entry.id,
+          'left': (bounds.left * dpr).roundToDouble(),
+          'top': (bounds.top * dpr).roundToDouble(),
+          'right': (bounds.right * dpr).roundToDouble(),
+          'bottom': (bounds.bottom * dpr).roundToDouble(),
+          'type': (entry.type ?? OcclusionType.overlay).index,
+        };
     }
-    return {
-      'id': entry.id,
-      'left': (bounds.left * dpr).roundToDouble(),
-      'top': (bounds.top * dpr).roundToDouble(),
-      'right': (bounds.right * dpr).roundToDouble(),
-      'bottom': (bounds.bottom * dpr).roundToDouble(),
-      'type': (entry.type ?? OcclusionType.overlay).index,
-    };
+
   }
 
   void _expireStaleEntries(int nowMs) {
