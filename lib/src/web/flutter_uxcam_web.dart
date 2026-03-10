@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/src/web/flutter_web_registry.dart';
@@ -32,6 +34,7 @@ class FlutterUxcamWeb {
 
         FlutterWebRegistry.instance.start();
         OcclusionRegistry.instance.rectFormat = OcclusionPlatform.web;
+        registerOcclusionCallback();
         return true;
       case 'logEvent':
         final name = call.arguments['key'] as String;
@@ -80,7 +83,7 @@ class FlutterUxcamWeb {
         setUserIdentity: function(i) { this.__t.push(['setUserIdentity', i]); },
         setUserProperty: function(k, v) { this.__t.push(['setUserProperty', k, v]); },
         setUserProperties: function(p) { this.__t.push(['setUserProperties', p]); },
-        abort: function() { this.__t.push(['abort']); }
+        abort: function() { this.__t.push(['abort']); },
         injectOcclusionRects: function(r) { this.__t.push(['injectOcclusionRects', r]); }
       };
       var head = document.getElementsByTagName('head')[0];
@@ -100,4 +103,14 @@ class FlutterUxcamWeb {
     if (_uxc == null) return;
     uxcEvent(name.toJS, properties.jsify());
   }
+
+  void registerOcclusionCallback() {
+    final callback = (() {
+      final rects = OcclusionRegistry.instance.getOcclusionRects();
+      return jsonParse(jsonEncode(rects).toJS) as JSArray;
+    }).toJS;
+
+    globalContext.setProperty('__uxcam_getOcclusionRects'.toJS, callback);
+  }
+
 }
