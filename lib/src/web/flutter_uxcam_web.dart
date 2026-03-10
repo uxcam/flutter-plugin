@@ -3,7 +3,6 @@ import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_uxcam/src/web/flutter_web_registry.dart';
 import 'package:flutter_uxcam/src/web/js_bridge.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_models.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
@@ -31,8 +30,6 @@ class FlutterUxcamWeb {
         final config = call.arguments['config'] as Map;
         final appKey = config['userAppKey'] as String;
         _injectWebSdk(appKey);
-
-        FlutterWebRegistry.instance.start();
         OcclusionRegistry.instance.rectFormat = OcclusionPlatform.web;
         registerOcclusionCallback();
         return true;
