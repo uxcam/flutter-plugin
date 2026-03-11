@@ -104,7 +104,7 @@ class FlutterUxcamWeb {
   void registerOcclusionCallback() {
     final callback = (() {
       final rects = OcclusionRegistry.instance.getOcclusionRects();
-      return jsonParse(jsonEncode(rects).toJS) as JSArray;
+      return rects.jsify() as JSArray;
     }).toJS;
 
     globalContext.setProperty('__uxcam_getOcclusionRects'.toJS, callback);
