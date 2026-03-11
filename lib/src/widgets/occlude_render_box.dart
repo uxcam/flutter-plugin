@@ -171,26 +171,6 @@ class OccludeRenderBox extends RenderProxyBox
     super.dispose();
   }
 
-  bool _isEffectivelyInvisible() {
-    RenderObject? child = this;
-    RenderObject? ancestor = parent;
-
-    while (ancestor != null) {
-      if (!ancestor.paintsChild(child!)) {
-        return true;
-      }
-
-      final checker = _visibilityCheckers[ancestor.runtimeType];
-      if (checker != null && !checker(ancestor, child)) {
-        return true;
-      }
-
-      child = ancestor;
-      ancestor = ancestor.parent;
-    }
-    return _isHiddenByLayerOpacity();
-  }
-
   bool _isHiddenByLayerOpacity() {
     final ContainerLayer? rootLayer = layer;
     if (rootLayer == null || !rootLayer.attached) return false;
@@ -214,46 +194,6 @@ class OccludeRenderBox extends RenderProxyBox
     }
     _layerDetachedSinceMs = null;
     return false;
-  }
-
-  Rect? _calculateCurrentSnappedBounds({bool skipVisibilityCheck = false}) {
-    if (!attached || !hasSize || !_enabled) return null;
-    if (!skipVisibilityCheck && _isEffectivelyInvisible()) return null;
-
-    final transform = getTransformTo(null);
-    Rect bounds = MatrixUtils.transformRect(transform, Offset.zero & size);
-
-    final effectiveClip = _calculateEffectiveClip();
-    if (effectiveClip != null) {
-      bounds = bounds.intersect(effectiveClip);
-    }
-
-    if (bounds.width <= 0 || bounds.height <= 0) return null;
-
-    final devicePixelRatio = _getDevicePixelRatio();
-    return _snapToDevicePixels(bounds, devicePixelRatio);
-  }
-
-  Rect? _calculateEffectiveClip() {
-    Rect? accumulatedClip;
-    RenderObject? child = this;
-    RenderObject? ancestor = parent;
-
-    while (ancestor != null) {
-      if (ancestor is RenderBox) {
-        final clip = ancestor.describeApproximatePaintClip(child!);
-        if (clip != null) {
-          final transform = ancestor.getTransformTo(null);
-          final globalClip = MatrixUtils.transformRect(transform, clip);
-          accumulatedClip =
-              accumulatedClip?.intersect(globalClip) ?? globalClip;
-        }
-      }
-      child = ancestor;
-      ancestor = ancestor.parent;
-    }
-
-    return accumulatedClip;
   }
 
   double _getDevicePixelRatio() {
@@ -362,19 +302,10 @@ class OccludeRenderBox extends RenderProxyBox
 
     _pruneSlidingWindow(nowMs);
 
-    // if (_isEffectivelyInvisible()) {
-    //   _timestampedBounds.clear();
-    //   _lastReportedBounds = null;
-    //   return;
-    // }
-
     final previousBounds = _lastReportedBounds;
     final snappedBounds = _calculateVisibleClippedBounds();
     if (snappedBounds != null) {
       _lastReportedBounds = snappedBounds;
-    }
-
-    if (snappedBounds != null) {
       _addToSlidingWindow(snappedBounds, nowMs);
     } else {
       if (previousBounds != null) {
@@ -393,7 +324,7 @@ class OccludeRenderBox extends RenderProxyBox
   Rect? _calculateVisibleClippedBounds() {
     if (!attached || !hasSize || !_enabled) return null;
 
-    // ── Single walk: visibility + clip collection ──
+    //Single walk: visibility + clip collection
     Rect? accumulatedClip;
     RenderObject? child = this;
     RenderObject? ancestor = parent;
@@ -419,7 +350,6 @@ class OccludeRenderBox extends RenderProxyBox
 
     if (_isHiddenByLayerOpacity()) return null;
 
-    // ── Transform + clip + snap ──
     final transform = getTransformTo(null);
     Rect bounds = MatrixUtils.transformRect(transform, Offset.zero & size);
 
