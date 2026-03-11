@@ -40,9 +40,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
   void _onFrame(Duration timestamp) {
     if (_entries.isEmpty) return;
 
-    final snapshot = _entries.values.toList();
-
-    for (final entry in snapshot) {
+    for (final entry in _entries.values) {
       final box = entry.box;
       if (entry.attached && box != null && box.attached && box.hasSize) {
         box.updateBoundsFromTransform();
@@ -73,9 +71,8 @@ class OcclusionRegistry with WidgetsBindingObserver {
     _expireStaleEntries(requestTimestamp);
 
     final rects = <Map<String, dynamic>>[];
-    final snapshot = _entries.values.toList();
 
-    for (final entry in snapshot) {
+    for (final entry in _entries.values) {
       if (entry.attached) {
         final box = entry.box;
         if (box == null || !box.attached || !box.hasSize) {
