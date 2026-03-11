@@ -171,11 +171,6 @@ class OccludeRenderBox extends RenderProxyBox
     super.dispose();
   }
 
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    super.paint(context, offset);
-  }
-
   bool _isEffectivelyInvisible() {
     RenderObject? child = this;
     RenderObject? ancestor = parent;
