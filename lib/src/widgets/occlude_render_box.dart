@@ -367,15 +367,14 @@ class OccludeRenderBox extends RenderProxyBox
 
     _pruneSlidingWindow(nowMs);
 
-    if (_isEffectivelyInvisible()) {
-      _timestampedBounds.clear();
-      _lastReportedBounds = null;
-      return;
-    }
+    // if (_isEffectivelyInvisible()) {
+    //   _timestampedBounds.clear();
+    //   _lastReportedBounds = null;
+    //   return;
+    // }
 
     final previousBounds = _lastReportedBounds;
-    final snappedBounds =
-        _calculateCurrentSnappedBounds(skipVisibilityCheck: true);
+    final snappedBounds = _calculateVisibleClippedBounds();
     if (snappedBounds != null) {
       _lastReportedBounds = snappedBounds;
     }
@@ -393,4 +392,49 @@ class OccludeRenderBox extends RenderProxyBox
       }
     }
   }
+
+  /// Single parent-chain walk: visibility + clips + transform + snap.
+  /// Returns the final screen-space rect, or null if invisible/clipped.
+  Rect? _calculateVisibleClippedBounds() {
+    if (!attached || !hasSize || !_enabled) return null;
+
+    // ── Single walk: visibility + clip collection ──
+    Rect? accumulatedClip;
+    RenderObject? child = this;
+    RenderObject? ancestor = parent;
+
+    while (ancestor != null) {
+      if (!ancestor.paintsChild(child!)) return null;
+
+      final checker = _visibilityCheckers[ancestor.runtimeType];
+      if (checker != null && !checker(ancestor, child)) return null;
+
+      if (ancestor is RenderBox) {
+        final clip = ancestor.describeApproximatePaintClip(child);
+        if (clip != null) {
+          final clipTransform = ancestor.getTransformTo(null);
+          final globalClip = MatrixUtils.transformRect(clipTransform, clip);
+          accumulatedClip = accumulatedClip?.intersect(globalClip) ?? globalClip;
+        }
+      }
+
+      child = ancestor;
+      ancestor = ancestor.parent;
+    }
+
+    if (_isHiddenByLayerOpacity()) return null;
+
+    // ── Transform + clip + snap ──
+    final transform = getTransformTo(null);
+    Rect bounds = MatrixUtils.transformRect(transform, Offset.zero & size);
+
+    if (accumulatedClip != null) {
+      bounds = bounds.intersect(accumulatedClip);
+    }
+
+    if (bounds.width <= 0 || bounds.height <= 0) return null;
+
+    return _snapToDevicePixels(bounds, _getDevicePixelRatio());
+  }
+
 }
