@@ -71,10 +71,10 @@ class TrackData {
         "bottom": bound.bottom,
       },
       "custom": custom ?? {},
-      "id": !kIsWeb ? Platform.isAndroid ? jsonEncode(uiId) : uiId : '',
-      "value": !kIsWeb ? Platform.isAndroid ? value : uiValue : '',
-      "name": !kIsWeb ? Platform.isAndroid ? value : uiValue : '',
-      "class": effectiveclass,
+      "id": kIsWeb ? uiId : Platform.isAndroid ? jsonEncode(uiId) : uiId,
+      "value": kIsWeb ? uiValue : Platform.isAndroid ? value : uiValue,
+      "name": kIsWeb ? uiValue : Platform.isAndroid ? value : uiValue,
+      "class": kIsWeb ? (uiClass ?? '') : effectiveclass,
     };
     return result;
   }
