@@ -17,3 +17,6 @@ external void uxcInjectOcclusionRects(JSArray rects);
 
 @JS('JSON.parse')
 external JSAny jsonParse(JSString json);
+
+@JS('window.uxc.appendGestureContent')
+external void uxcAppendGestureContent(double x, double y, JSAny? data);
