@@ -43,19 +43,12 @@ class FlutterUxcamWeb {
         final stringProps = properties.map((k, v) => MapEntry(k, v.toString()));
         _sendEvent(name, stringProps);
         return true;
-      case 'testImage':
-        evalJs('''
-          var node = document.getElementById('flt-semantic-node-10');
-          if (node) {
-            var img = document.createElement('img');
-            img.src = 'https://thumbs.dreamstime.com/b/western-wall-jerusalem-israel-ancient-stones-blue-sky-background-37714202.jpg';
-            img.style.width = '200px';
-            img.style.height = '150px';
-            img.style.pointerEvents = 'none';
-            node.appendChild(img);
-          }
-          '''.toJS);
-        return true;
+      case 'appendGestureContent':
+        final x = call.arguments['x'] as double;
+        final y = call.arguments['y'] as double;
+        final data = Map<String, dynamic>.from(call.arguments['data'] as Map);
+        _sendGestureContent(x, y, data);
+        return null;
       case 'getPlatformVersion':
         return 'web';
       case 'isRecording':
@@ -108,6 +101,12 @@ class FlutterUxcamWeb {
     }).toJS;
 
     globalContext.setProperty('__uxcam_getOcclusionRects'.toJS, callback);
+  }
+
+  void _sendGestureContent(double x, double y, Map<String, dynamic> data) {
+    final _uxc = uxc;
+    if (_uxc == null) return;
+    uxcAppendGestureContent(x, y, data.jsify());
   }
 
 }
