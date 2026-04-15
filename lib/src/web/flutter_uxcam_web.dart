@@ -63,31 +63,35 @@ class FlutterUxcamWeb {
     }
   }
 
-  void _injectWebSdk(String appKey) {
+void _injectWebSdk(String appKey) {
     evalJs('''
       window.uxc = {
         __t: [],
         __ak: "$appKey",
-        __o: { recordFlutterCanvas: true },
+        __o: { captureMode: 'flutter' },
         event: function(n, p) { this.__t.push(['event', n, p]); },
         setUserIdentity: function(i) { this.__t.push(['setUserIdentity', i]); },
         setUserProperty: function(k, v) { this.__t.push(['setUserProperty', k, v]); },
         setUserProperties: function(p) { this.__t.push(['setUserProperties', p]); },
         abort: function() { this.__t.push(['abort']); },
-        injectOcclusionRects: function(r) { this.__t.push(['injectOcclusionRects', r]); }
+        injectOcclusionRects: function(r) { this.__t.push(['injectOcclusionRects', r]); },
+        appendGestureContent: function(x, y, d) { this.__t.push(['appendGestureContent', x, y, d]); }
       };
       var head = document.getElementsByTagName('head')[0];
       var script = document.createElement('script');
       script.type = 'text/javascript';
+      script.src = '//websdk-recording.uxcam.com/index.js';
       // script.src = '//websdk-recording-stg.uxcam.com/index.js';
-      script.src = 'http://127.0.0.1:5500/uxcam-websdk-frontend/dist/index.js';
+      // script.src = 'http://127.0.0.1:5501/uxcam-websdk-frontend/dist/index.js';
       script.async = true;
       script.defer = true;
       script.id = 'uxcam-web-sdk';
       script.crossOrigin = 'anonymous';
       head.appendChild(script);
-    '''.toJS);
+    '''
+        .toJS);
   }
+  
   void _sendEvent(String name, Map<String, String> properties) {
     final _uxc = uxc;
     if (_uxc == null) return;
