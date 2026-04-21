@@ -37,6 +37,19 @@ class FlutterUxcamWeb {
         final name = call.arguments['key'] as String;
         _sendEvent(name, {});
         return true;
+      case 'setUserIdentity':
+        final name = call.arguments['key'] as String;
+        _setIdentity(name);
+        return true;
+      case 'setUserProperty':
+        final key = call.arguments['key'] as String;
+        final value = call.arguments['value'] as String;
+        _setUserProperty(key,value);
+        return true;
+      case 'setUserProperties':
+        final properties = call.arguments['properties'] as Map;
+        _setUserProperties(properties.map((k, v) => MapEntry(k, v.toString())));
+        return true;
       case 'logEventWithProperties':
         final name = call.arguments['eventName'] as String;
         final properties = Map<String, dynamic>.from(call.arguments['properties'] as Map);
@@ -80,8 +93,8 @@ void _injectWebSdk(String appKey) {
       var head = document.getElementsByTagName('head')[0];
       var script = document.createElement('script');
       script.type = 'text/javascript';
-      script.src = '//websdk-recording.uxcam.com/index.js';
-      // script.src = '//websdk-recording-stg.uxcam.com/index.js';
+      //script.src = '//websdk-recording.uxcam.com/index.js';
+      script.src = '//websdk-recording-stg.uxcam.com/index.js';
       // script.src = 'http://127.0.0.1:5501/uxcam-websdk-frontend/dist/index.js';
       script.async = true;
       script.defer = true;
@@ -96,6 +109,24 @@ void _injectWebSdk(String appKey) {
     final _uxc = uxc;
     if (_uxc == null) return;
     uxcEvent(name.toJS, properties.jsify());
+  }
+  
+  void _setIdentity(String name) {
+    final _uxc = uxc;
+    if (_uxc == null) return;
+    uxcSetUserIdentity(name.toJS);
+  }
+  
+  void _setUserProperty(String key, String value) {
+    final _uxc = uxc;
+    if (_uxc == null) return;
+    uxcSetUserProperty(key.toJS, value.toJS);
+  }
+  
+  void _setUserProperties(Map<String, String> properties) {
+    final _uxc = uxc;
+    if (_uxc == null) return;
+    uxcSetUserProperties(properties.jsify());
   }
 
   void registerOcclusionCallback() {

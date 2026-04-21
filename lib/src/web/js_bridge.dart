@@ -9,6 +9,15 @@ external void consoleLog(JSString message);
 @JS('window.uxc.event')
 external void uxcEvent(JSString name, JSAny? properties);
 
+@JS('window.uxc.setUserIdentity')
+external void uxcSetUserIdentity(JSString name);
+
+@JS('window.uxc.setUserProperty')
+external void uxcSetUserProperty(JSString key, JSString value);
+
+@JS('window.uxc.setUserProperties')
+external void uxcSetUserProperties(JSAny? properties);
+
 @JS('eval')
 external void evalJs(JSString code);
 
