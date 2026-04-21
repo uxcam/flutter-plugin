@@ -77,6 +77,9 @@ class FlutterUxcamWeb {
   }
 
 void _injectWebSdk(String appKey) {
+  ////websdk-recording.uxcam.com/index.js
+  ///http://127.0.0.1:5501/uxcam-websdk-frontend/dist/index.js
+  final scriptSrc = '//websdk-recording-stg.uxcam.com/index.js';
     evalJs('''
       window.uxc = {
         __t: [],
@@ -93,9 +96,7 @@ void _injectWebSdk(String appKey) {
       var head = document.getElementsByTagName('head')[0];
       var script = document.createElement('script');
       script.type = 'text/javascript';
-      //script.src = '//websdk-recording.uxcam.com/index.js';
-      script.src = '//websdk-recording-stg.uxcam.com/index.js';
-      // script.src = 'http://127.0.0.1:5501/uxcam-websdk-frontend/dist/index.js';
+      script.src = '$scriptSrc';
       script.async = true;
       script.defer = true;
       script.id = 'uxcam-web-sdk';
