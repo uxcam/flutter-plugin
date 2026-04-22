@@ -7,6 +7,7 @@ import 'package:flutter_uxcam/src/web/js_bridge.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_models.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
+import 'package:web/web.dart' as web;
 
 /// Web implementation of the FlutterUxcam plugin.
 ///
@@ -14,6 +15,8 @@ import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 /// handles session recording. This plugin class bridges Dart-side
 /// calls to the JS Web SDK so they don't throw MissingPluginException.
 class FlutterUxcamWeb {
+  String? _initializedAppKey;
+
   static void registerWith(Registrar registrar) {
     final channel = MethodChannel(
       'flutter_uxcam',
@@ -29,6 +32,20 @@ class FlutterUxcamWeb {
       case 'startWithConfiguration':
         final config = call.arguments['config'] as Map;
         final appKey = config['userAppKey'] as String;
+
+        if (_initializedAppKey != null) {
+          if (_initializedAppKey == appKey) {
+            // Already initialized with this key — idempotent no-op.
+            return true;
+          }
+          // Different key — programming error. Don't silently reconfigure.
+          // ignore: avoid_print
+          print('[UXCam] startWithConfiguration called again with a different '
+              'app key. Ignoring — reconfiguration mid-session is not '
+              'supported. Call stopSession first if you need to switch keys.');
+          return true;
+        }
+        _initializedAppKey = appKey;
         _injectWebSdk(appKey);
         OcclusionRegistry.instance.rectFormat = OcclusionPlatform.web;
         registerOcclusionCallback();
@@ -77,33 +94,60 @@ class FlutterUxcamWeb {
   }
 
 void _injectWebSdk(String appKey) {
+
+  if (web.document.getElementById('uxcam-web-sdk') != null) {
+    return;
+  }
+
   ////websdk-recording.uxcam.com/index.js
   ///http://127.0.0.1:5501/uxcam-websdk-frontend/dist/index.js
-  final scriptSrc = '//websdk-recording-stg.uxcam.com/index.js';
-    evalJs('''
-      window.uxc = {
-        __t: [],
-        __ak: "$appKey",
-        __o: { captureMode: 'flutter' },
-        event: function(n, p) { this.__t.push(['event', n, p]); },
-        setUserIdentity: function(i) { this.__t.push(['setUserIdentity', i]); },
-        setUserProperty: function(k, v) { this.__t.push(['setUserProperty', k, v]); },
-        setUserProperties: function(p) { this.__t.push(['setUserProperties', p]); },
-        abort: function() { this.__t.push(['abort']); },
-        injectOcclusionRects: function(r) { this.__t.push(['injectOcclusionRects', r]); },
-        appendGestureContent: function(x, y, d) { this.__t.push(['appendGestureContent', x, y, d]); }
-      };
-      var head = document.getElementsByTagName('head')[0];
-      var script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.src = '$scriptSrc';
-      script.async = true;
-      script.defer = true;
-      script.id = 'uxcam-web-sdk';
-      script.crossOrigin = 'anonymous';
-      head.appendChild(script);
-    '''
-        .toJS);
+  final scriptSrc = 'https://websdk-recording-stg.uxcam.com/index.js';
+
+  final uxc = <String, dynamic> {
+    '__t': [],
+    '__ak': appKey,
+    '__o': { 'captureMode': 'flutter' },
+  }.jsify() as JSObject;
+
+    final queue = uxc['__t'] as JSArray;
+
+    void push(List<JSAny?> entry) {
+      queue.callMethod('push'.toJS, entry.toJS);
+    }
+
+    uxc['event'] = ((JSAny? n, JSAny? p) {
+      push(['event'.toJS, n, p]);
+    }).toJS;
+
+    uxc['setUserIdentity'] = ((JSAny? i) {
+      push(['setUserIdentity'.toJS, i]);
+    }).toJS;
+
+    uxc['setUserProperty'] = ((JSAny? k, JSAny? v) {
+      push(['setUserProperty'.toJS, k, v]);
+    }).toJS;
+
+    uxc['setUserProperties'] = ((JSAny? p) {
+      push(['setUserProperties'.toJS, p]);
+    }).toJS;
+
+    uxc['abort'] = (() {
+      push(['abort'.toJS]);
+    }).toJS;
+
+    // Publish on window.
+    globalContext['uxc'] = uxc;
+
+    // 2. Insert the SDK <script> via the DOM API.
+    final script = web.HTMLScriptElement()
+      ..type = 'text/javascript'
+      ..src = scriptSrc
+      ..async = true
+      ..defer = true
+      ..id = 'uxcam-web-sdk'
+      ..crossOrigin = 'anonymous';
+    web.document.head?.appendChild(script);
+
   }
   
   void _sendEvent(String name, Map<String, String> properties) {
