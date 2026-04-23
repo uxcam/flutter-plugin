@@ -29,3 +29,6 @@ external JSAny jsonParse(JSString json);
 
 @JS('window.uxc.appendGestureContent')
 external void uxcAppendGestureContent(double x, double y, JSAny? data);
+
+@JS('window.uxc.abort')
+external void uxcAbort();

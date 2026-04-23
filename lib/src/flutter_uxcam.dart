@@ -494,6 +494,12 @@ class FlutterUxcam {
       "data": data,
     });
   }
+
+  static Future<void> abort() async {
+    if(kIsWeb) {
+      await _channel.invokeMethod<void>("abort");
+    }
+  }
 }
 
 List<Map<String, String>> getStackTraceElements(StackTrace stackTrace) {

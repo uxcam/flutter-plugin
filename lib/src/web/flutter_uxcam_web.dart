@@ -79,6 +79,9 @@ class FlutterUxcamWeb {
         final data = Map<String, dynamic>.from(call.arguments['data'] as Map);
         _sendGestureContent(x, y, data);
         return null;
+      case 'abort':
+        _abort();
+        return true;
       case 'getPlatformVersion':
         return 'web';
       case 'isRecording':
@@ -187,6 +190,12 @@ void _injectWebSdk(String appKey) {
     final _uxc = uxc;
     if (_uxc == null) return;
     uxcAppendGestureContent(x, y, data.jsify());
+  }
+
+  void _abort() {
+    final _uxc = uxc;
+    if (_uxc == null) return;
+    uxcAbort();
   }
 
 }
