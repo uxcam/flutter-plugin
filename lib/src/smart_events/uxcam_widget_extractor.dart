@@ -148,6 +148,28 @@ class UXCamWidgetExtractor {
     return type == UX_BUTTON || type == UX_FIELD || type == UX_COMPOUND;
   }
 
+  bool _isInteractive(_ExtractionResult result) {
+    final type = result.type;
+    if(type !=UX_BUTTON && type != UX_FIELD && type != UX_COMPOUND) {
+      return false;
+    }
+    final w =result.element.widget;
+    if (w is ButtonStyleButton) return w.enabled;
+    if (w is IconButton) return w.onPressed != null;
+    if (w is FloatingActionButton) return w.onPressed != null;
+    if (w is CupertinoButton) return w.enabled;
+    if (w is ListTile) return w.enabled;
+    if (w is TextField) return w.enabled ?? true;
+    if (w is TextFormField) return w.enabled ?? true;
+    if (w is Checkbox) return w.onChanged != null;
+    if (w is Switch) return w.onChanged != null;
+    if (w is Slider) return w.onChanged != null;
+    if (w is Radio) return w.onChanged != null;
+    if (w is DropdownButton) return w.onChanged != null && (w.items?.isNotEmpty ?? false);
+    if (w is InkWell) return w.onTap != null || w.onDoubleTap != null || w.onLongPress != null;
+    return true;
+  }
+
   /// Returns the highest interactive ancestor if element is its sole content widget.
   /// e.g., Text inside ElevatedButton → returns ElevatedButton (not inner GestureDetector)
   /// But Text inside Row[Icon, Text] inside Button → returns null (not sole content)
@@ -314,7 +336,7 @@ class UXCamWidgetExtractor {
       uiClass: isOccluded ? '' : widgetType,
       uiType: isOccluded ? UX_UNKNOWN : type,
       isSensitive: isOccluded,
-      isInteractive: _isInteractiveType(type)
+      isInteractive: _isInteractive(result)
     );
   }
 
