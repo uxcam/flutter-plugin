@@ -16,6 +16,7 @@ class TrackData {
   bool? isViewGroup;
   Map<String, dynamic>? custom;
   bool isSensitive = false;
+  bool isInteractive = false;
 
   TrackData(
     this.bound,
@@ -27,6 +28,7 @@ class TrackData {
     this.isViewGroup,
     this.depth = -1,
     this.isSensitive = false,
+    this.isInteractive = false,
   });
 
   void setLabel(String label) {
@@ -63,6 +65,7 @@ class TrackData {
     Map<String, dynamic> result = {
       'isViewGroup': isViewGroup ?? false,
       'isSensitive': isSensitive,
+      'isInteractive': isInteractive,
       "type": uiType,
       'bound': {
         "left": bound.left,

@@ -314,6 +314,7 @@ class UXCamWidgetExtractor {
       uiClass: isOccluded ? '' : widgetType,
       uiType: isOccluded ? UX_UNKNOWN : type,
       isSensitive: isOccluded,
+      isInteractive: _isInteractiveType(type)
     );
   }
 
