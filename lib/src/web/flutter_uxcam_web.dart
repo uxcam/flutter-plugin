@@ -134,6 +134,14 @@ void _injectWebSdk(String appKey) {
       push(['setUserProperties'.toJS, p]);
     }).toJS;
 
+    uxc['injectOcclusionRects'] = ((JSAny? p) {
+      push(['injectOcclusionRects'.toJS, p]);
+    }).toJS;
+
+    uxc['appendGestureContent'] = ((JSAny? x, JSAny? y, JSAny? z) {
+      push(['appendGestureContent'.toJS, x, y, z]);
+    }).toJS;
+
     uxc['abort'] = (() {
       push(['abort'.toJS]);
     }).toJS;
