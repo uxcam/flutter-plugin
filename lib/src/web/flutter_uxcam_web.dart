@@ -1,6 +1,7 @@
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/src/web/js_bridge.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_models.dart';
@@ -44,7 +45,7 @@ class FlutterUxcamWeb {
               'supported. Call stopSession first if you need to switch keys.');
           return true;
         }
-        usePathUrlStrategy();
+        _ensurePathUrlStrategy();
         _initializedAppKey = appKey;
         _injectWebSdk(appKey);
         OcclusionRegistry.instance.rectFormat = OcclusionPlatform.web;
@@ -205,5 +206,12 @@ void _injectWebSdk(String appKey) {
     if (_uxc == null) return;
     uxcAbort();
   }
+
+  void _ensurePathUrlStrategy() {
+  if (!kIsWeb) return;
+  if (urlStrategy == null) {
+    usePathUrlStrategy();
+  }
+}
 
 }
