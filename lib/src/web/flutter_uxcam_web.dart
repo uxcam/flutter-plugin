@@ -103,9 +103,7 @@ void _injectWebSdk(String appKey) {
     return;
   }
 
-  ////websdk-recording.uxcam.com/index.js
-  ///http://127.0.0.1:5501/uxcam-websdk-frontend/dist/index.js
-  final scriptSrc = 'https://websdk-recording-stg.uxcam.com/index.js';
+  final scriptSrc = 'https://websdk-recording.uxcam.com/index.js';
 
   final uxc = <String, dynamic> {
     '__t': [],
