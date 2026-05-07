@@ -1,14 +1,16 @@
 name: flutter_uxcam
 description: A Wrapper Plugin for UXCam SDK which helps to connect and configure SDK to flutter apps.
-version: 2.7.9
+version: 2.7.13
 homepage: https://uxcam.com/
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.3.0 <4.0.0"
   flutter: ">=1.10.0"
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_web_plugins:
     sdk: flutter
   stack_trace: ^1.12.0
   visibility_detector: ^0.4.0+2
@@ -29,6 +31,9 @@ flutter:
         pluginClass: FlutterUxcamPlugin
       ios:
         pluginClass: FlutterUxcamPlugin
+      web:
+        pluginClass: FlutterUxcamWeb
+        fileName: src/web/flutter_uxcam_web.dart
 
   # To add assets to your plugin package, add an assets section, like this:
   # assets:

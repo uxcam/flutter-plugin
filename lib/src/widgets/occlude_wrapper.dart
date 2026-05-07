@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import 'occlude_render_box.dart';
@@ -8,7 +7,6 @@ import 'occlusion_registry.dart';
 export 'occlusion_models.dart' show OcclusionType;
 
 class OccludeWrapper extends SingleChildRenderObjectWidget {
-
   const OccludeWrapper({
     super.key,
     required super.child,
