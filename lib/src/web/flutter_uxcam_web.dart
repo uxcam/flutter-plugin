@@ -5,6 +5,73 @@ import 'package:flutter/services.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
+bool _preserveDrawingBufferPatchInstalled = false;
+
+bool _installPreserveDrawingBufferPatch() {
+  if (_preserveDrawingBufferPatchInstalled) return true;
+
+  try {
+    final result = globalContext.callMethod(
+      'eval'.toJS,
+      r'''
+(function () {
+  if (globalThis.__uxcamPreserveDrawingBufferPatched) {
+    return true;
+  }
+
+  globalThis.__uxcamPreserveDrawingBufferPatched = true;
+
+  const shouldPatchContext = function (type) {
+    return type === 'webgl' ||
+      type === 'webgl2' ||
+      type === 'experimental-webgl';
+  };
+
+  const patchCanvasConstructor = function (CanvasConstructor) {
+    if (!CanvasConstructor || !CanvasConstructor.prototype) {
+      return;
+    }
+
+    const prototype = CanvasConstructor.prototype;
+    const originalGetContext = prototype.getContext;
+    if (typeof originalGetContext !== 'function' ||
+        originalGetContext.__uxcamPreserveDrawingBufferWrapped) {
+      return;
+    }
+
+    const wrappedGetContext = function (type, attrs) {
+      if (shouldPatchContext(type)) {
+        attrs = Object.assign({}, attrs || {}, {
+          preserveDrawingBuffer: true
+        });
+      }
+      return originalGetContext.call(this, type, attrs);
+    };
+
+    wrappedGetContext.__uxcamPreserveDrawingBufferWrapped = true;
+    wrappedGetContext.__uxcamOriginalGetContext = originalGetContext;
+    prototype.getContext = wrappedGetContext;
+  };
+
+  patchCanvasConstructor(globalThis.HTMLCanvasElement);
+
+  if (typeof globalThis.OffscreenCanvas !== 'undefined') {
+    patchCanvasConstructor(globalThis.OffscreenCanvas);
+  }
+
+  return true;
+})()
+'''
+          .toJS,
+    );
+    _preserveDrawingBufferPatchInstalled = (result as JSBoolean).toDart;
+  } catch (_) {
+    _preserveDrawingBufferPatchInstalled = false;
+  }
+
+  return _preserveDrawingBufferPatchInstalled;
+}
+
 /// Platform plugin implementation registered by Flutter tooling.
 class FlutterUxcamWeb {
   String? _appKey;
@@ -14,6 +81,8 @@ class FlutterUxcamWeb {
   bool _multiSessionRecord = false;
 
   static void registerWith(Registrar registrar) {
+    _installPreserveDrawingBufferPatch();
+
     final channel = MethodChannel(
       'flutter_uxcam',
       const StandardMethodCodec(),
