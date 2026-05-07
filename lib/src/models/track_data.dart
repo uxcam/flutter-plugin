@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 class TrackData {
@@ -52,11 +53,12 @@ class TrackData {
   }
 
   Map<String, dynamic> toJson() {
+    final isAndroid = !kIsWeb && Platform.isAndroid;
     final value =
         jsonEncode(uiValue != null && uiValue!.isNotEmpty ? uiValue : "");
     final effectiveclass = uiClass != null && uiClass!.isNotEmpty
         ? uiClass
-        : Platform.isAndroid
+        : isAndroid
             ? jsonEncode("")
             : "";
     Map<String, dynamic> result = {
@@ -70,9 +72,9 @@ class TrackData {
         "bottom": bound.bottom,
       },
       "custom": custom ?? {},
-      "id": Platform.isAndroid ? jsonEncode(uiId) : uiId,
-      "value": Platform.isAndroid ? value : uiValue,
-      "name": Platform.isAndroid ? value : uiValue,
+      "id": isAndroid ? jsonEncode(uiId) : uiId,
+      "value": isAndroid ? value : uiValue,
+      "name": isAndroid ? value : uiValue,
       "class": effectiveclass,
     };
     return result;

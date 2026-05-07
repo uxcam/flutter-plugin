@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_uxcam/src/smart_events/uxcam_smart_events.dart';
@@ -31,7 +32,7 @@ class FlutterUxcam {
   /// Smart events are enabled by default. Set `config.enableSmartEvents = false` to disable.
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     WidgetsFlutterBinding.ensureInitialized();
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       // Ensure occlusion channel handler is registered before native polling.
       final _ = OcclusionRegistry.instance;
       await _channel.invokeMethod('registerEngine');
@@ -51,7 +52,7 @@ class FlutterUxcam {
   }
 
   static Future<void> attachBridge() async {
-    if (Platform.isIOS) {
+    if (!kIsWeb && Platform.isIOS) {
       await _channel.invokeMethod('attachBridge');
     } else {
       return;
@@ -265,7 +266,7 @@ class FlutterUxcam {
   ///
   /// NOTE: This will only work on IOS
   static Future<void> optIntoSchematicRecordings() async {
-    if (Platform.isIOS) {
+    if (!kIsWeb && Platform.isIOS) {
       await _channel.invokeMethod('optIntoSchematicRecordings');
     }
   }
@@ -273,7 +274,7 @@ class FlutterUxcam {
   /// This method is specifically for IOS to opt out of video recording
   /// NOTE: This will not work for Android
   static Future<void> optOutOfSchematicRecordings() async {
-    if (Platform.isIOS) {
+    if (!kIsWeb && Platform.isIOS) {
       await _channel.invokeMethod('optOutOfSchematicRecordings');
     }
   }
@@ -283,7 +284,7 @@ class FlutterUxcam {
   ///
   /// NOTE: This will not work for Android. This will return false.
   static Future<bool> optInSchematicRecordingStatus() async {
-    if (Platform.isIOS) {
+    if (!kIsWeb && Platform.isIOS) {
       final bool? optStatus =
           await _channel.invokeMethod<bool>('optInSchematicRecordingStatus');
       return optStatus!;
