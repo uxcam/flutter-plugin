@@ -194,7 +194,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             result.success(null);
         } else if ("tagScreenName".equals(call.method)) {
             String eventName = call.argument("key");
-            FlutterFacade.getInstance().tagScreenName(eventName);
+            UXCam.tagScreenName(eventName);
             result.success(null);
         } else if ("setAutomaticScreenNameTagging".equals(call.method)) {
             boolean enable = call.argument("key");
