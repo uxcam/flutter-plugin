@@ -16,6 +16,7 @@ rootProject.allprojects {
     repositories {
         google()
         mavenCentral()
+        mavenLocal()
         maven {
             url 'https://sdk.uxcam.com/android/'
         }
@@ -41,5 +42,5 @@ android {
 
 dependencies {
     //To use the alpha version please use the following dependency pattern: implementation 'com.uxcam:uxcam-debug:<sdk-version>-alpha.1+<branch-commit-hash>'
-    implementation 'com.uxcam:uxcam:3.7.4'
+    implementation 'com.uxcam:uxcam-debug:3.10.1-alpha.1'
 }
