@@ -126,6 +126,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
         activity = activityPluginBinding.getActivity();
+        if (UXCam.isRecording()) {                                                                                                                                              
+            MethodChannel smartEventsChannel = new MethodChannel(binaryMessenger, "uxcam_smart_events");
+            smartEventsChannel.invokeMethod("initSmartEvents", null);                                                                                                           
+        } 
     }
 
     @Override
