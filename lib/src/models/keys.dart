@@ -9,6 +9,7 @@ class FlutterUxConfigKeys {
   static const enableAdvancedGestureRecognition =
       "enableAdvancedGestureRecognition";
   static const enableSmartEvents = "enableSmartEvents";
+  static const enableSynchronizedCapture = "enableSynchronizedCapture";
   static const occlusion = "occlusion";
 }
 

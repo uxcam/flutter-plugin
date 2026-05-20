@@ -23,6 +23,14 @@ import 'package:flutter_uxcam/src/models/keys.dart';
 /// gestures and widget interactions without requiring any widget wrapper.
 /// Default is true. Set to false to disable automatic gesture tracking.
 ///
+/// [enableSynchronizedCapture] is boolean. iOS only. When true (the iOS
+/// SDK default), Flutter drives occlusion-rect collection on the same
+/// frame the screenshot is taken, eliminating the time gap between rect
+/// collection and the bitmap grab that the sliding-window fallback used
+/// to paper over. Leave null to inherit the native default; explicitly
+/// set false to force the legacy `pauseRendering` + `requestAllOcclusionRects`
+/// capture flow (escape hatch for regression debugging).
+///
 /// [occlusions] is FlutterOcclusion Object for occlusion or blurring
 class FlutterUxConfig {
   String userAppKey;
@@ -34,6 +42,7 @@ class FlutterUxConfig {
   bool? enableNetworkLogging;
   bool? enableAdvancedGestureRecognition;
   bool? enableSmartEvents;
+  bool? enableSynchronizedCapture;
   List<FlutterUXOcclusion>? occlusions;
 
   FlutterUxConfig({
@@ -45,6 +54,7 @@ class FlutterUxConfig {
     this.enableNetworkLogging,
     this.enableAdvancedGestureRecognition,
     this.enableSmartEvents,
+    this.enableSynchronizedCapture,
     this.occlusions,
   });
 
@@ -63,6 +73,8 @@ class FlutterUxConfig {
     config.enableAdvancedGestureRecognition =
         json[FlutterUxConfigKeys.enableAdvancedGestureRecognition];
     config.enableSmartEvents = json[FlutterUxConfigKeys.enableSmartEvents];
+    config.enableSynchronizedCapture =
+        json[FlutterUxConfigKeys.enableSynchronizedCapture];
     return config;
   }
 
@@ -78,6 +90,7 @@ class FlutterUxConfig {
       FlutterUxConfigKeys.enableAdvancedGestureRecognition:
           enableAdvancedGestureRecognition,
       FlutterUxConfigKeys.enableSmartEvents: enableSmartEvents,
+      FlutterUxConfigKeys.enableSynchronizedCapture: enableSynchronizedCapture,
       FlutterUxConfigKeys.occlusion:
           occlusions?.map((occlusion) => occlusion.toJson()).toList()
     };

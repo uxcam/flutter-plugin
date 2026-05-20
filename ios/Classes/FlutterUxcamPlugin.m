@@ -10,6 +10,7 @@ static const NSString *FlutterEnableScreenNameTagging = @"enableAutomaticScreenN
 static const NSString *FlutterEnableCrashHandling = @"enableCrashHandling";
 static const NSString *FlutterEnableNetworkLogs = @"enableNetworkLogging";
 static const NSString *FlutterEnableAdvancedGesture = @"enableAdvancedGestureRecognition";
+static const NSString *FlutterEnableSynchronizedCapture = @"enableSynchronizedCapture";
 static const NSString *FlutterOcclusion = @"occlusion";
 static const NSString *FlutterOccludeScreens = @"screens";
 static const NSString *FlutterExcludeScreens = @"excludeMentionedScreens";
@@ -267,7 +268,19 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
     if (enableAdvancedGestureRecognition && ![enableAdvancedGestureRecognition isKindOfClass:NSNull.class]) {
         config.enableAdvancedGestureRecognition = [enableAdvancedGestureRecognition boolValue];
     }
-    
+
+    // Option B opt-out: when Flutter explicitly sets enableSynchronizedCapture
+    // (default null → inherit native default YES), forward it. Done via
+    // respondsToSelector so the plugin keeps building against older UXCam
+    // iOS SDKs that don't have the property.
+    NSNumber *enableSynchronizedCapture = configDict[FlutterEnableSynchronizedCapture];
+    if (enableSynchronizedCapture && ![enableSynchronizedCapture isKindOfClass:NSNull.class]) {
+        if ([config respondsToSelector:@selector(setEnableSynchronizedCapture:)]) {
+            [config setValue:enableSynchronizedCapture
+                      forKey:@"enableSynchronizedCapture"];
+        }
+    }
+
     NSArray *occlusionList = configDict[FlutterOcclusion];
     if (occlusionList && ![occlusionList isKindOfClass:NSNull.class]) {
         UXCamOcclusion *occlusion = [[UXCamOcclusion alloc] init];
