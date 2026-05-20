@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'occlusion_models.dart';
+import 'synchronized_capture_handler.dart';
 
 class OcclusionRegistry with WidgetsBindingObserver {
   OcclusionRegistry._() {
@@ -61,6 +62,16 @@ class OcclusionRegistry with WidgetsBindingObserver {
         return _handleCachedRectsRequest();
       case 'pauseRendering': //Currently iOS only
         return true;
+      // Option B (iOS only) — Flutter-orchestrated synchronized capture.
+      // The iOS bridge invokes these two methods on the same flutter_uxcam
+      // channel; we route them through SynchronizedCaptureHandler instead
+      // of grabbing the channel away from this registry.
+      case 'synchronizedCaptureProbe':
+        return SynchronizedCaptureHandler.handleProbe();
+      case 'synchronizedCapture':
+        return SynchronizedCaptureHandler.handleSynchronizedCapture(
+          call.arguments as Map<dynamic, dynamic>?,
+        );
       default:
         throw PlatformException(
           code: 'UNSUPPORTED',
