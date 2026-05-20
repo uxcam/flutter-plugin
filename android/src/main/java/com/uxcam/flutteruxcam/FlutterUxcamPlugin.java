@@ -123,61 +123,13 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
     }
 
-    private void sendWithRetry(MethodChannel channel, String method, int retriesLeft) {
-        channel.invokeMethod(method, null, new Result() {
-            @Override
-            public void success(Object result) { }
-
-            @Override
-            public void error(String errorCode, String errorMessage, Object errorDetails) {
-                retryIfNeeded(channel, method, retriesLeft);
-            }
-
-            @Override
-            public void notImplemented() {
-                retryIfNeeded(channel, method, retriesLeft);
-            }
-        });
-    }
-
-    private void retryIfNeeded(MethodChannel channel, String method, int retriesLeft) {
-        if (retriesLeft > 0) {
-            mainHandler.postDelayed(() -> sendWithRetry(channel, method, retriesLeft - 1), 200);
-        }
-    }
-
-    private void sendInitOcclusionWithRetry(MethodChannel channel, int retriesLeft) {
-        channel.invokeMethod("initOcclusion", null, new Result() {
-            @Override
-            public void success(Object result) {
-                attachOcclusionListenerIfNeeded();
-            }
-
-            @Override
-            public void error(String errorCode, String errorMessage, Object errorDetails) {
-                if (retriesLeft > 0) {
-                    mainHandler.postDelayed(() -> sendInitOcclusionWithRetry(channel, retriesLeft - 1), 200);
-                }
-            }
-
-            @Override
-            public void notImplemented() {
-                if (retriesLeft > 0) {
-                    mainHandler.postDelayed(() -> sendInitOcclusionWithRetry(channel, retriesLeft - 1), 200);
-                }
-            }
-        });
-    }
-
     @Override
     public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
         activity = activityPluginBinding.getActivity();
         if (UXCam.isRecording()) {
             UXCam.enableCrossPlatformViewTracking();
-            MethodChannel hybridPlugChannel = new MethodChannel(binaryMessenger, "uxcam_flutter_plug_hybrid");
-            sendWithRetry(hybridPlugChannel, "initSmartEvents", 5);
-            sendInitOcclusionWithRetry(hybridPlugChannel, 5);                                                                                             
-        } 
+            attachOcclusionListenerIfNeeded();
+        }
     }
 
     @Override
