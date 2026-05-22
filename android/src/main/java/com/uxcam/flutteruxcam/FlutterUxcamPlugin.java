@@ -127,6 +127,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         occlusionRequestChannel = null;
         binaryMessenger = null;
         occlusionListenerAttached = false;
+        activity = null;
     }
 
     @Override
@@ -149,6 +150,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromActivity() {
+        activity = null;
     }
 
     @Override
