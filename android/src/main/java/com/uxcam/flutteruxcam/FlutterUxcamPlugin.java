@@ -121,6 +121,12 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+        if (delegate != null) {
+            delegate.setListener(null);
+        }
+        occlusionRequestChannel = null;
+        binaryMessenger = null;
+        occlusionListenerAttached = false;
     }
 
     @Override
