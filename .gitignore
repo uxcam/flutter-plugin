@@ -15,6 +15,11 @@ local.properties
 android/.gradle
 build
 
+# Swift Package Manager build artifacts
+ios/flutter_uxcam/.build/
+.swiftpm/
+Package.resolved
+
 # Auto-generated plugin registrant files
 **/GeneratedPluginRegistrant.h
 **/GeneratedPluginRegistrant.m

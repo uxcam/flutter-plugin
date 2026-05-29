@@ -12,8 +12,8 @@ UXCam flutter plugin
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'UXCam Inc' => 'admin@uxcam.com' }
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
-  s.public_header_files = 'Classes/**/*.h'
+  s.source_files = 'flutter_uxcam/Sources/flutter_uxcam/**/*.{h,m}'
+  s.public_header_files = 'flutter_uxcam/Sources/flutter_uxcam/include/**/*.h'
   s.dependency 'Flutter'
   s.static_framework = true
   s.dependency 'UXCam','~> 3.8.4'
