@@ -13,6 +13,22 @@ dependencies:
       url: https://github.com/uxcam/flutter-plugin
       ref: performance-optimizer
 ```
+
+
+Make use of new key on config  i.e. `enableSynchronizedCapture`
+
+```
+final config = FlutterUxConfig(
+      userAppKey: UXCAM_APP_KEY,
+      enableIntegrationLogging: true,
+      enableMultiSessionRecord: true,
+      enableCrashHandling: true,
+      enableAutomaticScreenNameTagging: true,
+      enableNetworkLogging: true,
+      enableAdvancedGestureRecognition: true,
+      enableSynchronizedCapture: true,
+    );
+```
 ## Usage
 Inside your dart file import flutter_uxcam like this
 
