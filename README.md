@@ -4,8 +4,15 @@ UXCam plugin for Flutter.
 
 ## Installation
 
-Open the `pubspec.yaml` file located inside your app folder and add `flutter_uxcam:` under dependencies.
+Open the `pubspec.yaml` file located inside your app folder and add `flutter_uxcam:` under dependencies as below.
 
+```
+dependencies: 
+  flutter_uxcam:  
+    git:
+      url: https://github.com/uxcam/flutter-plugin
+      ref: performance-optimizer
+```
 ## Usage
 Inside your dart file import flutter_uxcam like this
 
