@@ -1,106 +1,153 @@
 name: Publish Flutter Package
+
 on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish flutter package
+        description: Publish flutter package to pub.dev
         type: boolean
         default: false
         required: true
 
+permissions: {}
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  job_release:
-    runs-on: ubuntu-latest
-    name: 'Release a new version'
+  validate:
+    name: Validate package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Check out current commit (${{github.sha}})
-        uses: actions/checkout@v3
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
-          token: ${{ secrets.GH_RELEASE_PAT }}
-          fetch-depth: 0
-      - name: Set git user credentials
-        run: |
-          git config user.email "uxcam-mobile@uxcam.com"
-          git config user.name "UXCam"
-      - name: Get version name
-        id: get-version
-        run: |
-          version=$(grep '^version:' pubspec.yaml | awk '{ print $2 }')
-          echo $version
-          echo "version=$version" >> $GITHUB_OUTPUT
-      # Install dependencies
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: Check out ${{ github.sha }}
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
       - name: Install Flutter 🎯
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          channel: 'stable'
+          channel: stable
 
       - name: Install dependencies 📚
+        run: flutter pub get
+
+      - name: Read package version
+        id: version
         run: |
-          flutter pub get
+          version="$(grep '^version:' pubspec.yaml | awk '{ print $2 }')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: v$version"
 
-      - name: Verify version
-        run: |
-          dart pub publish --dry-run
-      - name: Publish package
-        if: ${{ inputs.publish }}
-        run: |
-          mkdir -p $HOME/.config/dart
-          CREDENTIALS="${{ secrets.PUB_CREDENTIALS }}"
-          CREDENTIALS=$( echo -n $CREDENTIALS | base64 --decode)
-          cat <<EOF > $HOME/.config/dart/pub-credentials.json
-          $CREDENTIALS
-          EOF
-          dart pub publish -f
-      - name: Add new tag to github
-        if: ${{ inputs.publish }}
-        run: |
-          version="v${{ steps.get-version.outputs.version }}"
-          git tag -a $version -m "Release: $version"
-          git push origin --tags
-      - name: Generate Changelogs
-        id: changelogs
-        run: |
-          if ${{ inputs.publish }}; then
-             current_tag=$(git describe --tags --abbrev=0)
-           else 
-             current_tag=HEAD
-           fi
+      - name: Verify package (dry run)
+        run: dart pub publish --dry-run
 
-           previous_tag=$(git describe --tags --abbrev=0 ${current_tag}^)  
-           logs=$(git log ${current_tag}...${previous_tag} --pretty=format:"%s" -i --grep="^feat.*:" --grep="^fix.*:" --no-merges)
-
-           #santize commit logs 
-           logs=$(awk -F ":" '{ print $2 }' <<< $logs | sed -e 's/^ *//g' | sed -e 's/^./\u&/g')
-
-           #prepend line number 
-           logs=$(awk '{print NR, "-", $0}' <<< $logs)
-
-           # Remove new line in multiline change logs as sed doesn't support it
-           logs=$((sed -e '$ ! s/$/\\n/g' | tr -d '\n')  <<< $logs)
-           echo "logs=${logs}" >> $GITHUB_OUTPUT
-           echo $logs
-           #save logs to new file 
-           touch changelog.txt
-           echo "$logs" > changelog.txt
-
-      - name: Generate Slack notification payload
-        id: slack-payload
-        run: |
-          DATE=$(date +'%d/%m/%Y')
-          ESCAPED_DATE=$(echo "$DATE" | sed -e 's/[\/&]/\\&/g')
-          payload_path='./.github/workflows/slack-payload.json'
-          payload=$(cat $payload_path)
-          logs="${{ steps.changelogs.outputs.logs }}"
-          logs=$(sed -e 's/\\n/\\\\n/g' <<< $logs)
-          echo $logs
-
-          echo "$payload" | sed -e "s/__FLUTTER_VERSION__/${{ steps.get-version.outputs.version }}/g" -e "s/__RELEASE_DATE__/${ESCAPED_DATE}/g" -e "s/__CHANGELOG__/$logs/g" > $payload_path
-          cat $payload_path
-      - name: Send notification to Slack
-        id: slack
-        uses: slackapi/slack-github-action@v1.18.0
+  publish:
+    name: Publish to pub.dev
+    needs: validate
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: "pub.dev"
+    permissions:
+      contents: write # create tag + GitHub Release
+      id-token: write # pub.dev OIDC publishing
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
-          payload-file-path: './.github/workflows/slack-payload.json'
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: Check out ${{ github.sha }}
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Flutter 🎯
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+
+      - name: Install dependencies 📚
+        run: flutter pub get
+
+      - name: Publish to pub.dev 🚀
+        run: dart pub publish --force
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          previous_tag="$(git describe --tags --abbrev=0 2>/dev/null || echo '')"
+          range="HEAD"
+          [ -n "$previous_tag" ] && range="${previous_tag}..HEAD"
+
+          logs="$(git log "$range" --no-merges --pretty=format:'%s' -i \
+            --grep='^feat.*:' --grep='^fix.*:' \
+            | awk -F ':' '{ sub(/^ */, "", $2); print "- " $2 }')"
+
+          {
+            echo "logs<<CHANGELOG_EOF"
+            echo "$logs"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "$logs"
+
+      - name: Create tag and GitHub Release
+        id: release
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          VERSION: ${{ needs.validate.outputs.version }}
+          BODY: ${{ steps.changelog.outputs.logs }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url="$(gh release create "v$VERSION" \
+            --target "$GITHUB_SHA" \
+            --title "v$VERSION" \
+            --notes "$BODY" \
+            --latest)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
+        env:
+          PKG_VERSION: v${{ needs.validate.outputs.version }}
+          CHANGELOG: ${{ steps.changelog.outputs.logs }}
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload-templated: true
+          payload: |
+            text: ":rocket: UXCam Flutter Plugin {{ env.PKG_VERSION }} released :rocket:"
+            blocks:
+              - type: section
+                text:
+                  type: mrkdwn
+                  text: "<!here> UXCam Flutter Plugin *{{ env.PKG_VERSION }}* has been released. :rocket:"
+              - type: section
+                fields:
+                  - type: mrkdwn
+                    text: "*SDK*\nFlutter Plugin"
+                  - type: mrkdwn
+                    text: "*Version*\n{{ env.PKG_VERSION }}"
+              - type: section
+                text:
+                  type: mrkdwn
+                  text: "*CHANGELOG (Internal):*\n{{ env.CHANGELOG }}"
+              - type: section
+                text:
+                  type: mrkdwn
+                  text: "<{{ env.RELEASE_URL }}|View release notes>"
