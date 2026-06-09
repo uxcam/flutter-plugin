@@ -1,7 +1,13 @@
 name: Publish Flutter Package
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish flutter package to pub.dev
+        type: boolean
+        default: false
+        required: true
 
 permissions: {}
 
@@ -10,8 +16,48 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  job_release:
-    name: Release a new version
+  validate:
+    name: Validate package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: Check out ${{ github.sha }}
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Install Flutter 🎯
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+
+      - name: Install dependencies 📚
+        run: flutter pub get
+
+      - name: Read package version
+        id: version
+        run: |
+          version="$(grep '^version:' pubspec.yaml | awk '{ print $2 }')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: v$version"
+
+      - name: Verify package (dry run)
+        run: dart pub publish --dry-run
+
+  publish:
+    name: Publish to pub.dev
+    needs: validate
+    if: ${{ inputs.publish }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: "pub.dev"
@@ -39,23 +85,11 @@ jobs:
       - name: Install dependencies 📚
         run: flutter pub get
 
-      - name: Read package version
-        id: version
-        run: |
-          version="$(grep '^version:' pubspec.yaml | awk '{ print $2 }')"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "Releasing v$version"
-
-      - name: Verify package (dry run)
-        run: dart pub publish --dry-run
-
       - name: Publish to pub.dev 🚀
         run: dart pub publish --force
 
       - name: Generate changelog
         id: changelog
-        env:
-          NEW_TAG: v${{ steps.version.outputs.version }}
         run: |
           previous_tag="$(git describe --tags --abbrev=0 2>/dev/null || echo '')"
           range="HEAD"
@@ -75,7 +109,7 @@ jobs:
       - name: Create tag and GitHub Release
         id: release
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.validate.outputs.version }}
           BODY: ${{ steps.changelog.outputs.logs }}
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -89,7 +123,7 @@ jobs:
       - name: Notify Slack
         uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
         env:
-          PKG_VERSION: v${{ steps.version.outputs.version }}
+          PKG_VERSION: v${{ needs.validate.outputs.version }}
           CHANGELOG: ${{ steps.changelog.outputs.logs }}
           RELEASE_URL: ${{ steps.release.outputs.url }}
         with:
