@@ -28,7 +28,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   void _setupMethodChannelHandler() {
     _requestChannel.setMethodCallHandler(_handleMethodCall);
-    if (!kIsWeb && Platform.isIOS) {
+    if (!kIsWeb) {
       _requestChannelIOS.setMethodCallHandler(_handleMethodCall);
     }
   }

@@ -11,10 +11,13 @@ import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/uxcam_config.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
 import 'package:flutter_uxcam/src/internal/motion_reporter.dart';
+import 'package:flutter_uxcam/uxcam.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 class FlutterUxcam {
   static const MethodChannel _channel = const MethodChannel('flutter_uxcam');
+
+  static UxCam? uxCam;
 
   static final UXCamSmartEvents _smartEvents = UXCamSmartEvents();
 
@@ -41,6 +44,8 @@ class FlutterUxcam {
       final _ = OcclusionRegistry.instance;
       await _channel.invokeMethod('registerEngine');
     }
+
+    uxCam = UxCam();
 
     final bool? status = await _channel.invokeMethod<bool>(
         'startWithConfiguration', {"config": config.toJson()});

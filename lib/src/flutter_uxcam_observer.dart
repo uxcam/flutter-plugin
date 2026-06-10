@@ -12,6 +12,7 @@ class FlutterUxcamNavigatorObserver extends NavigatorObserver {
 
   factory FlutterUxcamNavigatorObserver() {
     final instance = FlutterUxcamNavigatorObserver._internal();
+    UxCam.navigationObserver = instance;
     return instance;
   }
 

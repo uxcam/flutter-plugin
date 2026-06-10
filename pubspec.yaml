@@ -29,7 +29,6 @@ flutter:
       android:
         package: com.uxcam.flutteruxcam
         pluginClass: FlutterUxcamPlugin
-        dartPluginClass: Uxcam
       ios:
         pluginClass: FlutterUxcamPlugin
       web:
