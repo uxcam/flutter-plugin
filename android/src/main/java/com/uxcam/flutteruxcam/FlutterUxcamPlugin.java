@@ -121,22 +121,11 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-        if (delegate != null) {
-            delegate.setListener(null);
-        }
-        occlusionRequestChannel = null;
-        binaryMessenger = null;
-        occlusionListenerAttached = false;
-        activity = null;
     }
 
     @Override
     public void onAttachedToActivity(ActivityPluginBinding activityPluginBinding) {
         activity = activityPluginBinding.getActivity();
-        if (UXCam.isRecording()) {
-            UXCam.enableCrossPlatformViewTracking();
-            attachOcclusionListenerIfNeeded();
-        }
     }
 
     @Override
@@ -150,7 +139,6 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromActivity() {
-        activity = null;
     }
 
     @Override
