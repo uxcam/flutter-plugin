@@ -2,6 +2,10 @@
 
 @import UXCam;
 
+@interface UXCam (UXCamInternalEvents)
++ (void)handleInternalEvent:(NSString *)name payload:(nullable NSDictionary *)payload;
+@end
+
 static const NSString *FlutterAppKey = @"userAppKey";
 static const NSString *FlutterConfiguration = @"config";
 static const NSString *FlutterEnableIntegrationLogging = @"enableIntegrationLogging";
@@ -133,6 +137,22 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
             NSLog(@"UXCam: addFrameData:frameData: method not available in current SDK version");
         }
     } 
+    result(nil);
+}
+
+- (void)uxcamInternalEvent:(FlutterMethodCall*)call result:(FlutterResult)result
+{
+    NSDictionary *arguments = [call.arguments isKindOfClass:NSDictionary.class] ? call.arguments : nil;
+    NSString *name = [arguments[@"name"] isKindOfClass:NSString.class] ? arguments[@"name"] : nil;
+    id data = arguments[@"data"];
+    NSDictionary *payload = [data isKindOfClass:NSDictionary.class] ? data : nil;
+    if ([name isKindOfClass:NSString.class]) {
+        if ([UXCam respondsToSelector:@selector(handleInternalEvent:payload:)]) {
+            [UXCam handleInternalEvent:name payload:payload];
+        } else {
+            NSLog(@"UXCam: handleInternalEvent:payload: not available in current SDK version");
+        }
+    }
     result(nil);
 }
 
