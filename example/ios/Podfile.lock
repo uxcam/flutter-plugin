@@ -1,9 +1,9 @@
 PODS:
   - Flutter (1.0.0)
-  - flutter_uxcam (2.7.6):
+  - flutter_uxcam (2.8.3):
     - Flutter
-    - UXCam (~> 3.7.6)
-  - UXCam (3.7.6)
+    - UXCam (~> 3.8.3)
+  - UXCam (3.8.3)
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
@@ -21,9 +21,9 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  flutter_uxcam: c38cf6c3eced71c537ff75340678d6ea8cb7164e
-  UXCam: 47c2b1a152b1914b3eec06b39b0c3523d71ad8ad
+  flutter_uxcam: edadcf35f8da6bef6962324d9e56cd7849ed1f5f
+  UXCam: 7cc67adb0297303376037170d2d468452422e803
 
-PODFILE CHECKSUM: a3b6f034f0d79a209652621b979bc9d6707da7a1
+PODFILE CHECKSUM: 3c41d3a6488201d7e0d12c3265a22101f620ec8e
 
 COCOAPODS: 1.16.2

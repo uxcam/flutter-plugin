@@ -2,12 +2,9 @@ name: Publish Flutter Package
 
 on:
   workflow_dispatch:
-    inputs:
-      publish:
-        description: Publish flutter package to pub.dev
-        type: boolean
-        default: false
-        required: true
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 permissions: {}
 
@@ -36,12 +33,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Flutter 🎯
+      - name: Install Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: stable
 
-      - name: Install dependencies 📚
+      - name: Install dependencies
         run: flutter pub get
 
       - name: Read package version
@@ -51,19 +48,19 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Resolved version: v$version"
 
-      - name: Verify package (dry run)
+      - name: Verify package
         run: dart pub publish --dry-run
 
   publish:
     name: Publish to pub.dev
     needs: validate
-    if: ${{ inputs.publish }}
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    environment: "pub.dev"
+    environment: pub.dev
     permissions:
-      contents: write # create tag + GitHub Release
-      id-token: write # pub.dev OIDC publishing
+      contents: write
+      id-token: write
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
@@ -77,27 +74,41 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Install Flutter 🎯
+      - name: Configure pub.dev publishing credentials
+        uses: dart-lang/setup-dart@65eb853c7ba17dde3be364c3d2858773e7144260 # v1
+
+      - name: Install Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: stable
 
-      - name: Install dependencies 📚
+      - name: Install dependencies
         run: flutter pub get
 
-      - name: Publish to pub.dev 🚀
+      - name: Verify tag matches pubspec
+        run: |
+          expected_tag="v${{ needs.validate.outputs.version }}"
+          if [ "$GITHUB_REF_NAME" != "$expected_tag" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match pubspec version $expected_tag"
+            exit 1
+          fi
+
+      - name: Publish to pub.dev
         run: dart pub publish --force
 
       - name: Generate changelog
         id: changelog
         run: |
-          previous_tag="$(git describe --tags --abbrev=0 2>/dev/null || echo '')"
-          range="HEAD"
-          [ -n "$previous_tag" ] && range="${previous_tag}..HEAD"
+          current_commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
+          previous_tag="$(git describe --tags --abbrev=0 "${current_commit}^" 2>/dev/null || true)"
+          range="$current_commit"
+          if [ -n "$previous_tag" ]; then
+            range="${previous_tag}..${current_commit}"
+          fi
 
           logs="$(git log "$range" --no-merges --pretty=format:'%s' -i \
             --grep='^feat.*:' --grep='^fix.*:' \
-            | awk -F ':' '{ sub(/^ */, "", $2); print "- " $2 }')"
+            | awk -F ':' 'NF > 1 { sub(/^ */, "", $2); print "- " $2 }')"
 
           {
             echo "logs<<CHANGELOG_EOF"
@@ -106,26 +117,31 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "$logs"
 
-      - name: Create tag and GitHub Release
+      - name: Create GitHub Release
         id: release
         env:
-          VERSION: ${{ needs.validate.outputs.version }}
           BODY: ${{ steps.changelog.outputs.logs }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          url="$(gh release create "v$VERSION" \
-            --target "$GITHUB_SHA" \
-            --title "v$VERSION" \
-            --notes "$BODY" \
-            --latest)"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            url="$(gh release view "$GITHUB_REF_NAME" --json url -q .url)"
+          else
+            url="$(gh release create "$GITHUB_REF_NAME" \
+              --verify-tag \
+              --title "$GITHUB_REF_NAME" \
+              --notes "$BODY" \
+              --latest)"
+          fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Notify Slack
+        continue-on-error: true
         uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
         env:
-          PKG_VERSION: v${{ needs.validate.outputs.version }}
+          PKG_VERSION: ${{ github.ref_name }}
           CHANGELOG: ${{ steps.changelog.outputs.logs }}
           RELEASE_URL: ${{ steps.release.outputs.url }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -136,7 +152,7 @@ jobs:
               - type: section
                 text:
                   type: mrkdwn
-                  text: "<!here> UXCam Flutter Plugin *{{ env.PKG_VERSION }}* has been released. :rocket:"
+                  text: "<!here> UXCam Flutter Plugin *{{ env.PKG_VERSION }}* has been released."
               - type: section
                 fields:
                   - type: mrkdwn
