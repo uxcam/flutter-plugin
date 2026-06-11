@@ -10,6 +10,9 @@ class FlutterUXOverlay extends FlutterUXOcclusion {
   Color color = Colors.red;
   bool hideGestures = true;
 
+  int _colorChannel(double value) =>
+      (value * 255.0).round().clamp(0, 255).toInt();
+
   @override
   String get name =>
       'UXOcclusionTypeOverlay'; // not used.. only to make it compatible with blur
@@ -20,10 +23,10 @@ class FlutterUXOverlay extends FlutterUXOcclusion {
   @override
   Map<String, dynamic>? get configuration => {
         FlutterUxOverlayKeys.color: [
-          color.red,
-          color.green,
-          color.blue,
-          color.alpha
+          _colorChannel(color.r),
+          _colorChannel(color.g),
+          _colorChannel(color.b),
+          _colorChannel(color.a)
         ],
         FlutterUxOverlayKeys.hideGestures: hideGestures
       };
