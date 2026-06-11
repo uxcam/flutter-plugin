@@ -60,10 +60,8 @@ jobs:
     if: ${{ inputs.publish }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    environment: "pub.dev"
     permissions:
       contents: write # create tag + GitHub Release
-      id-token: write # pub.dev OIDC publishing
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
@@ -86,7 +84,12 @@ jobs:
         run: flutter pub get
 
       - name: Publish to pub.dev 🚀
-        run: dart pub publish --force
+        env:
+          PUB_CREDENTIALS: ${{ secrets.PUB_CREDENTIALS }}
+        run: |
+          mkdir -p "$HOME/.config/dart"
+          printf '%s' "$PUB_CREDENTIALS" | base64 --decode > "$HOME/.config/dart/pub-credentials.json"
+          dart pub publish --force
 
       - name: Generate changelog
         id: changelog
