@@ -10,7 +10,6 @@ import 'package:flutter_uxcam/src/models/flutter_occlusion.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/uxcam_config.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
-import 'package:flutter_uxcam/src/internal/motion_reporter.dart';
 import 'package:flutter_uxcam/uxcam.dart';
 import 'package:stack_trace/stack_trace.dart';
 
@@ -20,12 +19,6 @@ class FlutterUxcam {
   static UxCam? uxCam;
 
   static final UXCamSmartEvents _smartEvents = UXCamSmartEvents();
-
-  static void _setMotionReportingEnabled(bool enabled) {
-    if (!kIsWeb && Platform.isIOS) {
-      MotionReporter.instance.setEnabled(enabled);
-    }
-  }
 
   /// For getting platformVersion from Native Side.
   static Future<String> get platformVersion async {
@@ -39,10 +32,12 @@ class FlutterUxcam {
   /// Smart events are enabled by default. Set `config.enableSmartEvents = false` to disable.
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     WidgetsFlutterBinding.ensureInitialized();
-    if (!kIsWeb && Platform.isAndroid) {
-      // Ensure occlusion channel handler is registered before native polling.
+    if (!kIsWeb) {
+      // Ensure native callback handlers are registered before native polling.
       final _ = OcclusionRegistry.instance;
-      await _channel.invokeMethod('registerEngine');
+      if (Platform.isAndroid) {
+        await _channel.invokeMethod('registerEngine');
+      }
     }
 
     uxCam = UxCam();
@@ -53,7 +48,6 @@ class FlutterUxcam {
     if (status == true) {
       final enableSmartEvents = config.enableSmartEvents ?? true;
       _smartEvents.initialize(enableGestureTracking: enableSmartEvents);
-      _setMotionReportingEnabled(true);
     }
 
     return status!;
@@ -92,7 +86,6 @@ class FlutterUxcam {
   /// This method is used for starting new session
   static Future<void> startNewSession() async {
     await _channel.invokeMethod('startNewSession');
-    _setMotionReportingEnabled(true);
   }
 
   /// This method is used add a new rect that needs to be tracked
@@ -103,7 +96,6 @@ class FlutterUxcam {
   /// This method is used for stopping the current session
   /// and uploading the data to server
   static Future<void> stopSessionAndUploadData() async {
-    _setMotionReportingEnabled(false);
     await _channel.invokeMethod('stopSessionAndUploadData');
   }
 
@@ -233,12 +225,10 @@ class FlutterUxcam {
   /// This method is used for opting in to enable recording at runtime
   static Future<void> optInOverall() async {
     await _channel.invokeMethod('optInOverall');
-    _setMotionReportingEnabled(true);
   }
 
   /// This method is used for opting in to disable recording at runtime
   static Future<void> optOutOverall() async {
-    _setMotionReportingEnabled(false);
     await _channel.invokeMethod('optOutOverall');
   }
 
@@ -253,12 +243,10 @@ class FlutterUxcam {
   /// This method is used for opting in to enable video recording at runtime
   static Future<void> optIntoVideoRecording() async {
     await _channel.invokeMethod('optIntoVideoRecording');
-    _setMotionReportingEnabled(true);
   }
 
   /// This method is used for opting in to disable video recording at runtime
   static Future<void> optOutOfVideoRecording() async {
-    _setMotionReportingEnabled(false);
     await _channel.invokeMethod('optOutOfVideoRecording');
   }
 
@@ -282,7 +270,6 @@ class FlutterUxcam {
   static Future<void> optIntoSchematicRecordings() async {
     if (!kIsWeb && Platform.isIOS) {
       await _channel.invokeMethod('optIntoSchematicRecordings');
-      _setMotionReportingEnabled(true);
     }
   }
 
@@ -290,7 +277,6 @@ class FlutterUxcam {
   /// NOTE: This will not work for Android
   static Future<void> optOutOfSchematicRecordings() async {
     if (!kIsWeb && Platform.isIOS) {
-      _setMotionReportingEnabled(false);
       await _channel.invokeMethod('optOutOfSchematicRecordings');
     }
   }
@@ -310,7 +296,6 @@ class FlutterUxcam {
 
   /// This method is used for cancelling current running session.
   static Future<void> cancelCurrentSession() async {
-    _setMotionReportingEnabled(false);
     await _channel.invokeMethod('cancelCurrentSession');
   }
 
@@ -392,7 +377,6 @@ class FlutterUxcam {
 
   @Deprecated("Please use stopSessionAndUploadData() instead")
   static Future<void> stopApplicationAndUploadData() async {
-    _setMotionReportingEnabled(false);
     await _channel.invokeMethod('stopApplicationAndUploadData');
   }
 
