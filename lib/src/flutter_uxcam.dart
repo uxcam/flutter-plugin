@@ -32,10 +32,12 @@ class FlutterUxcam {
   /// Smart events are enabled by default. Set `config.enableSmartEvents = false` to disable.
   static Future<bool> startWithConfiguration(FlutterUxConfig config) async {
     WidgetsFlutterBinding.ensureInitialized();
-    if (!kIsWeb && Platform.isAndroid) {
-      // Ensure occlusion channel handler is registered before native polling.
+    if (!kIsWeb) {
+      // Ensure native callback handlers are registered before native polling.
       final _ = OcclusionRegistry.instance;
-      await _channel.invokeMethod('registerEngine');
+      if (Platform.isAndroid) {
+        await _channel.invokeMethod('registerEngine');
+      }
     }
 
     uxCam = UxCam();

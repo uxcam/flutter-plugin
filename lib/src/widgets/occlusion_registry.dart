@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../internal/motion_reporter.dart';
 import 'occlusion_models.dart';
 
 class OcclusionRegistry with WidgetsBindingObserver {
@@ -56,16 +57,25 @@ class OcclusionRegistry with WidgetsBindingObserver {
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'requestOcclusionRects':
+        _markNativeRecordingRequested();
         return _handleCachedRectsRequest();
       case 'requestAllOcclusionRects': //Currently iOS only
+        _markNativeRecordingRequested();
         return _handleCachedRectsRequest();
       case 'pauseRendering': //Currently iOS only
+        _markNativeRecordingRequested();
         return true;
       default:
         throw PlatformException(
           code: 'UNSUPPORTED',
           message: 'Method ${call.method} not supported',
         );
+    }
+  }
+
+  void _markNativeRecordingRequested() {
+    if (!kIsWeb && Platform.isIOS) {
+      MotionReporter.instance.markRecordingRequested();
     }
   }
 
