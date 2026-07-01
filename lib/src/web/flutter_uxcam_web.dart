@@ -147,18 +147,14 @@ class FlutterUxcamWeb {
         return null;
       case 'getMultiSessionRecord':
         return _multiSessionRecord;
+      //more advanced features are not supported on web, for more information, please check the documentation: https://developer.uxcam.com/docs/flutter-web-platform-support
       case 'setAutomaticScreenNameTagging':
-        return null;
       case 'pendingUploads':
-        return 0;
       case 'urlForCurrentUser':
       case 'urlForCurrentSession':
-        return null;
       case 'applyOcclusion':
       case 'removeOcclusion':
-        return false;
       case 'optInSchematicRecordingStatus':
-        return false;
       case 'attachBridge':
       case 'startNewSession':
       case 'addNewRect':
@@ -189,9 +185,15 @@ class FlutterUxcamWeb {
       case 'occludeRectWithCoordinates':
       case 'addFrameData':
       case 'registerEngine':
-        return null;
+        throw PlatformException(
+          code: 'UNSUPPORTED',
+          message: '${call.method} is not supported on web',
+        );
       default:
-        return null;
+        throw PlatformException(
+          code: 'NOT_IMPLEMENTED',
+          message: '${call.method} is not implemented',
+        );
     }
   }
 
