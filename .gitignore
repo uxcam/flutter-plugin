@@ -17,8 +17,7 @@ build
 
 # Swift Package Manager build artifacts
 ios/flutter_uxcam/.build/
-.swiftpm/
-Package.resolved
+ios/flutter_uxcam/.swiftpm/
 
 # Auto-generated plugin registrant files
 **/GeneratedPluginRegistrant.h

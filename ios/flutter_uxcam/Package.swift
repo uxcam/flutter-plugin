@@ -13,7 +13,10 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework"),
-        .package(url: "https://github.com/uxcam/uxcam-ios-sdk", from: "3.8.2")
+        .package(
+            url: "https://github.com/uxcam/uxcam-ios-sdk",
+            .upToNextMinor(from: "3.8.4")
+        )
     ],
     targets: [
         .target(
