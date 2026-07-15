@@ -1,4 +1,4 @@
-#import "FlutterUxcamPlugin.h"
+#import "./include/flutter_uxcam/FlutterUxcamPlugin.h"
 
 @import UXCam;
 
