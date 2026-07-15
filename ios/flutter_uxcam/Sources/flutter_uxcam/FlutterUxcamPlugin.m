@@ -55,7 +55,7 @@ static const NSString *FlutterChanelCallBackMethodResumeWithData = @"requestAllO
         }];
     
     [registrar addMethodCallDelegate:instance channel:channel];
-    [UXCam pluginType:@"flutter" version:@"2.9.0"];
+    [UXCam pluginType:@"flutter" version:@"2.8.4"];
 
 }
 
