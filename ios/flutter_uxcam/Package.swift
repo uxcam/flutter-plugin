@@ -14,8 +14,8 @@ let package = Package(
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework"),
         .package(
-            url: "https://github.com/uxcam/uxcam-ios-sdk",
-            .upToNextMinor(from: "3.8.4")
+            url: "https://github.com/uxcam/uxcam-ios",
+            .upToNextMinor(from: "3.10.0")
         )
     ],
     targets: [
@@ -23,7 +23,7 @@ let package = Package(
             name: "flutter_uxcam",
             dependencies: [
                 .product(name: "FlutterFramework", package: "FlutterFramework"),
-                .product(name: "UXCam", package: "uxcam-ios-sdk")
+                .product(name: "UXCam", package: "uxcam-ios")
             ],
             cSettings: [
                 .headerSearchPath("include/flutter_uxcam")
