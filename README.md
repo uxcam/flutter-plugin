@@ -6,6 +6,8 @@ UXCam plugin for Flutter.
 
 Open the `pubspec.yaml` file located inside your app folder and add `flutter_uxcam:` under dependencies.
 
+On iOS, Flutter 3.44 and later uses Swift Package Manager by default. The plugin also continues to support CocoaPods; both integrations use UXCam `3.8.x` and require iOS 13 or later.
+
 ## Usage
 Inside your dart file import flutter_uxcam like this
 
@@ -45,4 +47,4 @@ If you get this error while running in iOS
 >    [!] Automatically assigning platform `ios` with version `8.0` on target `Runner` because no platform was specified. Please specify a platform for this target in your
 >    Podfile. See `https://guides.cocoapods.org/syntax/podfile.html#platform`.
 
-Then inside `ios` folder in `pod` file uncomment this line `# platform :ios, '10.0'` by removing the `#`
+Then inside the `ios` folder, set the deployment target in the `Podfile` to iOS 13 or later, for example `platform :ios, '13.0'`.
