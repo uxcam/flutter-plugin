@@ -2,6 +2,7 @@
 
 | Version      | Changes                                |
 |---------------|--|
+| 2.9.1        | Updated iOS SDK to 3.10.1 and Android SDK to 3.10.8
 | 2.9.0        | Updated iOS SDK to 3.10.0 and Android SDK to 3.10.7                <br/> Added Support for SPM
 | 2.8.4        | Updated iOS SDK to 3.8.4 and Android SDK to 3.10.6
 | 2.8.3        | Updated iOS SDK to 3.8.3 and Android SDK to 3.10.3
