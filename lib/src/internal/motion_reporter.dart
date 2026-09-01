@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import 'uxcam_internal_channel.dart';
@@ -10,15 +11,21 @@ class MotionReporter {
 
   static final MotionReporter instance = MotionReporter._();
 
-  static const Duration _recordingRequestIdleTimeout = Duration(seconds: 2);
+  static const Duration _recordingRequestIdleTimeout = Duration(seconds: 5);
   static const Duration _discreteScrollActiveWindow =
       Duration(milliseconds: 100);
 
+  static const Duration _ballisticMaxDuration = Duration(milliseconds: 2000);
+
   bool _recordingRequested = false;
   bool _panZoomActive = false;
+  bool _ballisticActive = false;
   bool? _lastSentActive;
 
   Timer? _recordingIdleTimer;
+  Timer? _discreteScrollTimer;
+  Timer? _ballisticFallbackTimer;
+  int _ballisticDeadlineMs = 0;
   final Map<int, Offset> _pointerDownPositions = <int, Offset>{};
   final Set<int> _scrollingPointers = <int>{};
   int? _lastDiscreteScrollMs;
@@ -33,9 +40,22 @@ class MotionReporter {
     }
 
     _sendIfChanged(_currentMotionActive);
+    _armIdleTimer();
+  }
+
+  void stop() => _clearRecordingRequest();
+
+  void _armIdleTimer() {
     _recordingIdleTimer?.cancel();
-    _recordingIdleTimer =
-        Timer(_recordingRequestIdleTimeout, _clearRecordingRequest);
+    _recordingIdleTimer = Timer(_recordingRequestIdleTimeout, _onIdleTimeout);
+  }
+
+  void _onIdleTimeout() {
+    if (_currentMotionActive) {
+      _armIdleTimer();
+      return;
+    }
+    _clearRecordingRequest();
   }
 
   void _attachPointerRoute() {
@@ -59,6 +79,9 @@ class MotionReporter {
     _detachPointerRoute();
     _recordingIdleTimer?.cancel();
     _recordingIdleTimer = null;
+    _discreteScrollTimer?.cancel();
+    _discreteScrollTimer = null;
+    _endBallistic(notify: false);
     _pointerDownPositions.clear();
     _scrollingPointers.clear();
     _panZoomActive = false;
@@ -73,6 +96,7 @@ class MotionReporter {
     if (!_recordingRequested) return;
 
     if (event is PointerDownEvent) {
+      _endBallistic(notify: false);
       _pointerDownPositions[event.pointer] = event.position;
     } else if (event is PointerMoveEvent) {
       final down = _pointerDownPositions[event.pointer];
@@ -80,20 +104,64 @@ class MotionReporter {
         _scrollingPointers.add(event.pointer);
       }
     } else if (event is PointerUpEvent || event is PointerCancelEvent) {
+      final wasScrolling = _scrollingPointers.remove(event.pointer);
       _pointerDownPositions.remove(event.pointer);
-      _scrollingPointers.remove(event.pointer);
+      if (wasScrolling && event is PointerUpEvent) {
+        _beginBallistic();
+      }
     } else if (event is PointerPanZoomStartEvent ||
         event is PointerPanZoomUpdateEvent) {
       _panZoomActive = true;
     } else if (event is PointerPanZoomEndEvent) {
       _panZoomActive = false;
+      _beginBallistic();
     } else if (event is PointerScrollEvent) {
       _lastDiscreteScrollMs = DateTime.now().millisecondsSinceEpoch;
+      _discreteScrollTimer?.cancel();
+      _discreteScrollTimer = Timer(
+        _discreteScrollActiveWindow + const Duration(milliseconds: 10),
+        () => _sendIfChanged(_currentMotionActive),
+      );
+    }
+
+    _sendIfChanged(_currentMotionActive);
+  }
+
+  void _beginBallistic() {
+    _ballisticDeadlineMs = DateTime.now().millisecondsSinceEpoch +
+        _ballisticMaxDuration.inMilliseconds;
+    if (_ballisticActive) return;
+    _ballisticActive = true;
+    _ballisticFallbackTimer?.cancel();
+    _ballisticFallbackTimer = Timer(_ballisticMaxDuration, _endBallistic);
+    try {
+      SchedulerBinding.instance.addPostFrameCallback(_onBallisticFrame);
+    } catch (_) {}
+  }
+
+  void _onBallisticFrame(Duration _) {
+    if (!_ballisticActive) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now >= _ballisticDeadlineMs ||
+        !SchedulerBinding.instance.hasScheduledFrame) {
+      _endBallistic();
+      return;
+    }
+    SchedulerBinding.instance.addPostFrameCallback(_onBallisticFrame);
+  }
+
+  void _endBallistic({bool notify = true}) {
+    _ballisticFallbackTimer?.cancel();
+    _ballisticFallbackTimer = null;
+    if (!_ballisticActive) return;
+    _ballisticActive = false;
+    if (notify) {
+      _sendIfChanged(_currentMotionActive);
     }
   }
 
   bool get _currentMotionActive {
-    if (_scrollingPointers.isNotEmpty || _panZoomActive) {
+    if (_scrollingPointers.isNotEmpty || _panZoomActive || _ballisticActive) {
       return true;
     }
     final lastDiscreteScrollMs = _lastDiscreteScrollMs;
@@ -123,6 +191,11 @@ class MotionReporter {
     _detachPointerRoute();
     _recordingIdleTimer?.cancel();
     _recordingIdleTimer = null;
+    _discreteScrollTimer?.cancel();
+    _discreteScrollTimer = null;
+    _ballisticFallbackTimer?.cancel();
+    _ballisticFallbackTimer = null;
+    _ballisticActive = false;
     _pointerDownPositions.clear();
     _scrollingPointers.clear();
     _recordingRequested = false;

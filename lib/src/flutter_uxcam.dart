@@ -9,6 +9,8 @@ import 'package:flutter_uxcam/src/helpers/extensions.dart';
 import 'package:flutter_uxcam/src/models/flutter_occlusion.dart';
 import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/models/uxcam_config.dart';
+import 'package:flutter_uxcam/src/internal/motion_reporter.dart';
+import 'package:flutter_uxcam/src/internal/render_activity_reporter.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
 import 'package:flutter_uxcam/uxcam.dart';
 import 'package:stack_trace/stack_trace.dart';
@@ -48,6 +50,10 @@ class FlutterUxcam {
     if (status == true) {
       final enableSmartEvents = config.enableSmartEvents ?? true;
       _smartEvents.initialize(enableGestureTracking: enableSmartEvents);
+      if (!kIsWeb && Platform.isIOS) {
+        MotionReporter.instance.markRecordingRequested();
+        RenderActivityReporter.instance.start();
+      }
     }
 
     return status!;
@@ -86,6 +92,10 @@ class FlutterUxcam {
   /// This method is used for starting new session
   static Future<void> startNewSession() async {
     await _channel.invokeMethod('startNewSession');
+    if (!kIsWeb && Platform.isIOS) {
+      MotionReporter.instance.markRecordingRequested();
+      RenderActivityReporter.instance.start();
+    }
   }
 
   /// This method is used add a new rect that needs to be tracked
@@ -97,6 +107,10 @@ class FlutterUxcam {
   /// and uploading the data to server
   static Future<void> stopSessionAndUploadData() async {
     await _channel.invokeMethod('stopSessionAndUploadData');
+    if (!kIsWeb && Platform.isIOS) {
+      MotionReporter.instance.stop();
+      RenderActivityReporter.instance.stop();
+    }
   }
 
   /// This method is used with parameter to occlude following screen
@@ -225,11 +239,19 @@ class FlutterUxcam {
   /// This method is used for opting in to enable recording at runtime
   static Future<void> optInOverall() async {
     await _channel.invokeMethod('optInOverall');
+    if (!kIsWeb && Platform.isIOS) {
+      MotionReporter.instance.markRecordingRequested();
+      RenderActivityReporter.instance.start();
+    }
   }
 
   /// This method is used for opting in to disable recording at runtime
   static Future<void> optOutOverall() async {
     await _channel.invokeMethod('optOutOverall');
+    if (!kIsWeb && Platform.isIOS) {
+      MotionReporter.instance.stop();
+      RenderActivityReporter.instance.stop();
+    }
   }
 
   /// This method is used for opting in to enable recording at runtime
@@ -297,6 +319,10 @@ class FlutterUxcam {
   /// This method is used for cancelling current running session.
   static Future<void> cancelCurrentSession() async {
     await _channel.invokeMethod('cancelCurrentSession');
+    if (!kIsWeb && Platform.isIOS) {
+      MotionReporter.instance.stop();
+      RenderActivityReporter.instance.stop();
+    }
   }
 
   /// This method is used for pausing session when navigating to another app
@@ -378,6 +404,10 @@ class FlutterUxcam {
   @Deprecated("Please use stopSessionAndUploadData() instead")
   static Future<void> stopApplicationAndUploadData() async {
     await _channel.invokeMethod('stopApplicationAndUploadData');
+    if (!kIsWeb && Platform.isIOS) {
+      MotionReporter.instance.stop();
+      RenderActivityReporter.instance.stop();
+    }
   }
 
   /// This method will return url for current user

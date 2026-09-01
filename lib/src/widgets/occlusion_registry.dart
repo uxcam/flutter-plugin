@@ -1,12 +1,25 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../internal/motion_reporter.dart';
 import 'occlusion_models.dart';
+
+double _scenePixelRatioForTarget({
+  required Size logicalSize,
+  required double devicePixelRatio,
+  double? targetWidth,
+}) {
+  if (targetWidth == null || targetWidth <= 0) return devicePixelRatio;
+  return (targetWidth / logicalSize.width)
+      .clamp(0.05, devicePixelRatio)
+      .toDouble();
+}
 
 class OcclusionRegistry with WidgetsBindingObserver {
   OcclusionRegistry._() {
@@ -62,15 +75,92 @@ class OcclusionRegistry with WidgetsBindingObserver {
       case 'requestAllOcclusionRects': //Currently iOS only
         _markNativeRecordingRequested();
         return _handleCachedRectsRequest();
-      case 'pauseRendering': //Currently iOS only
+      case 'requestSceneFrame': //Currently iOS only
         _markNativeRecordingRequested();
-        return true;
+        return _handleSceneFrameRequest(call.arguments);
       default:
         throw PlatformException(
           code: 'UNSUPPORTED',
           message: 'Method ${call.method} not supported',
         );
     }
+  }
+
+  Future<Map<String, dynamic>> _handleSceneFrameRequest(
+      dynamic arguments) async {
+    final args = arguments is Map ? arguments : const <String, Object?>{};
+    final targetWidth = (args['targetWidth'] as num?)?.toDouble();
+    final includePixels = args['includePixels'] != false;
+
+    RenderView? renderView;
+    for (final view in RendererBinding.instance.renderViews) {
+      renderView = view;
+      break;
+    }
+
+    final logicalSize =
+        renderView?.hasConfiguration == true ? renderView!.size : Size.zero;
+    final response = <String, dynamic>{
+      'rects': _handleCachedRectsRequest(),
+      'coordinateSpace': 'sourceLogicalPoints',
+      if (!logicalSize.isEmpty) ...{
+        'referenceWidth': logicalSize.width,
+        'referenceHeight': logicalSize.height,
+      },
+    };
+
+    if (!includePixels || renderView == null || logicalSize.isEmpty) {
+      return response;
+    }
+
+    try {
+      // ignore: invalid_use_of_protected_member
+      final rootLayer = renderView.layer;
+      if (rootLayer is! OffsetLayer || !rootLayer.attached) return response;
+      if (_containsPlatformViewLayer(rootLayer)) return response;
+
+      final dpr = renderView.flutterView.devicePixelRatio;
+      if (!(dpr > 0)) return response;
+      final scale = _scenePixelRatioForTarget(
+        logicalSize: logicalSize,
+        devicePixelRatio: dpr,
+        targetWidth: targetWidth,
+      );
+      final image = await rootLayer.toImage(
+        Offset.zero & (logicalSize * dpr),
+        pixelRatio: scale / dpr,
+      );
+      try {
+        final byteData =
+            await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        if (byteData == null) return response;
+        response.addAll(<String, dynamic>{
+          'bytes': byteData.buffer.asUint8List(
+            byteData.offsetInBytes,
+            byteData.lengthInBytes,
+          ),
+          'pixelWidth': image.width,
+          'pixelHeight': image.height,
+          'logicalWidth': logicalSize.width,
+          'logicalHeight': logicalSize.height,
+        });
+      } finally {
+        image.dispose();
+      }
+    } catch (_) {}
+    return response;
+  }
+
+  bool _containsPlatformViewLayer(Layer layer) {
+    if (layer is PlatformViewLayer) return true;
+    if (layer is ContainerLayer) {
+      for (Layer? child = layer.firstChild;
+          child != null;
+          child = child.nextSibling) {
+        if (_containsPlatformViewLayer(child)) return true;
+      }
+    }
+    return false;
   }
 
   void _markNativeRecordingRequested() {
@@ -170,10 +260,10 @@ class OcclusionRegistry with WidgetsBindingObserver {
     final dpr = entry.devicePixelRatio ?? 1.0;
     if (!kIsWeb && Platform.isIOS) {
       return {
-        'x0': bounds.left.toInt(),
-        'y0': bounds.top.toInt(),
-        'x1': bounds.right.toInt(),
-        'y1': bounds.bottom.toInt(),
+        'x0': bounds.left.floor(),
+        'y0': bounds.top.floor(),
+        'x1': bounds.right.ceil(),
+        'y1': bounds.bottom.ceil(),
       };
     }
     return {
