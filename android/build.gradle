@@ -37,9 +37,15 @@ android {
     lintOptions {
         disable 'InvalidPackage'
     }
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
 }
 
 dependencies {
     //To use the alpha version please use the following dependency pattern: implementation 'com.uxcam:uxcam-debug:<sdk-version>-alpha.1+<branch-commit-hash>'
     implementation 'com.uxcam:uxcam:3.10.10'
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.11.1'
 }
