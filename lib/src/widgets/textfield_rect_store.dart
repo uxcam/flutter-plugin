@@ -24,12 +24,20 @@ import 'textfield_occlude_render_box.dart';
 ///    last bounds are served for [graceTtlMs] so a capture that races the
 ///    detach never shows the field unmasked mid-frame.
 class TextFieldRectStore {
-  TextFieldRectStore({int Function()? clock}) : _clock = clock ?? _wallClock;
+  TextFieldRectStore({this.captureCoherent = false, int Function()? clock})
+      : _clock = clock ?? _wallClock;
 
   static int _wallClock() => DateTime.now().millisecondsSinceEpoch;
 
   /// How long a detached field's last bounds keep being served.
   static const int graceTtlMs = 500;
+
+  /// See [TextFieldOccludeRenderBox.captureCoherent]. Also retires the detach
+  /// grace: a grace rect covers a capture that raced a detach, and with the scan
+  /// running inside the capture there is no race to cover — a field absent from
+  /// the tree is absent from the pixels too, so serving its last position would
+  /// mask a region the frame no longer shows.
+  final bool captureCoherent;
 
   final int Function() _clock;
 
@@ -62,6 +70,7 @@ class TextFieldRectStore {
       bucket.adapters[id] = TextFieldOccludeRenderBox(
         field.box,
         addPadding: field.isBareEditable,
+        captureCoherent: captureCoherent,
         clock: _clock,
       );
       _adapterScreen[id] = activeScreenKey;
@@ -80,7 +89,8 @@ class TextFieldRectStore {
     _buckets.forEach((key, bucket) {
       bucket.adapters.removeWhere((id, adapter) {
         if (!adapter.attached || !adapter.hasSize) {
-          final last = adapter.getUnionOfHistoricalBounds();
+          final last =
+              captureCoherent ? null : adapter.getUnionOfHistoricalBounds();
           if (last != null && last.width > 0 && last.height > 0) {
             bucket.graceRects.add(_GraceRect(
               id: id,
