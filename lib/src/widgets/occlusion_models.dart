@@ -17,6 +17,7 @@ abstract class OcclusionReportingRenderBox {
   Rect? getUnionOfHistoricalBounds();
   void recalculateBounds();
   void updateBoundsFromTransform();
+  void clearHistoricalBounds();
 }
 
 

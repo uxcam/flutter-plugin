@@ -131,6 +131,12 @@ class OccludeRenderBox extends RenderProxyBox
     super.paint(context, offset);
   }
 
+  @override
+  void clearHistoricalBounds() {
+    _timestampedBounds.clear();
+    _lastReportedBounds = null;
+  }
+
   /// Layer-level opacity is not visible from the render tree, so it stays a
   /// separate check alongside [resolveOcclusionGeometry]'s render-tree verdict.
   bool _isHiddenByLayerOpacity() {
