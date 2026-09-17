@@ -14,6 +14,7 @@ buildscript {
 
 rootProject.allprojects {
     repositories {
+        mavenLocal()
         google()
         mavenCentral()
         maven {
@@ -44,7 +45,10 @@ android {
 
 dependencies {
     //To use the alpha version please use the following dependency pattern: implementation 'com.uxcam:uxcam-debug:<sdk-version>-alpha.1+<branch-commit-hash>'
-    implementation 'com.uxcam:uxcam:3.10.10'
+    // RELEASE BLOCKER: points at a mavenLocal alpha because the scene-frame surface
+    // (SceneFrameRequestListener / SceneFrameResponse) is not published yet. Replace with the
+    // released 'com.uxcam:uxcam:<version>' that ships it, and drop mavenLocal() above, before merge.
+    implementation 'com.uxcam:uxcam-debug:3.10.9-alpha.1'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.11.1'
