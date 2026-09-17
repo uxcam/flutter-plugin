@@ -27,6 +27,9 @@ class MyApp extends StatelessWidget {
 
     FlutterUxcam.startWithConfiguration(config);
 
+    // Automatically occlude every TextField in the app.
+    FlutterUxcam.occludeAllTextFields(true);
+
     return const MaterialApp(home: UXCamPage());
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -9,6 +10,11 @@ import 'package:flutter/widgets.dart';
 
 import '../internal/motion_reporter.dart';
 import 'occlusion_models.dart';
+import 'focus_tree_detector.dart';
+import 'occlusion_rect_codec.dart';
+import 'textfield_detector.dart';
+import 'textfield_occlusion_policy.dart';
+import 'textfield_rect_store.dart';
 
 double _scenePixelRatioForTarget({
   required Size logicalSize,
@@ -21,17 +27,92 @@ double _scenePixelRatioForTarget({
       .toDouble();
 }
 
+/// Coordinates the two occlusion domains and their native transport:
+///
+///  * **Wrapper/config occlusion** — `OccludeRenderBox` widgets and
+///    config-driven overlay/blur rects, tracked in [_entries].
+///  * **Auto text-field occlusion** — driven by [TextFieldOcclusionPolicy]
+///    (API + native-pushed config), discovered by a [TextFieldDetector], and
+///    held/served by a [TextFieldRectStore].
+///
+/// The registry itself owns only the method-channel endpoints, the frame
+/// scheduling and the wrapper-entry lifecycle.
+///
+/// Text-field rects are sampled ahead of the capture request: tier-1 bounds
+/// refresh every produced frame, tier-2 discovery walks bounded to
+/// [_discoveryIntervalMs] or forced on screen/metrics/focus/policy changes,
+/// with a sliding window and motion margin covering the gap between the last
+/// sample and the screenshot.
 class OcclusionRegistry with WidgetsBindingObserver {
   OcclusionRegistry._() {
     WidgetsBinding.instance.addObserver(this);
     _setupMethodChannelHandler();
     _setupPersistentFrameCallback();
+    FocusManager.instance.addListener(_onFocusChanged);
+  }
+
+  /// A route or dialog appearing takes focus, and that lands one frame earlier
+  /// than the [_discoveryIntervalMs] throttle would otherwise allow discovery to
+  /// run — which is the difference between masking a dialog's field from its
+  /// first painted frame and leaving it exposed for the first three.
+  ///
+  /// Cheap to honour: the focus tree is what the detector walks anyway, and the
+  /// forced-discovery counter is idempotent. Skipped entirely when the feature is
+  /// off, so a focus change never wakes the engine for nothing.
+  void _onFocusChanged() {
+    if (_effectiveTextFields) _armForcedDiscovery();
   }
 
   static final OcclusionRegistry instance = OcclusionRegistry._();
 
   static const _detachedTtlMs = 1500;
 
+  /// Minimum interval between full render-tree discovery walks (tier-2).
+  /// Discovery is forced on the next frame after screen changes, metrics changes,
+  /// focus changes (a route or dialog appearing takes focus) and policy
+  /// enablement, so a brand-new field is still found in its first painted frame.
+  static const _discoveryIntervalMs = 48;
+
+  /// A one-shot force is not enough: on the frame after a push the incoming route
+  /// is mid-build and its fields are not in the tree yet.
+  static const _forceDiscoveryFrameCount = 4;
+
+  /// Its only consumer is the 100 ms sliding-window union, which needs a handful of
+  /// samples rather than one per frame. Kept well below that window and the 500 ms
+  /// detach grace so neither loses resolution.
+  static const _boundsIntervalMs = 33;
+
+  Timer? _metricsChangeTimer;
+  bool _metricsChanging = false;
+
+  final TextFieldOcclusionPolicy _policy = TextFieldOcclusionPolicy();
+
+  /// Lever 4: sourced from the focus tree rather than the render tree. Swapping
+  /// this line is the whole change — the registry never needed to know which
+  /// detector it holds, which is what the [TextFieldDetector] abstraction was for.
+  final TextFieldDetector _detector = FocusTreeDetector();
+  final OcclusionRectCodec _codec = OcclusionRectCodec();
+  TextFieldRectStore _textFieldStore = TextFieldRectStore();
+
+  /// Snapshot of `_policy.effective` so transitions (on→off) can clear the
+  /// store exactly once.
+  bool _effectiveTextFields = false;
+
+  int _forceDiscoveryFrames = 0;
+  int _lastDiscoveryMs = 0;
+  int _lastBoundsMs = 0;
+
+  /// Injectable so tests can drive the cadences, which are in real milliseconds
+  /// while `tester.pump` advances only the test clock.
+  int Function() _clock = _wallClock;
+
+  static int _wallClock() => DateTime.now().millisecondsSinceEpoch;
+
+  /// Reused across scans to avoid per-frame map allocation during animations.
+  final Map<int, DiscoveredField> _discoveredBuffer = {};
+
+  /// Common occlusion — the wrapper-widget (`OccludeRenderBox`) and
+  /// config-driven overlay/blur rects.
   final Map<int, _OcclusionEntry> _entries = {};
 
   static const MethodChannel _requestChannel =
@@ -39,6 +120,74 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   static const MethodChannel _requestChannelIOS =
       MethodChannel('flutter_uxcam');
+
+  /// Manual API switch (`FlutterUxcam.occludeAllTextFields`). One of three
+  /// additive sources: it switches masking on, and cannot switch off what the
+  /// verification configuration or the native per-capture value asks for —
+  /// matching both native SDKs, where no source can reduce another's occlusion.
+  set occludeAllTextFields(bool value) {
+    _policy.manualBase = value;
+    _onPolicyChanged();
+  }
+
+  /// Drops the verification/dashboard layer so a statement from a finished
+  /// session cannot keep masking a later one. The registry is a process-wide
+  /// singleton, so nothing else expires it. Called from
+  /// `FlutterUxcam.startWithConfiguration`.
+  ///
+  /// The manual layer is deliberately preserved: the developer's call survives a
+  /// session restart, as it does natively.
+  void resetConfigurationLayer() {
+    if (_policy.clearConfiguration()) _onPolicyChanged();
+  }
+
+  /// The current screen name, sourced from Flutter (automatic route tagging via
+  /// `FlutterUxcamNavigatorObserver`, or manual `FlutterUxcam.tagScreenName`).
+  /// Drives the per-screen exclusion rules and the per-screen bucketing.
+  set currentScreenName(String? value) {
+    if (_policy.currentScreen == value) return;
+    _policy.currentScreen = value;
+    _armForcedDiscovery();
+    _onPolicyChanged();
+  }
+
+  String get _activeScreenKey => _policy.currentScreen ?? '__uxcam_current__';
+
+  /// Requests a frame as well as arming the counter: on a settled screen Flutter
+  /// produces no frames, so a forced discovery would otherwise never run.
+  void _armForcedDiscovery() {
+    _forceDiscoveryFrames = _forceDiscoveryFrameCount;
+    SchedulerBinding.instance.scheduleFrame();
+  }
+
+  /// Re-evaluates the effective decision after any policy input changed. When
+  /// occlusion turns off (disabled, or navigated to an excluded screen), the
+  /// held rects are dropped immediately so stale masks never outlive the
+  /// decision; when it turns on, discovery is forced onto the next frame.
+  void _onPolicyChanged() {
+    final effective = _policy.effective;
+    if (_effectiveTextFields && !effective) {
+      _textFieldStore.clear();
+    } else if (!_effectiveTextFields && effective) {
+      _armForcedDiscovery();
+    }
+    _effectiveTextFields = effective;
+  }
+
+  /// Keyboard show/hide, rotation and window resize all fire here. Layout takes
+  /// a few frames to settle, during which per-frame bounds would jump around,
+  /// so wrapper occlusion freezes to its last-known bounds for a short window.
+  /// Text-field discovery is *forced* instead of frozen — see [_onFrame].
+  @override
+  void didChangeMetrics() {
+    _metricsChanging = true;
+    _metricsChangeTimer?.cancel();
+    _clearSlidingWindows();
+    _armForcedDiscovery();
+    _metricsChangeTimer = Timer(const Duration(milliseconds: 500), () {
+      _metricsChanging = false;
+    });
+  }
 
   void _setupMethodChannelHandler() {
     _requestChannel.setMethodCallHandler(_handleMethodCall);
@@ -53,12 +202,49 @@ class OcclusionRegistry with WidgetsBindingObserver {
     SchedulerBinding.instance.addPersistentFrameCallback(_onFrame);
   }
 
-  void _onFrame(Duration timestamp) {
-    if (_entries.isEmpty) return;
+  bool _discover(int nowMs) {
+    final views = WidgetsBinding.instance.renderViews;
+    if (views.isEmpty) return false;
 
-    final snapshot = _entries.values.toList();
+    if (_forceDiscoveryFrames > 0) _forceDiscoveryFrames--;
+    _lastDiscoveryMs = nowMs;
+    _discoveredBuffer.clear();
+    _detector.collect(views.first, _discoveredBuffer);
+    _textFieldStore.reconcile(_activeScreenKey, _discoveredBuffer);
+    return true;
+  }
 
-    for (final entry in snapshot) {
+  /// Discovers unconditionally before answering a capture, so the served set can
+  /// never be a screen behind the tree.
+  ///
+  /// Frame-driven discovery is throttled to [_discoveryIntervalMs] and only runs
+  /// when Flutter produces a frame at all, so both paths can leave the store
+  /// stale at the instant that matters. During a fling, list items build as they
+  /// scroll in: a field that appeared since the last scan had no adapter, and the
+  /// only rects on offer were the detach-grace ghosts of the items it replaced —
+  /// masks sitting a full scroll step behind, on every field on screen. Nothing
+  /// downstream could recover that; the field simply was not being tracked.
+  ///
+  /// Affordable because discovery walks the focus tree rather than the render
+  /// tree (see [FocusTreeDetector]) — a handful of nodes per field — and captures
+  /// arrive a couple of times a second, not at frame rate.
+  void _discoverForCapture() {
+    if (!_effectiveTextFields) return;
+    final nowMs = _clock();
+    if (!_discover(nowMs)) return;
+    _lastBoundsMs = nowMs;
+    // Detach bookkeeping only: `serializeRects` re-resolves each live adapter's
+    // bounds itself, so resolving them here too would walk every field's ancestor
+    // chain twice per capture.
+    _textFieldStore.updateBounds(refreshBounds: false);
+  }
+
+  /// Wrapper/config occlusion freezes its bounds updates while window metrics
+  /// settle (keyboard show/hide, rotation) to avoid jitter — it keeps serving
+  /// its last-known bounds from cache during the freeze.
+  void _refreshWrapperEntries() {
+    if (_metricsChanging) return;
+    for (final entry in _entries.values.toList()) {
       final box = entry.box;
       if (entry.attached && box != null && box.attached && box.hasSize) {
         box.updateBoundsFromTransform();
@@ -67,17 +253,62 @@ class OcclusionRegistry with WidgetsBindingObserver {
     }
   }
 
+  void _onFrame(Duration timestamp) {
+    if (_entries.isEmpty && !_effectiveTextFields && _textFieldStore.isEmpty) {
+      return;
+    }
+
+    _refreshWrapperEntries();
+
+    // Text-field pipeline. Discovery must NOT pause during a metrics change: a
+    // screen that auto-focuses a field brings up the keyboard at the very
+    // instant it appears, so a freeze would leave that brand-new field unmasked
+    // for the whole settling window. The mask simply tracks the field as the
+    // keyboard animates, which is the safe behavior for a privacy overlay.
+    final nowMs = _clock();
+    var discovered = false;
+
+    if (_effectiveTextFields &&
+        (_forceDiscoveryFrames > 0 ||
+            nowMs - _lastDiscoveryMs >= _discoveryIntervalMs)) {
+      discovered = _discover(nowMs);
+    }
+
+    // Detach bookkeeping runs every frame; only the expensive chain resolution is
+    // throttled. Discovery frames always refresh so a new field is never left
+    // without bounds.
+    final refreshBounds =
+        discovered || nowMs - _lastBoundsMs >= _boundsIntervalMs;
+    if (refreshBounds) {
+      _lastBoundsMs = nowMs;
+    }
+
+    _textFieldStore.updateBounds(refreshBounds: refreshBounds);
+  }
+
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'requestOcclusionRects':
-        _markNativeRecordingRequested();
-        return _handleCachedRectsRequest();
       case 'requestAllOcclusionRects': //Currently iOS only
+        _applyNativeOcclusionSettings(call.arguments);
         _markNativeRecordingRequested();
         return _handleCachedRectsRequest();
       case 'requestSceneFrame': //Currently iOS only
+        _applyNativeOcclusionSettings(call.arguments);
         _markNativeRecordingRequested();
         return _handleSceneFrameRequest(call.arguments);
+      case 'updateOcclusionConfiguration':
+        // Pushed by native (over the existing bridge channel — no public API)
+        // when the session verification resolves or the occlusion config
+        // changes. Establishes the text-field occlusion state in Flutter memory
+        // as early as possible, so the first screen with text fields is already
+        // being scanned instead of waiting for the first capture cycle. This is
+        // the CONFIG layer, which carries the dashboard's screen scope as well as
+        // the flag. Android sends it; iOS does not, so there a verification
+        // response reaches Flutter only through the per-capture flag on the three
+        // capture methods above (see `TextFieldOcclusionPolicy`).
+        _applyNativeOcclusionSettings(call.arguments, isConfigSource: true);
+        return true;
       default:
         throw PlatformException(
           code: 'UNSUPPORTED',
@@ -92,14 +323,13 @@ class OcclusionRegistry with WidgetsBindingObserver {
     final targetWidth = (args['targetWidth'] as num?)?.toDouble();
     final includePixels = args['includePixels'] != false;
 
-    RenderView? renderView;
-    for (final view in RendererBinding.instance.renderViews) {
-      renderView = view;
-      break;
-    }
+    final renderViews = RendererBinding.instance.renderViews;
+    final RenderView? renderView =
+        renderViews.isEmpty ? null : renderViews.first;
 
     final logicalSize =
         renderView?.hasConfiguration == true ? renderView!.size : Size.zero;
+
     final response = <String, dynamic>{
       'rects': _handleCachedRectsRequest(),
       'coordinateSpace': 'sourceLogicalPoints',
@@ -163,6 +393,14 @@ class OcclusionRegistry with WidgetsBindingObserver {
     return false;
   }
 
+  void _applyNativeOcclusionSettings(dynamic arguments,
+      {bool isConfigSource = false}) {
+    if (_policy.applyNativeSettings(arguments,
+        isConfigSource: isConfigSource)) {
+      _onPolicyChanged();
+    }
+  }
+
   void _markNativeRecordingRequested() {
     if (!kIsWeb && Platform.isIOS) {
       MotionReporter.instance.markRecordingRequested();
@@ -170,7 +408,9 @@ class OcclusionRegistry with WidgetsBindingObserver {
   }
 
   List<Map<String, dynamic>> _handleCachedRectsRequest() {
-    final requestTimestamp = DateTime.now().millisecondsSinceEpoch;
+    _discoverForCapture();
+
+    final requestTimestamp = _clock();
 
     _expireStaleEntries(requestTimestamp);
 
@@ -178,14 +418,20 @@ class OcclusionRegistry with WidgetsBindingObserver {
     final snapshot = _entries.values.toList();
 
     for (final entry in snapshot) {
+      if (_metricsChanging) {
+        final bounds = entry.lastBounds;
+        if (bounds != null && bounds.width > 0 && bounds.height > 0) {
+          rects.add(_rectDataFromEntry(entry, bounds));
+        }
+        continue;
+      }
       if (entry.attached) {
         final box = entry.box;
         if (box == null || !box.attached || !box.hasSize) {
           final canUseCache = entry.lastBounds != null &&
               (requestTimestamp - entry.lastUpdatedMs) <= _detachedTtlMs;
           if (canUseCache) {
-            final rectData = _rectDataFromEntry(entry, entry.lastBounds!);
-            rects.add(rectData);
+            rects.add(_rectDataFromEntry(entry, entry.lastBounds!));
           }
           continue;
         }
@@ -198,17 +444,22 @@ class OcclusionRegistry with WidgetsBindingObserver {
         }
 
         _refreshEntryFromBox(entry, box, overrideBounds: bounds);
-        final rectData = _rectDataFromEntry(entry, bounds);
-        rects.add(rectData);
+        rects.add(_rectDataFromEntry(entry, bounds));
       } else {
         final bounds = entry.lastBounds;
         if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
           continue;
         }
-        final rectData = _rectDataFromEntry(entry, bounds);
-        rects.add(rectData);
+        rects.add(_rectDataFromEntry(entry, bounds));
       }
     }
+
+    // Append the auto text-field rects: live adapter state + short-grace ghosts
+    // serialized on the spot — O(#fields), no tree walk or layout work, so the
+    // request path stays cheap even while the main isolate is busy building a
+    // screen (which is when the native request would otherwise time out and
+    // emit an unmasked frame).
+    rects.addAll(_textFieldStore.serializeRects(_codec));
 
     return rects;
   }
@@ -232,7 +483,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
       ..attached = false
       ..box = null
       ..lastBounds = box.getUnionOfHistoricalBounds()
-      ..lastUpdatedMs = DateTime.now().millisecondsSinceEpoch
+      ..lastUpdatedMs = _clock()
       ..devicePixelRatio = box.devicePixelRatio
       ..viewId = box.viewId
       ..type = box.currentType;
@@ -242,45 +493,77 @@ class OcclusionRegistry with WidgetsBindingObserver {
     _entries.remove(box.stableId);
   }
 
+  void _clearSlidingWindows() {
+    for (final entry in _entries.values) {
+      entry.box?.clearHistoricalBounds();
+    }
+    _textFieldStore.clearSlidingWindows();
+  }
+
   void _refreshEntryFromBox(
     _OcclusionEntry entry,
     OcclusionReportingRenderBox box, {
     Rect? overrideBounds,
   }) {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = _clock();
+    final newBounds = overrideBounds ?? box.currentBounds;
     entry
-      ..lastBounds = overrideBounds ?? box.currentBounds
+      ..lastBounds = newBounds ?? entry.lastBounds
       ..lastUpdatedMs = now
       ..devicePixelRatio = box.devicePixelRatio
       ..viewId = box.viewId
       ..type = box.currentType;
   }
 
-  Map<String, dynamic> _rectDataFromEntry(_OcclusionEntry entry, Rect bounds) {
-    final dpr = entry.devicePixelRatio ?? 1.0;
-    if (!kIsWeb && Platform.isIOS) {
-      return {
-        'x0': bounds.left.floor(),
-        'y0': bounds.top.floor(),
-        'x1': bounds.right.ceil(),
-        'y1': bounds.bottom.ceil(),
-      };
-    }
-    return {
-      'id': entry.id,
-      'left': (bounds.left * dpr).roundToDouble(),
-      'top': (bounds.top * dpr).roundToDouble(),
-      'right': (bounds.right * dpr).roundToDouble(),
-      'bottom': (bounds.bottom * dpr).roundToDouble(),
-      'type': (entry.type ?? OcclusionType.overlay).index,
-    };
-  }
+  Map<String, dynamic> _rectDataFromEntry(_OcclusionEntry entry, Rect bounds) =>
+      _codec.encode(entry.id, bounds, entry.devicePixelRatio ?? 1.0,
+          entry.type ?? OcclusionType.overlay);
 
   void _expireStaleEntries(int nowMs) {
     _entries.removeWhere(
       (_, entry) =>
           !entry.attached && (nowMs - entry.lastUpdatedMs) > _detachedTtlMs,
     );
+  }
+
+  /// Replaces the text-field store (e.g. with an injected fake clock) so
+  /// widget tests can control grace expiry deterministically.
+  @visibleForTesting
+  void debugReplaceTextFieldStore(TextFieldRectStore store) {
+    _textFieldStore = store;
+  }
+
+  @visibleForTesting
+  TextFieldOcclusionPolicy get debugTextFieldPolicy => _policy;
+
+  /// Overrides the wall clock so tests can drive the discovery and bounds
+  /// cadences deterministically.
+  @visibleForTesting
+  void debugSetClock(int Function() clock) => _clock = clock;
+
+  /// The live store, so a test can tell "discovery has not run" apart from
+  /// "discovery ran and found nothing".
+  @visibleForTesting
+  TextFieldRectStore get debugTextFieldStore => _textFieldStore;
+
+  /// Resets the auto text-field state between tests. The registry is a
+  /// singleton, so without this, policy/store state leaks across test cases.
+  @visibleForTesting
+  void resetTextFieldStateForTesting() {
+    _policy
+      ..manualBase = null
+      ..configBase = null
+      ..frameBase = null
+      ..screens = const []
+      ..excludeMentionedScreens = false
+      ..currentScreen = null;
+    _effectiveTextFields = false;
+    _forceDiscoveryFrames = 0;
+    _lastDiscoveryMs = 0;
+    _textFieldStore = TextFieldRectStore();
+    _discoveredBuffer.clear();
+    _lastBoundsMs = 0;
+    _clock = _wallClock;
   }
 }
 

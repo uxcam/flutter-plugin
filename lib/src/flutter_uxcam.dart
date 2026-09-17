@@ -37,6 +37,10 @@ class FlutterUxcam {
     if (!kIsWeb) {
       // Ensure native callback handlers are registered before native polling.
       final _ = OcclusionRegistry.instance;
+      // The registry is a process-wide singleton: drop the previous session's
+      // verification/dashboard occlusion statement so it cannot keep masking
+      // this one. The developer's `occludeAllTextFields` call is preserved.
+      OcclusionRegistry.instance.resetConfigurationLayer();
       if (Platform.isAndroid) {
         await _channel.invokeMethod('registerEngine');
       }
@@ -146,8 +150,18 @@ class FlutterUxcam {
 
   /// This method is used for hiding all TextFields
   ///
+  /// Masks Flutter-drawn text fields as well as native ones.
+  ///
+  /// Passing `true` always takes effect. Passing `false` switches off only what
+  /// this call turned on: it cannot cancel text-field occlusion that the
+  /// dashboard/verification settings enabled for the session, matching the native
+  /// SDKs, where a server-supplied rule outranks the runtime call and there is no
+  /// server-supplied "do not occlude". Where the dashboard carries no text-field
+  /// setting, this call is the sole control.
+  ///
   /// [value] is boolean.
   static Future<void> occludeAllTextFields(bool value) async {
+    OcclusionRegistry.instance.occludeAllTextFields = value;
     await _channel.invokeMethod('occludeAllTextFields', {"key": value});
   }
 
@@ -161,6 +175,11 @@ class FlutterUxcam {
   ///
   /// * See: [Flutter Tagging Approach](https://developer.uxcam.com/docs/flutter-tagging-approach)
   static Future<void> tagScreenName(String screenName) async {
+    // Feed the current screen to the occlusion registry so per-screen text-field
+    // rules (e.g. verification's excludeScreens) evaluate against Flutter's own
+    // screen name. This is the single choke point for both automatic tagging
+    // (via FlutterUxcamNavigatorObserver) and manual tagging.
+    OcclusionRegistry.instance.currentScreenName = screenName;
     await _channel.invokeMethod('tagScreenName', {"key": screenName});
   }
 
