@@ -6,6 +6,7 @@ export './src/flutter_uxcam_observer.dart';
 export './src/helpers/screen_lifecycle.dart';
 export 'src/models/uxblur.dart';
 export 'src/models/uxoverlay.dart';
+export 'src/models/aitextocclusion.dart';
 export 'src/models/uxcam_config.dart';
 export 'src/widgets/occlude_wrapper.dart';
 export 'src/widgets/uxcam_handler.dart';

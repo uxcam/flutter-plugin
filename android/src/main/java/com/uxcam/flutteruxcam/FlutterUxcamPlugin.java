@@ -24,6 +24,8 @@ import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
 import com.uxcam.screenshot.model.UXCamOcclusion;
 import com.uxcam.screenshot.model.UXCamOccludeAllTextFields;
+import com.uxcam.screenshot.model.UXCamAITextOcclusion;
+import com.uxcam.screenshot.model.MLKitLanguage;
 import com.uxcam.datamodel.UXConfig;
 
 import java.util.Collections;
@@ -57,6 +59,7 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     public static final String CONFIG = "config";
     public static final String BLUR_RADIUS = "radius";
     public static final String HIDE_GESTURES = "hideGestures";
+    public static final String RECOGNITION_LANGUAGE = "recognitionLanguage";
     public static final String GAUSSIAN_BLUR = "gaussianBlur";
     public static final String STACK_BLUR = "stackBlur";
     public static final String BOX_BLUR = "boxBlur";
@@ -437,6 +440,8 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 return (UXCamOcclusion) getOverlay(occlusionMap);
             case 3:
                 return (UXCamOcclusion) getBlur(occlusionMap);
+            case 5:
+                return (UXCamOcclusion) getAITextOcclusion(occlusionMap);
             default:
                 return null;
         }
@@ -459,6 +464,40 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             overlayBuilder.excludeMentionedScreens(excludeMentionedScreens);
         if (hideGestures != null) overlayBuilder.withoutGesture(hideGestures);
         return overlayBuilder.build();
+    }
+
+    private UXCamAITextOcclusion getAITextOcclusion(Map<String, Object> occlusionMap) {
+        // get data
+        List<String> screens = (List<String>) occlusionMap.get(SCREENS);
+        Boolean excludeMentionedScreens = (Boolean) occlusionMap.get(EXCLUDE_MENTIONED_SCREENS);
+        Map<String, Object> configMap = (Map<String, Object>) occlusionMap.get(CONFIG);
+        Boolean hideGestures = null;
+        List<String> recognitionLanguages = null;
+        if (configMap != null) {
+            hideGestures = (Boolean) configMap.get(HIDE_GESTURES);
+            recognitionLanguages = (List<String>) configMap.get(RECOGNITION_LANGUAGE);
+        }
+
+        // set data
+        UXCamAITextOcclusion.Builder occlusionBuilder = new UXCamAITextOcclusion.Builder();
+        if (screens != null && !screens.isEmpty()) occlusionBuilder.screens(screens);
+        if (excludeMentionedScreens != null)
+            occlusionBuilder.excludeMentionedScreens(excludeMentionedScreens);
+        if (hideGestures != null) occlusionBuilder.withoutGesture(hideGestures);
+        if (recognitionLanguages != null && !recognitionLanguages.isEmpty())
+            occlusionBuilder.language(getMLKitLanguage(recognitionLanguages.get(0)));
+        return occlusionBuilder.build();
+    }
+
+    private MLKitLanguage getMLKitLanguage(String language) {
+        String code = language.toLowerCase();
+        if (code.startsWith("zh")) return MLKitLanguage.CHINESE;
+        if (code.startsWith("ja")) return MLKitLanguage.JAPANESE;
+        if (code.startsWith("ko")) return MLKitLanguage.KOREAN;
+        if (code.startsWith("hi") || code.startsWith("mr")
+                || code.startsWith("ne") || code.startsWith("sa"))
+            return MLKitLanguage.DEVANAGARI;
+        return MLKitLanguage.LATIN;
     }
 
     private UXCamBlur getBlur(Map<String, Object> blurMap) {
