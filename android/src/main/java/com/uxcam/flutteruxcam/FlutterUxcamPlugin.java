@@ -162,6 +162,9 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else if (call.method.equals("registerEngine")) {
             attachOcclusionListenerIfNeeded();
             result.success(true);
+        } else if (call.method.equals("uxcamInternalEvent")) {
+            handleInternalEvent(call);
+            result.success(true);
         } else if (call.method.equals("startWithKey")) {
             String key = call.argument("key");
             UXCam.startApplicationWithKeyForCordova(activity, key);
@@ -895,5 +898,36 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static Number number(Map<?, ?> map, String key) {
         Object value = map.get(key);
         return (value instanceof Number) ? (Number) value : null;
+    }
+
+    /**
+     * Relays Dart's render-activity and motion reports to the SDK.
+     *
+     * Flutter only produces frames when something needs redrawing, so it is the only side that can
+     * tell a genuinely static screen from one that merely has not repainted this instant. The SDK
+     * uses that to hold a capture rather than re-encode identical pixels.
+     */
+    @SuppressWarnings("unchecked")
+    private void handleInternalEvent(MethodCall call) {
+        try {
+            if (delegate == null) return;
+            Object nameObject = call.argument("name");
+            if (!(nameObject instanceof String)) return;
+            Object dataObject = call.argument("data");
+            if (!(dataObject instanceof Map)) return;
+            Object activeObject = ((Map<String, Object>) dataObject).get("active");
+            if (!(activeObject instanceof Boolean)) return;
+            boolean active = (Boolean) activeObject;
+
+            if ("renderActivity".equals(nameObject)) {
+                delegate.setRenderActive(active);
+            } else if ("motion".equals(nameObject)) {
+                delegate.setMotionActive(active);
+            }
+        } catch (NoSuchMethodError | NoClassDefFoundError e) {
+            // Older native SDK without the quiescence hooks; capture simply runs at full cadence.
+        } catch (Throwable t) {
+            Log.w(TAG, "[SceneFrame] could not relay internal event: " + t);
+        }
     }
 }

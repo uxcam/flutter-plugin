@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_uxcam/src/internal/motion_reporter.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
 
 /// Enablement must not depend on a frame being produced.
@@ -32,6 +33,10 @@ void main() {
       const StandardMethodCodec().encodeMethodCall(call),
       null,
     );
+    // A capture request marks the native side as recording, which arms the
+    // motion reporter's 5 s idle timer. The binding fails a test that ends with
+    // a timer outstanding, and the reporter is not what these tests are about.
+    MotionReporter.instance.debugReset();
     return const StandardMethodCodec().decodeEnvelope(data!);
   }
 

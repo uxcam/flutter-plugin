@@ -460,8 +460,16 @@ class OcclusionRegistry with WidgetsBindingObserver {
     }
   }
 
+  /// Every capture request is proof the native side is still recording, which is
+  /// what re-arms [MotionReporter]'s idle timeout.
+  ///
+  /// Not iOS-only: `FlutterUxcam.startWithConfiguration` now starts the reporter
+  /// on Android too, and without a re-arm here its 5 s idle timeout would detach
+  /// the pointer route on the first quiet stretch and end motion reporting for
+  /// the rest of the session. Android's `requestOcclusionRects` and
+  /// `requestSceneFrame` arrive per capture, exactly as iOS's do.
   void _markNativeRecordingRequested() {
-    if (!kIsWeb && Platform.isIOS) {
+    if (!kIsWeb) {
       MotionReporter.instance.markRecordingRequested();
     }
   }
