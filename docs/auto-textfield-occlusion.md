@@ -210,10 +210,22 @@ For each `RenderEditable` found (`findDecoratorAncestor`):
 ### 4.5 Keyboard / rotation handling
 
 `didChangeMetrics()` fires on keyboard show/hide, rotation and window resize.
-Layout takes several frames to settle, during which per-frame bounds jump
-around. The registry sets a `_metricsChanging` flag for **500 ms**, clears the
-sliding windows, and serves the **last-known bounds** during that window so
-masks stay put instead of flickering while the keyboard animates.
+Layout takes several frames to settle, during which per-frame bounds jump around.
+The registry sets a `_metricsChanging` flag for **500 ms** and clears the sliding
+windows. The two occlusion kinds then diverge, because they want opposite things:
+
+- **Wrapper/config occlusion freezes.** It serves the **last-known bounds** during
+  the window so masks stay put instead of flickering while the keyboard animates.
+- **Text fields track, and re-arm the inflate.** Discovery and bounds keep running
+  (a freeze would leave a field that appears *with* the keyboard unmasked), so the
+  mask follows the field as it slides. But clearing the window also wipes the
+  velocity history a pre-existing field needs for its motion margin — and that
+  field is not *young*, so the blanket unknown-velocity inflate would not otherwise
+  apply to it. The clear therefore stamps every field as unknown-velocity for
+  150 ms (`_windowClearedMs`), so the field is inflated through the re-acquisition
+  and then withdraws to a tight mask on its own. This is what keeps a pre-existing
+  field covered on a native-screenshot capture during the keyboard slide, rather
+  than exposed for the frame or two before the window refills.
 
 ### 4.6 Scheduling — the two-tier frame pipeline
 

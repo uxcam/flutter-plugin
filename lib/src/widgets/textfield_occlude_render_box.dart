@@ -48,6 +48,12 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
   final int _stableId;
   Rect? _lastBounds;
 
+  /// When the sliding window was last cleared, on the shared clock, or null if it
+  /// never was. The window is only ever cleared by a metrics change (keyboard
+  /// show/hide, rotation), so this doubles as "a metrics change just wiped this
+  /// field's velocity history" — see [_withUnknownVelocityMargin].
+  int? _windowClearedMs;
+
   /// Sliding-window retention, matching [OccludeRenderBox], so a single dropped
   /// frame never unmasks the field.
   static const int _boundsWindowMs = 100;
@@ -60,9 +66,11 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
   /// A transition moves a field ~2.7 px/ms over the 50 ms projection window.
   static const double _unknownVelocityMargin = 135.0;
 
-  /// Bounds [_unknownVelocityMargin] by adapter age. A settled screen produces no
-  /// frames, so the window empties and the sample count stays below two forever —
-  /// without this the margin would never be withdrawn.
+  /// Bounds [_unknownVelocityMargin] by how long ago velocity became unknown —
+  /// adapter creation, or the last window clear (see [_withUnknownVelocityMargin]).
+  /// A settled screen produces no frames, so the window empties and the sample
+  /// count stays below two forever; without this the margin would never be
+  /// withdrawn.
   static const int _unknownVelocityWindowMs = 150;
 
   /// Shortest gap between two samples that yields a usable velocity. Below this
@@ -149,6 +157,7 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
   void clearHistoricalBounds() {
     _timestampedBounds.clear();
     _lastBounds = null;
+    _windowClearedMs = _clock();
   }
 
   @override
@@ -253,13 +262,28 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
     );
   }
 
-  /// Velocity unknown — the modal case, where a sheet builds and starts animating
-  /// in the same frame. Inflate in every direction, since the direction is unknown
-  /// too, and bound it by adapter age: a settled screen produces no frames, so the
-  /// window empties and the sample count stays below two forever — without the
-  /// bound the margin would never be withdrawn.
-  Rect _withUnknownVelocityMargin(Rect union) =>
-      _clock() - _createdMs < _unknownVelocityWindowMs
-          ? union.inflate(_unknownVelocityMargin)
-          : union;
+  /// Velocity unknown — inflate in every direction, since the direction is
+  /// unknown too. Two situations qualify, both bounded by
+  /// [_unknownVelocityWindowMs] so the inflate withdraws on its own once the field
+  /// has been still long enough to resample:
+  ///
+  ///  * A *young* adapter — the modal case, where a sheet builds and starts
+  ///    animating in the same frame. A settled screen produces no frames, so the
+  ///    window empties and the sample count stays below two forever; the age bound
+  ///    is what withdraws the margin.
+  ///  * An *old* adapter whose window was **just cleared by a metrics change**
+  ///    (keyboard show/hide, rotation). Its velocity history is gone, yet the field
+  ///    is about to slide as the viewport resizes — and it is not young, so the age
+  ///    bound alone would never inflate it, leaving a pre-existing field a couple
+  ///    of frames of exposure while the window re-accumulates. This is the
+  ///    keyboard-up case the capture pipeline could not otherwise cover.
+  Rect _withUnknownVelocityMargin(Rect union) {
+    final nowMs = _clock();
+    final young = nowMs - _createdMs < _unknownVelocityWindowMs;
+    final justCleared = _windowClearedMs != null &&
+        nowMs - _windowClearedMs! < _unknownVelocityWindowMs;
+    return young || justCleared
+        ? union.inflate(_unknownVelocityMargin)
+        : union;
+  }
 }
