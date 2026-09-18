@@ -24,20 +24,12 @@ import 'textfield_occlude_render_box.dart';
 ///    last bounds are served for [graceTtlMs] so a capture that races the
 ///    detach never shows the field unmasked mid-frame.
 class TextFieldRectStore {
-  TextFieldRectStore({this.captureCoherent = false, int Function()? clock})
-      : _clock = clock ?? _wallClock;
+  TextFieldRectStore({int Function()? clock}) : _clock = clock ?? _wallClock;
 
   static int _wallClock() => DateTime.now().millisecondsSinceEpoch;
 
   /// How long a detached field's last bounds keep being served.
   static const int graceTtlMs = 500;
-
-  /// See [TextFieldOccludeRenderBox.captureCoherent]. Also retires the detach
-  /// grace: a grace rect covers a capture that raced a detach, and with the scan
-  /// running inside the capture there is no race to cover — a field absent from
-  /// the tree is absent from the pixels too, so serving its last position would
-  /// mask a region the frame no longer shows.
-  final bool captureCoherent;
 
   final int Function() _clock;
 
@@ -70,7 +62,6 @@ class TextFieldRectStore {
       bucket.adapters[id] = TextFieldOccludeRenderBox(
         field.box,
         addPadding: field.isBareEditable,
-        captureCoherent: captureCoherent,
         clock: _clock,
       );
       _adapterScreen[id] = activeScreenKey;
@@ -89,8 +80,7 @@ class TextFieldRectStore {
     _buckets.forEach((key, bucket) {
       bucket.adapters.removeWhere((id, adapter) {
         if (!adapter.attached || !adapter.hasSize) {
-          final last =
-              captureCoherent ? null : adapter.getUnionOfHistoricalBounds();
+          final last = adapter.getUnionOfHistoricalBounds();
           if (last != null && last.width > 0 && last.height > 0) {
             bucket.graceRects.add(_GraceRect(
               id: id,
@@ -129,20 +119,31 @@ class TextFieldRectStore {
   /// amount of velocity projection could recover it because every sample in the
   /// window predated the motion. One ancestor walk per field per capture, and
   /// captures arrive a couple of times a second.
-  List<Map<String, dynamic>> serializeRects(OcclusionRectCodec codec) {
+  ///
+  /// [coherent] is a property of the *capture*, not the store: it is set only when
+  /// Flutter itself rasterised the pixels from the same committed frame these rects
+  /// are resolved from (`requestSceneFrame` with pixels). Then the exact rect is
+  /// served with no window union or motion margin, and detach grace is dropped — a
+  /// field absent from the tree is absent from those pixels too, so serving its
+  /// last position would mask a region the frame no longer shows. Every other
+  /// capture screenshots natively a hop later, so it gets the widened rects and the
+  /// grace ghosts that cover the gap.
+  List<Map<String, dynamic>> serializeRects(OcclusionRectCodec codec,
+      {bool coherent = false}) {
     final nowMs = _clock();
     final rects = <Map<String, dynamic>>[];
     for (final bucket in _buckets.values) {
       for (final adapter in bucket.adapters.values) {
         if (!adapter.attached || !adapter.hasSize) continue;
         adapter.recalculateBounds();
-        final bounds = adapter.getUnionOfHistoricalBounds();
+        final bounds = adapter.getUnionOfHistoricalBounds(coherent: coherent);
         if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
           continue;
         }
         rects.add(codec.encode(adapter.stableId, bounds,
             adapter.devicePixelRatio, OcclusionType.overlay));
       }
+      if (coherent) continue;
       for (final grace in bucket.graceRects) {
         if (grace.expiresAtMs <= nowMs) continue;
         rects.add(codec.encode(grace.id, grace.bounds, grace.devicePixelRatio,

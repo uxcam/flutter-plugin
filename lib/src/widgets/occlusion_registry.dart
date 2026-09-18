@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -38,18 +37,21 @@ double _scenePixelRatioForTarget({
 /// The registry itself owns only the method-channel endpoints, the frame
 /// scheduling and the wrapper-entry lifecycle.
 ///
-/// Text-field rects reach the native side one of two ways, chosen by
-/// [_captureCoherentDefault]:
+/// Text-field bounds are always sampled ahead of the request — tier-1 bounds
+/// refresh every produced frame, tier-2 discovery walks bounded to
+/// [_discoveryIntervalMs] or forced on screen/metrics/focus/policy changes, with
+/// a sliding window and motion margin covering the gap between the last sample and
+/// the screenshot.
 ///
-///  * **Resolved in the capture request** (iOS, whose capture is driven from
-///    Flutter). Discovery and geometry run inside the request, from the same
-///    committed frame the pixels come from, and no text-field work happens on
-///    frames at all.
-///  * **Sampled ahead of the request** (Android, which screenshots natively).
-///    Tier-1 bounds refresh every produced frame, tier-2 discovery walks bounded
-///    to [_discoveryIntervalMs] or forced on screen/metrics/focus/policy
-///    changes, with a sliding window and motion margin covering the gap between
-///    the last sample and the screenshot.
+/// Whether a served rect is *widened* from that window or handed back exact is
+/// decided per capture request, not per platform (see `serializeRects`'s
+/// `coherent` flag): a `requestSceneFrame` capture whose pixels Flutter itself
+/// rasterised is coherent — the rects describe exactly those pixels, so no
+/// widening is applied. A native-screenshot capture (`requestAllOcclusionRects`,
+/// or a scene frame Flutter did not supply pixels for) screenshots a hop later, so
+/// its rects are widened to survive the gap. The current iOS SDK screenshots
+/// natively, so it takes the widened path today; the coherent path activates for
+/// it the moment it drives capture end-to-end from Flutter.
 class OcclusionRegistry with WidgetsBindingObserver {
   OcclusionRegistry._() {
     WidgetsBinding.instance.addObserver(this);
@@ -67,39 +69,10 @@ class OcclusionRegistry with WidgetsBindingObserver {
   /// forced-discovery counter is idempotent. Skipped entirely when the feature is
   /// off, so a focus change never wakes the engine for nothing.
   void _onFocusChanged() {
-    if (_captureCoherent) return;
     if (_effectiveTextFields) _armForcedDiscovery();
   }
 
   static final OcclusionRegistry instance = OcclusionRegistry._();
-
-  /// Whether text-field rects are resolved inside the capture request rather
-  /// than sampled ahead of it on a cadence.
-  ///
-  /// iOS drives capture from Flutter: `requestSceneFrame` asks this class for
-  /// rects and then rasterises the root layer, with no `await` between the two,
-  /// so both read the same committed frame — the rects describe exactly the
-  /// pixels being captured. Everything the frame pipeline exists to compensate
-  /// for (bounds sampled up to [_boundsIntervalMs] ago, discovery up to
-  /// [_discoveryIntervalMs] ago, and the window and motion margin that widen a
-  /// rect to cover that staleness) has nothing left to do, so on iOS none of it
-  /// runs: no per-frame text-field work at all.
-  ///
-  /// Android still screenshots natively and requests rects across two async
-  /// hops, so the staleness is real there and the whole pipeline stays exactly
-  /// as it was. This flips to a shared path once Android's capture is also
-  /// driven from Flutter.
-  ///
-  /// Known gap, deliberately not compensated: when a webview, a presented
-  /// controller or **the keyboard** is up, iOS declines the Flutter-rendered
-  /// frame and screenshots natively *after* this response, so those pixels are
-  /// slightly newer than the rects. Static content is unaffected; a field
-  /// moving at that instant (scrolling a form with the keyboard open) can trail
-  /// its mask by the hop. Revisit with the motion margin gated to that path if
-  /// it shows up in recordings.
-  static final bool _captureCoherentDefault = !kIsWeb && Platform.isIOS;
-
-  bool _captureCoherent = _captureCoherentDefault;
 
   static const _detachedTtlMs = 1500;
 
@@ -128,8 +101,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
   /// detector it holds, which is what the [TextFieldDetector] abstraction was for.
   final TextFieldDetector _detector = FocusTreeDetector();
   final OcclusionRectCodec _codec = OcclusionRectCodec();
-  TextFieldRectStore _textFieldStore =
-      TextFieldRectStore(captureCoherent: _captureCoherentDefault);
+  TextFieldRectStore _textFieldStore = TextFieldRectStore();
 
   /// Snapshot of `_policy.effective` so transitions (on→off) can clear the
   /// store exactly once.
@@ -192,12 +164,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   /// Requests a frame as well as arming the counter: on a settled screen Flutter
   /// produces no frames, so a forced discovery would otherwise never run.
-  ///
-  /// No-op where discovery runs in the capture request: there is no frame to
-  /// arm, and waking the engine to scan ahead of a capture would be work whose
-  /// result the capture discards and recomputes.
   void _armForcedDiscovery() {
-    if (_captureCoherent) return;
     _forceDiscoveryFrames = _forceDiscoveryFrameCount;
     SchedulerBinding.instance.scheduleFrame();
   }
@@ -296,14 +263,6 @@ class OcclusionRegistry with WidgetsBindingObserver {
   }
 
   void _onFrame(Duration timestamp) {
-    if (_captureCoherent) {
-      // Text fields are discovered and resolved in the capture request, so this
-      // callback owns only the wrapper/config entries.
-      if (_entries.isEmpty) return;
-      _refreshWrapperEntries();
-      return;
-    }
-
     if (_entries.isEmpty && !_effectiveTextFields && _textFieldStore.isEmpty) {
       return;
     }
@@ -380,17 +339,36 @@ class OcclusionRegistry with WidgetsBindingObserver {
     final logicalSize =
         renderView?.hasConfiguration == true ? renderView!.size : Size.zero;
 
+    // Decide *synchronously*, before the rects are resolved, whether Flutter
+    // itself will supply the pixels for this capture. Only then are the rects
+    // coherent with them: the SDK rasterises the raster we return instead of
+    // screenshotting natively a hop later. Every check that can veto the raster is
+    // made up front so the `coherent` flag we stamp the rects with matches what
+    // actually ships — a rect stamped coherent but paired with a native screenshot
+    // is exactly the un-widened, lagging mask this path must not emit.
+    // ignore: invalid_use_of_protected_member
+    final layer = renderView?.layer;
+    final rootLayer = layer is OffsetLayer ? layer : null;
+    final dpr = renderView?.flutterView.devicePixelRatio ?? 0;
+    final canProvidePixels = includePixels &&
+        renderView != null &&
+        !logicalSize.isEmpty &&
+        rootLayer != null &&
+        rootLayer.attached &&
+        !_containsPlatformViewLayer(rootLayer) &&
+        dpr > 0;
+
     // LOAD-BEARING ORDER: the rects are resolved here, synchronously, and the
     // root layer is rasterised below with no `await` in between. Dart is
     // single-threaded and a frame cannot be produced inside that gap, so both
     // read the same committed frame and the rects describe exactly these pixels.
-    // That equality is what lets [_captureCoherent] drop the sampling cadence,
-    // the sliding window and the motion margin. Do not introduce an `await`
-    // between this line and `toImage`, and do not hoist the rects to a cache
-    // filled earlier — either reinstates the staleness those mechanisms existed
-    // to hide, with nothing left to hide it.
+    // That equality is what lets a coherent capture drop the sliding window and
+    // the motion margin. Do not introduce an `await` between this line and
+    // `toImage`, and do not hoist the rects to a cache filled earlier — either
+    // reinstates the staleness those mechanisms existed to hide, with nothing
+    // left to hide it.
     final response = <String, dynamic>{
-      'rects': _handleCachedRectsRequest(),
+      'rects': _handleCachedRectsRequest(coherent: canProvidePixels),
       'coordinateSpace': 'sourceLogicalPoints',
       if (!logicalSize.isEmpty) ...{
         'referenceWidth': logicalSize.width,
@@ -398,18 +376,9 @@ class OcclusionRegistry with WidgetsBindingObserver {
       },
     };
 
-    if (!includePixels || renderView == null || logicalSize.isEmpty) {
-      return response;
-    }
+    if (!canProvidePixels) return response;
 
     try {
-      // ignore: invalid_use_of_protected_member
-      final rootLayer = renderView.layer;
-      if (rootLayer is! OffsetLayer || !rootLayer.attached) return response;
-      if (_containsPlatformViewLayer(rootLayer)) return response;
-
-      final dpr = renderView.flutterView.devicePixelRatio;
-      if (!(dpr > 0)) return response;
       final scale = _scenePixelRatioForTarget(
         logicalSize: logicalSize,
         devicePixelRatio: dpr,
@@ -474,7 +443,14 @@ class OcclusionRegistry with WidgetsBindingObserver {
     }
   }
 
-  List<Map<String, dynamic>> _handleCachedRectsRequest() {
+  /// [coherent] is passed through to the text-field store: `true` only for a
+  /// capture whose pixels Flutter itself rasterised (`requestSceneFrame` with
+  /// pixels), where the exact rect describes the pixels; `false` — the default,
+  /// and what `requestAllOcclusionRects` / `requestOcclusionRects` and
+  /// [getOcclusionRects] use — widens each rect to survive the native-screenshot
+  /// hop. The wrapper/config entries below are unaffected: they carry their own
+  /// window and are served the same way on either path.
+  List<Map<String, dynamic>> _handleCachedRectsRequest({bool coherent = false}) {
     _discoverForCapture();
 
     final requestTimestamp = _clock();
@@ -526,7 +502,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
     // request path stays cheap even while the main isolate is busy building a
     // screen (which is when the native request would otherwise time out and
     // emit an unmasked frame).
-    rects.addAll(_textFieldStore.serializeRects(_codec));
+    rects.addAll(_textFieldStore.serializeRects(_codec, coherent: coherent));
 
     return rects;
   }
@@ -608,19 +584,14 @@ class OcclusionRegistry with WidgetsBindingObserver {
   @visibleForTesting
   void debugSetClock(int Function() clock) => _clock = clock;
 
-  /// Selects the capture mode regardless of host platform. Tests run on the
-  /// desktop VM, where `Platform.isIOS` is false, so the iOS path is
-  /// unreachable without this.
-  ///
-  /// Replaces the store, since the mode decides how its adapters are built.
+  /// Serves the text-field rects exactly as a capture would, letting a test pick
+  /// the per-request coherence: `coherent: true` mirrors a `requestSceneFrame`
+  /// whose pixels Flutter rasterised (exact rects, no window/margin/grace);
+  /// `coherent: false` mirrors a native-screenshot capture
+  /// (`requestAllOcclusionRects`) and is what [getOcclusionRects] serves.
   @visibleForTesting
-  void debugSetCaptureCoherent(bool value) {
-    _captureCoherent = value;
-    _textFieldStore = TextFieldRectStore(captureCoherent: value, clock: _clock);
-  }
-
-  @visibleForTesting
-  bool get debugCaptureCoherent => _captureCoherent;
+  List<Map<String, dynamic>> debugServeRects({bool coherent = false}) =>
+      _handleCachedRectsRequest(coherent: coherent);
 
   /// The live store, so a test can tell "discovery has not run" apart from
   /// "discovery ran and found nothing".
@@ -641,8 +612,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
     _effectiveTextFields = false;
     _forceDiscoveryFrames = 0;
     _lastDiscoveryMs = 0;
-    _captureCoherent = _captureCoherentDefault;
-    _textFieldStore = TextFieldRectStore(captureCoherent: _captureCoherent);
+    _textFieldStore = TextFieldRectStore();
     _discoveredBuffer.clear();
     _lastBoundsMs = 0;
     _clock = _wallClock;

@@ -21,7 +21,6 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
   TextFieldOccludeRenderBox(
     this.renderBox, {
     this.addPadding = false,
-    this.captureCoherent = false,
     int Function()? clock,
   })  : _clock = clock ?? _wallClock,
         _stableId = stableIdFor(renderBox) {
@@ -32,21 +31,6 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
   /// the owning store can index by it without constructing a throwaway adapter.
   static int stableIdFor(RenderBox box) =>
       Object.hash('textfield', identityHashCode(box));
-
-  /// True where the rect is resolved *inside* the capture request, from the same
-  /// committed frame that produces the pixels — currently iOS, whose capture is
-  /// driven from Flutter (`requestSceneFrame`).
-  ///
-  /// The sliding window and the motion margin exist only to compensate for the
-  /// gap between when bounds were last sampled and when the pixels were taken.
-  /// There is no such gap here, so both are skipped: the served rect is the
-  /// field's exact position in the captured frame. Neither is merely unused —
-  /// the window is never populated, so nothing accumulates per field per frame.
-  ///
-  /// Android keeps both: it screenshots natively and asks Flutter for rects
-  /// across two async hops, so the gap is real there until its capture is also
-  /// driven from Flutter.
-  final bool captureCoherent;
 
   /// When this adapter was created, on the shared clock. Bounds the
   /// unknown-velocity margin — see [_unknownVelocityWindowMs].
@@ -144,7 +128,11 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
 
     if (bounds.width > 0 && bounds.height > 0) {
       _lastBounds = bounds;
-      if (captureCoherent) return;
+      // The window is always sampled, on every platform. Whether a served rect
+      // is widened from it is decided per capture request (see
+      // [getUnionOfHistoricalBounds]), not per adapter: only a capture whose
+      // pixels Flutter itself rasterised is coherent, and the same adapter serves
+      // both that path and the native-screenshot path.
       final nowMs = _clock();
       _timestampedBounds.add((nowMs, bounds));
       _timestampedBounds.removeWhere((e) => (nowMs - e.$1) > _boundsWindowMs);
@@ -164,10 +152,13 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
   }
 
   @override
-  Rect? getUnionOfHistoricalBounds() {
-    // Resolved in the capture request itself: the exact rect IS the answer, and
-    // widening it would mask more of the frame than the field actually covers.
-    if (captureCoherent) return _lastBounds;
+  Rect? getUnionOfHistoricalBounds({bool coherent = false}) {
+    // Coherent capture: the pixels were rasterised by Flutter from the same
+    // committed frame these bounds were just resolved from, so the exact rect IS
+    // the answer and widening it would mask more of the frame than the field
+    // covers. Every other capture screenshots natively a hop later, so the rect
+    // must be widened to survive the gap.
+    if (coherent) return _lastBounds;
 
     final nowMs = _clock();
     _timestampedBounds.removeWhere((e) => (nowMs - e.$1) > _boundsWindowMs);

@@ -403,44 +403,56 @@ The platform difference is only *which* server channel is available: Android has
 both the statement and the per-capture flag; iOS has only the per-capture flag, so
 that is how verification reaches it. The Dart side is identical either way.
 
-### 4.9 Capture-coherent mode (iOS)
+### 4.9 Capture-coherent serving (per capture, not per platform)
 
 Everything in §4.4 and §4.6 — the sampling cadence, the 100 ms sliding window,
 the motion margin — exists to compensate for one thing: the gap between *when
 bounds were last sampled* and *when the pixels were taken*. Where that gap is
 zero, none of it is needed.
 
-On iOS the capture is driven **from Flutter**. `requestSceneFrame` asks the
-registry for rects and then rasterises the root layer, with **no `await` between
-the two**. Dart is single-threaded and a frame cannot be produced inside that
-gap, so both read the same committed frame: the rects describe exactly the pixels
-being captured. `OcclusionRegistry._captureCoherent` therefore switches the whole
-pipeline off on iOS:
+That gap is zero for exactly one kind of capture: one whose pixels **Flutter
+itself rasterised**. `requestSceneFrame` asks the registry for rects and then
+rasterises the root layer, with **no `await` between the two**. Dart is
+single-threaded and a frame cannot be produced inside that gap, so both read the
+same committed frame: the rects describe exactly the pixels being captured. For
+that capture — and only that capture — `serializeRects(coherent: true)` serves:
 
-- **No per-frame text-field work at all.** The persistent frame callback handles
-  only wrapper/config entries; discovery and bounds run inside the request.
-- **No sliding window** — it is never populated, so nothing accumulates per field
-  per frame.
-- **No motion margin** — the exact rect *is* the answer, and widening it would
-  mask more of the frame than the field covers.
-- **No detach grace.** A grace rect covers a capture that raced a detach; with
-  the scan running inside the capture there is no race, and serving a departed
-  field's last position would mask a region the frame no longer shows.
+- **The exact rect, no sliding window, no motion margin** — the exact rect *is*
+  the answer, and widening it would mask more of the frame than the field covers.
+- **No detach grace.** A grace rect covers a capture that raced a detach; the scan
+  ran inside this capture, so there is no race, and serving a departed field's
+  last position would mask a region the frame no longer shows.
 
 > **Load-bearing order.** Do not introduce an `await` between resolving the rects
 > and `toImage`, and do not hoist the rects to a cache filled earlier. Either
 > reinstates the staleness those mechanisms existed to hide, with nothing left to
-> hide it.
+> hide it. And whether a scene-frame capture is coherent is decided **before** the
+> rects are resolved, from whether Flutter will actually supply the pixels
+> (`_handleSceneFrameRequest`'s `canProvidePixels`): a rect stamped coherent but
+> paired with a native screenshot is the un-widened, lagging mask this path exists
+> to prevent.
 
-Android keeps the full pipeline: it screenshots natively and asks Flutter for
-rects across two async hops, so the gap is real there. It flips to the shared
-path once Android's capture is also driven from Flutter (§4.10).
+**Coherence is a property of the capture, not the platform.** Earlier this was a
+static per-platform flag (`_captureCoherent`, true on iOS) that switched the whole
+pipeline off — on the assumption that every iOS capture is a Flutter-rendered
+scene frame. It is not: the shipping iOS SDK screenshots **natively** and requests
+rects via `requestAllOcclusionRects`, a separate async hop later. With the
+compensation statically disabled, a fast scroll paired the older native screenshot
+with newer exact rects, so every mask trailed the fields and exposed them on the
+leading edge — the QA-reproduced glitch.
 
-**Known gap, deliberately not compensated.** When a webview, a presented
-controller or **the keyboard** is up, iOS declines the Flutter-rendered frame and
-screenshots natively *after* this response, so those pixels are slightly newer
-than the rects. Static content is unaffected; a field moving at that instant
-(scrolling a form with the keyboard open) can trail its mask by the hop.
+So the pipeline now **always runs** (frame-driven sampling, window, margin, grace),
+on every platform, and each capture chooses whether to widen:
+
+| Capture | Coherent? | Served |
+| --- | --- | --- |
+| `requestSceneFrame` **with** Flutter pixels | yes | exact rects |
+| `requestSceneFrame` without pixels (webview / presented / keyboard up) | no | widened |
+| `requestAllOcclusionRects` / `requestOcclusionRects` (native screenshot) | no | widened |
+
+Static content is unaffected either way; a field moving at capture time is covered
+by the window + motion margin on every non-coherent path, including the keyboard-up
+and webview cases that previously trailed their masks.
 
 ### 4.10 Scene frames (Android transport)
 
@@ -462,8 +474,11 @@ Two rules the parser enforces:
   encoder emits device pixels, so the two disagree; `left/top/right/bottom` means
   device pixels, `x0/y0/x1/y1` means logical points.
 
-Because Android's capture is not *yet* driven from Flutter end-to-end,
-`_captureCoherent` stays `false` there and §4.9's simplifications do not apply.
+Android's capture is not *yet* driven from Flutter end-to-end, so its captures are
+served non-coherent (widened) — the same path §4.9 puts the native-screenshot iOS
+captures on. Once a scene-frame capture there supplies Flutter pixels, it becomes
+coherent automatically, by the same per-capture rule; no platform switch is
+involved.
 
 ---
 

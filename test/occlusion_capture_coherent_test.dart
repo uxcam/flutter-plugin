@@ -2,33 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_registry.dart';
 
-/// iOS resolves text-field rects inside the capture request, from the same
-/// committed frame that `rootLayer.toImage()` rasterises.
+/// Coherence is a property of the *capture*, not the platform. When Flutter
+/// itself rasterises the pixels (`requestSceneFrame` with pixels), the rects are
+/// resolved from the same committed frame `rootLayer.toImage()` captures, so a
+/// served rect is not an estimate of where the field was a sampling interval ago:
+/// it is where the field is in the pixels being captured. For that capture — and
+/// only that capture — the sliding window, the motion margin and the detach grace
+/// are switched off, and every one of those absences is asserted below, because a
+/// silent reintroduction would cost the coherence without failing anything else.
 ///
-/// That equality is the whole point: a served rect is not an estimate of where
-/// the field was a sampling interval ago, it is where the field is in the pixels
-/// being captured. So the frame-driven pipeline is not merely redundant here, it
-/// is absent — no discovery cadence, no bounds cadence, no sliding window, no
-/// motion margin, no detach grace — and every one of those absences is asserted
-/// below, because a silent reintroduction would cost the coherence without
-/// failing anything else.
-///
-/// Android keeps all of it and is covered by the rest of the suite, which runs
-/// in the default (non-coherent) mode on the desktop VM.
+/// A native-screenshot capture (`requestAllOcclusionRects`, or a scene frame
+/// Flutter supplied no pixels for) screenshots a hop later, so it keeps the full
+/// widening pipeline; that path is `getOcclusionRects()` here and is covered by
+/// the rest of the suite. The current iOS SDK screenshots natively, so it takes
+/// that path today.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final registry = OcclusionRegistry.instance;
 
-  setUp(() {
-    registry.resetTextFieldStateForTesting();
-    registry.debugSetCaptureCoherent(true);
-  });
+  setUp(registry.resetTextFieldStateForTesting);
   tearDown(registry.resetTextFieldStateForTesting);
 
+  /// A coherent serve — what a `requestSceneFrame` capture whose pixels Flutter
+  /// rasterised receives.
   List<Rect> served(WidgetTester tester) {
     final dpr = tester.view.devicePixelRatio;
     return registry
-        .getOcclusionRects()
+        .debugServeRects(coherent: true)
         .map((r) => Rect.fromLTRB(
               (r['left'] as double) / dpr,
               (r['top'] as double) / dpr,
@@ -75,29 +75,19 @@ void main() {
         ),
       );
 
-  testWidgets('the capture discovers: frames do no text-field work at all',
+  testWidgets('a coherent capture discovers even if no frame ran discovery first',
       (tester) async {
     registry.occludeAllTextFields = true;
     await tester.pumpWidget(form());
     await tester.pumpAndSettle();
 
-    // Many frames, all of them idle as far as text fields are concerned.
-    for (var i = 0; i < 10; i++) {
-      tester.binding.scheduleFrame();
-      await tester.pump(const Duration(milliseconds: 16));
-    }
-    expect(registry.debugTextFieldStore.adapterCount, 0,
-        reason: 'frames must not discover in this mode — if they do, the store '
-            'is populated ahead of the capture and the capture is no longer the '
-            'authority on what is on screen');
-
-    // The capture itself is what finds the field, and it finds it in time to
-    // mask its own frame.
+    // Discovery runs inside the capture as well as on frames, so the capture is
+    // always an authority on what is on screen — it masks its own frame.
     expect(served(tester), hasLength(1));
     expect(registry.debugTextFieldStore.adapterCount, 1);
   });
 
-  testWidgets('a served rect is the field exactly — no margin, no union',
+  testWidgets('a coherent serve is the field exactly — no margin, no union',
       (tester) async {
     registry.occludeAllTextFields = true;
     await tester.pumpWidget(form());
@@ -132,7 +122,7 @@ void main() {
     await tester.pumpWidget(form(count: 12, controller: controller));
     await tester.pumpAndSettle();
 
-    // Establish a position, capture it, then move without giving the old
+    // Establish a position, capture it, then move without giving the frame
     // pipeline any chance to resample.
     expect(served(tester), isNotEmpty);
     final before = served(tester).first;
@@ -159,7 +149,7 @@ void main() {
     for (final m in after) {
       expect(m.height, lessThan(140),
           reason: 'mask $m spans the scroll distance — that is a union of two '
-              'positions, which this mode must never produce');
+              'positions, which a coherent serve must never produce');
     }
   });
 
@@ -177,8 +167,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(served(tester), isEmpty,
-        reason: 'detach grace exists to cover a capture racing a detach; the '
-            'scan runs inside the capture, so there is no race to cover');
+        reason: 'detach grace covers a native-screenshot capture racing a '
+            'detach; a coherent serve rasterises the same frame it scans, so '
+            'there is no race to cover');
   });
 
   testWidgets('disabling still clears immediately', (tester) async {
@@ -189,12 +180,5 @@ void main() {
 
     registry.occludeAllTextFields = false;
     expect(served(tester), isEmpty);
-  });
-
-  testWidgets('the default mode follows the host platform', (tester) async {
-    registry.resetTextFieldStateForTesting();
-    // Tests run on the desktop VM, so the Android/native-capture path is the
-    // default here and the rest of the suite exercises it.
-    expect(registry.debugCaptureCoherent, isFalse);
   });
 }
