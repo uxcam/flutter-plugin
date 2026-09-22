@@ -96,7 +96,8 @@ void main() {
     // presenting modal is not left unmasked — see
     // TextFieldOccludeRenderBox._unknownVelocityWindowMs. That transient inflation
     // is intentional and brief; this test is about the mask's resting geometry, so
-    // it advances the clock past the window first.
+    // it lets a first capture discover the field and then advances the clock past
+    // the window before asserting.
     var fakeNow = 900000;
     registry
         .debugReplaceTextFieldStore(TextFieldRectStore(clock: () => fakeNow));
@@ -114,6 +115,10 @@ void main() {
       ),
     ));
 
+    // The first native-screenshot capture discovers the field (and opens the
+    // frame pipeline's gate); it is served inflated, which is not what this
+    // test is about.
+    masks();
     fakeNow += 500; // past the unknown-velocity window
     final tile = boxOf(find.byType(ListTile), tester);
     expect(masks().any((m) => covers(m, tile)), isFalse,

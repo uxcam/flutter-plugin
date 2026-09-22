@@ -71,6 +71,11 @@ void main() {
     registry.occludeAllTextFields = true;
     await tester.pumpWidget(form());
 
+    // Establish the native-screenshot regime: the frame pipeline only samples
+    // once a capture has asked for rects to screenshot natively, and that first
+    // capture is served inflated because no history exists yet.
+    registry.getOcclusionRects();
+
     // Age the adapter well past the settle window and fill its sliding window, so
     // nothing but a fresh clear can put it back into the unknown-velocity state.
     for (var i = 0; i < 12; i++) {

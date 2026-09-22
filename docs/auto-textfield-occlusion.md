@@ -231,10 +231,14 @@ windows. The two occlusion kinds then diverge, because they want opposite things
 
 The per-frame work is split so cost scales with what actually changed:
 
-- **Tier 1 — every produced frame, O(#fields):** refresh bounds of *known*
-  adapters, move detached fields to a **500 ms grace** (a capture racing a
-  detach never shows the field unmasked), expire grace, drop empty buckets.
-  This keeps moving fields tracked smoothly during animations.
+- **Tier 1 — every produced frame while the pipeline is active (§4.11),
+  O(#fields):** refresh bounds of *known* adapters on a 33 ms cadence, move
+  detached fields to a **500 ms grace** (a capture racing a detach never shows
+  the field unmasked), expire grace, drop empty buckets. Detach bookkeeping runs
+  on every frame, active or not, so a recycled row releases its adapter within a
+  frame. A discovery frame no longer refreshes every field: `reconcile` resolves
+  the adapters it creates on the spot, so a new field has bounds in its first
+  frame while known fields keep to the cadence.
 - **Tier 2 — discovery walk, bounded to every 48 ms** *and forced on the next
   frame* after a screen change (`tagScreenName`), a metrics change
   (keyboard/rotation), a **focus change**, or policy enablement — so a brand-new
@@ -491,6 +495,48 @@ served non-coherent (widened) — the same path §4.9 puts the native-screenshot
 captures on. Once a scene-frame capture there supplies Flutter pixels, it becomes
 coherent automatically, by the same per-capture rule; no platform switch is
 involved.
+
+### 4.11 The frame pipeline runs only while a native-screenshot capture is possible
+
+Every capture discovers and re-resolves before answering (§4.6), so *what* gets
+masked never depends on the frame pipeline. The pipeline supplies three things —
+velocity history for the motion margin, detach-grace ghosts, and adapter age for
+the unknown-velocity inflate — and a **coherent** capture (§4.9) reads none of
+them. While captures are coherent the pipeline is therefore dead weight, and
+`OcclusionRegistry` gates it:
+
+```
+pipeline active  =  metrics settling (500 ms after the last change)
+                 || keyboard up (view insets, seen the frame it starts to move)
+                 || the last capture was served to a native screenshot
+                    (a rects-only request, or a scene frame Flutter could not
+                    supply pixels for — `includePixels: false`)
+```
+
+Native decides the regime per capture, so the pipeline can only *stop* when
+native says the scene path is back; it can never stop early. While gated, a frame
+does detach bookkeeping and nothing else, and `_armForcedDiscovery` does not wake
+a settled screen — the capture path discovers on its own. On the transition into
+the active regime the sliding windows are cleared, which stamps every field
+unknown-velocity so the first widened capture is served inflated while history
+re-accumulates — the same mechanism the keyboard slide relies on (§4.5). The
+first native-screenshot capture of a session is therefore inflated rather than
+tight; that is the price of not sampling for captures that would never read it.
+
+Two further changes bound the burst that a keyboard episode used to cause:
+
+- A metrics episode arms forced discovery **once**; later events in the same
+  500 ms window extend it and clear the windows (re-arming the inflate) but do
+  not re-arm discovery, so a keyboard animation's per-frame metrics stream no
+  longer walks the tree on every frame of it.
+- Geometry resolves inside a **pass**: fields on one screen share almost their
+  whole ancestor chain, and a pass memoises each ancestor's transform, clip and
+  visibility so a batch costs O(unique ancestors) rather than O(fields × depth).
+  The memo lives no longer than the batch, so it can never be served stale.
+
+The detector's focus-node memo is bounded by the live focus tree — entries not
+stamped by the current walk are swept — and switching the feature off releases
+the memo, the store and the discovery buffer.
 
 ---
 

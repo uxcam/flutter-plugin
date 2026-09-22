@@ -1,6 +1,7 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+
 /// A text field found by a scan: the box to mask, and whether it needs padding.
 class DiscoveredField {
   const DiscoveredField(this.box, {required this.isBareEditable});
@@ -18,6 +19,11 @@ class DiscoveredField {
 /// return, and therefore what gets masked, must not.
 abstract class TextFieldDetector {
   void collect(RenderObject root, Map<int, DiscoveredField> out);
+
+  /// Drops anything the detector remembers between scans. Called when the
+  /// feature is switched off, so a memo cannot keep render subtrees alive for a
+  /// feature that is no longer running.
+  void reset();
 }
 
 /// Ancestors to climb looking for the decorator.
@@ -33,19 +39,35 @@ const int _maxDecoratorClimb = 24;
 /// `ListTile` and `Chip` use the same mixin, so a field inside one would
 /// otherwise mask the whole row. Unrecognised slotted types are treated as
 /// decorators: an oversized mask is caught by a test, an unmasked field is not.
+///
+/// These classes are private to the material library, so they can only be
+/// named by their type name.
 const Set<String> _nonDecoratorSlottedTypes = {
   '_RenderListTile',
   '_RenderChip',
 };
 
+/// Verdict per slotted `Type`, so the type name is built once per type rather
+/// than once per field per scan — `runtimeType.toString()` allocates a string.
+final Map<Type, bool> _slottedTypeIsDecorator = <Type, bool>{};
+
+bool _isDecoratorType(Type type) =>
+    _slottedTypeIsDecorator[type] ??=
+        !_nonDecoratorSlottedTypes.contains(type.toString());
+
 /// The decoration box covering the full visible field, or null for undecorated
 /// fields such as a raw `EditableText` or a `CupertinoTextField`.
 RenderBox? findDecoratorAncestor(RenderEditable editable) {
+  final decorator = _findDecoratorAncestor(editable);
+  return decorator;
+}
+
+RenderBox? _findDecoratorAncestor(RenderEditable editable) {
   RenderObject? current = editable.parent;
   var depth = 0;
   while (current != null && depth < _maxDecoratorClimb) {
     if (current is SlottedContainerRenderObjectMixin) {
-      if (_nonDecoratorSlottedTypes.contains(current.runtimeType.toString())) {
+      if (!_isDecoratorType(current.runtimeType)) {
         return null;
       }
       return current as RenderBox;
@@ -73,4 +95,7 @@ class RenderEditableDetector implements TextFieldDetector {
     }
     root.visitChildren((child) => collect(child, out));
   }
+
+  @override
+  void reset() {}
 }

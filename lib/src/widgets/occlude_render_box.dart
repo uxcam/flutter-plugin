@@ -1,6 +1,7 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+import '../internal/monotonic_clock.dart';
 import 'occlusion_geometry.dart';
 import 'occlusion_models.dart';
 import 'occlusion_registry.dart';
@@ -210,7 +211,7 @@ class OccludeRenderBox extends RenderProxyBox
 
   @override
   Rect? getUnionOfHistoricalBounds() {
-    _pruneSlidingWindow(DateTime.now().millisecondsSinceEpoch);
+    _pruneSlidingWindow(monotonicNowMs());
 
     Rect? union;
     for (final entry in _timestampedBounds) {
@@ -226,9 +227,15 @@ class OccludeRenderBox extends RenderProxyBox
     return union;
   }
 
+  /// Samples are appended in clock order, so the expired ones are a prefix.
   void _pruneSlidingWindow(int nowMs) {
     final cutoff = nowMs - _boundsWindowMs;
-    _timestampedBounds.removeWhere((entry) => entry.timestampMs < cutoff);
+    var expired = 0;
+    while (expired < _timestampedBounds.length &&
+        _timestampedBounds[expired].timestampMs < cutoff) {
+      expired++;
+    }
+    if (expired > 0) _timestampedBounds.removeRange(0, expired);
   }
 
   void _addToSlidingWindow(Rect bounds, int nowMs) {
@@ -247,7 +254,7 @@ class OccludeRenderBox extends RenderProxyBox
     if (!attached || !hasSize) return;
     if (_context == null || !(_context as Element).mounted) return;
 
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final nowMs = monotonicNowMs();
     if (_isLayerDetached(nowMs)) {
       final detachedForMs = nowMs - (_layerDetachedSinceMs ?? nowMs);
       if (detachedForMs > _layerDetachGraceMs) {

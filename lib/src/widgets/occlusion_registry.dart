@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -7,7 +6,9 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../internal/monotonic_clock.dart';
 import '../internal/motion_reporter.dart';
+import 'occlusion_geometry.dart';
 import 'occlusion_models.dart';
 import 'focus_tree_detector.dart';
 import 'occlusion_rect_codec.dart';
@@ -37,21 +38,29 @@ double _scenePixelRatioForTarget({
 /// The registry itself owns only the method-channel endpoints, the frame
 /// scheduling and the wrapper-entry lifecycle.
 ///
-/// Text-field bounds are always sampled ahead of the request — tier-1 bounds
-/// refresh every produced frame, tier-2 discovery walks bounded to
-/// [_discoveryIntervalMs] or forced on screen/metrics/focus/policy changes, with
-/// a sliding window and motion margin covering the gap between the last sample and
-/// the screenshot.
+/// Every capture discovers and re-resolves bounds before answering, so *what*
+/// gets masked never depends on the frame pipeline. The frame pipeline — tier-1
+/// bounds sampling, tier-2 discovery on a [_discoveryIntervalMs] cadence or
+/// forced on screen/metrics/focus/policy changes, the sliding window and the
+/// motion margin — exists to cover the gap between the last sample and a
+/// screenshot taken natively a hop later.
 ///
 /// Whether a served rect is *widened* from that window or handed back exact is
 /// decided per capture request, not per platform (see `serializeRects`'s
 /// `coherent` flag): a `requestSceneFrame` capture whose pixels Flutter itself
 /// rasterised is coherent — the rects describe exactly those pixels, so no
-/// widening is applied. A native-screenshot capture (`requestAllOcclusionRects`,
-/// or a scene frame Flutter did not supply pixels for) screenshots a hop later, so
-/// its rects are widened to survive the gap. The current iOS SDK screenshots
-/// natively, so it takes the widened path today; the coherent path activates for
-/// it the moment it drives capture end-to-end from Flutter.
+/// widening is applied and none of the history is read. A native-screenshot
+/// capture (`requestAllOcclusionRects`, `requestOcclusionRects`, or a scene
+/// frame Flutter did not supply pixels for) is widened to survive the gap.
+///
+/// Because a coherent capture reads none of the pipeline's output, the pipeline
+/// only runs while a native-screenshot capture is possible — the keyboard is up,
+/// window metrics are settling, or the last capture was one (see
+/// [_nonCoherentPossible]). Otherwise a frame does detach bookkeeping and nothing
+/// else. On the transition into that regime the sliding windows are cleared,
+/// which stamps every field unknown-velocity so the first widened capture is
+/// served inflated while history re-accumulates — the same mechanism a keyboard
+/// slide already relies on.
 class OcclusionRegistry with WidgetsBindingObserver {
   OcclusionRegistry._() {
     WidgetsBinding.instance.addObserver(this);
@@ -91,8 +100,16 @@ class OcclusionRegistry with WidgetsBindingObserver {
   /// detach grace so neither loses resolution.
   static const _boundsIntervalMs = 33;
 
-  Timer? _metricsChangeTimer;
-  bool _metricsChanging = false;
+  /// Window metrics (keyboard, rotation, resize) count as settling for this
+  /// long after the last change.
+  static const _metricsSettleMs = 500;
+
+  /// End of the current settling window on [_clock], or 0. Read lazily rather
+  /// than flipped by a timer, so a metrics event allocates nothing and there is
+  /// no pending timer to lose.
+  int _metricsSettleDeadlineMs = 0;
+
+  bool get _metricsChanging => _clock() < _metricsSettleDeadlineMs;
 
   final TextFieldOcclusionPolicy _policy = TextFieldOcclusionPolicy();
 
@@ -111,11 +128,73 @@ class OcclusionRegistry with WidgetsBindingObserver {
   int _lastDiscoveryMs = 0;
   int _lastBoundsMs = 0;
 
+  /// Whether the frame pipeline is running (true) or gated to detach
+  /// bookkeeping only (false). Kept in step with [_nonCoherentPossible] by
+  /// [_updatePipelineGate].
+  bool _pipelineActive = false;
+
+  /// The regime of the most recent capture: true when it was served to a native
+  /// screenshot (a rects-only request, or a scene frame Flutter could not supply
+  /// pixels for); false once a coherent scene capture has been served. Native
+  /// decides this per capture, so the pipeline can only stop when native says
+  /// the coherent path is back — never prematurely.
+  bool _lastCaptureNonCoherent = false;
+
+  /// Frames on which the text-field pipeline ran, and frames it skipped because
+  /// the gate was closed. Test-visible; the profiler holds the reported copies.
+  @visibleForTesting
+  int debugPipelineFrameCount = 0;
+  @visibleForTesting
+  int debugGatedFrameCount = 0;
+  @visibleForTesting
+  int debugForcedArmCount = 0;
+  @visibleForTesting
+  int debugDiscoveryWalkCount = 0;
+  @visibleForTesting
+  int debugWindowClearCount = 0;
+
+  @visibleForTesting
+  bool get debugPipelineActive => _pipelineActive;
+
+  /// Whether a capture served in the current state could be a native screenshot,
+  /// so the frame pipeline's history would be read.
+  ///
+  /// The keyboard is read from the view insets, which Dart sees on the same
+  /// frame the keyboard starts to move — native's own `keyboardVisible` veto
+  /// would only be seen a capture later.
+  bool get _nonCoherentPossible =>
+      _metricsChanging || _lastCaptureNonCoherent || _keyboardVisible;
+
+  bool get _keyboardVisible {
+    final dispatcher = WidgetsBinding.instance.platformDispatcher;
+    final view = dispatcher.implicitView;
+    if (view != null) return view.viewInsets.bottom > 0;
+    for (final other in dispatcher.views) {
+      if (other.viewInsets.bottom > 0) return true;
+    }
+    return false;
+  }
+
+  /// Brings [_pipelineActive] in line with [_nonCoherentPossible]. Returns true
+  /// when the gate just opened: that transition clears the sliding windows —
+  /// stamping every field unknown-velocity so the next widened serve is inflated
+  /// while history re-accumulates — and arms discovery, exactly as a metrics
+  /// change does.
+  bool _updatePipelineGate() {
+    final shouldRun = _nonCoherentPossible;
+    if (shouldRun == _pipelineActive) return false;
+    _pipelineActive = shouldRun;
+    if (!shouldRun) return false;
+    _clearSlidingWindows();
+    _armForcedDiscovery();
+    return true;
+  }
+
   /// Injectable so tests can drive the cadences, which are in real milliseconds
   /// while `tester.pump` advances only the test clock.
   int Function() _clock = _wallClock;
 
-  static int _wallClock() => DateTime.now().millisecondsSinceEpoch;
+  static int _wallClock() => monotonicNowMs();
 
   /// Reused across scans to avoid per-frame map allocation during animations.
   final Map<int, DiscoveredField> _discoveredBuffer = {};
@@ -162,11 +241,17 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
   String get _activeScreenKey => _policy.currentScreen ?? '__uxcam_current__';
 
-  /// Requests a frame as well as arming the counter: on a settled screen Flutter
-  /// produces no frames, so a forced discovery would otherwise never run.
+  /// Arms the counter and, while the pipeline is running, requests a frame: on a
+  /// settled screen Flutter produces none, so a forced discovery would otherwise
+  /// never run. While the gate is closed the capture path discovers on its own,
+  /// so waking a settled screen would only cost a frame; the counter stays armed
+  /// for the first frame after the gate opens.
   void _armForcedDiscovery() {
+    debugForcedArmCount++;
     _forceDiscoveryFrames = _forceDiscoveryFrameCount;
-    SchedulerBinding.instance.scheduleFrame();
+    if (_pipelineActive) {
+      SchedulerBinding.instance.scheduleFrame();
+    }
   }
 
   /// Re-evaluates the effective decision after any policy input changed. When
@@ -176,7 +261,13 @@ class OcclusionRegistry with WidgetsBindingObserver {
   void _onPolicyChanged() {
     final effective = _policy.effective;
     if (_effectiveTextFields && !effective) {
+      // Release everything the feature holds, not just the served rects: the
+      // detector's memo and the discovery buffer both pin render subtrees, and
+      // a feature that is off must not keep them alive.
       _textFieldStore.clear();
+      _detector.reset();
+      _discoveredBuffer.clear();
+      _forceDiscoveryFrames = 0;
     } else if (!_effectiveTextFields && effective) {
       _armForcedDiscovery();
     }
@@ -189,13 +280,19 @@ class OcclusionRegistry with WidgetsBindingObserver {
   /// Text-field discovery is *forced* instead of frozen — see [_onFrame].
   @override
   void didChangeMetrics() {
-    _metricsChanging = true;
-    _metricsChangeTimer?.cancel();
-    _clearSlidingWindows();
-    _armForcedDiscovery();
-    _metricsChangeTimer = Timer(const Duration(milliseconds: 500), () {
-      _metricsChanging = false;
-    });
+    final newEpisode = !_metricsChanging;
+    _metricsSettleDeadlineMs = _clock() + _metricsSettleMs;
+    // The first event of an episode opens the gate if it was closed, and that
+    // transition clears and arms. Otherwise: the clear runs on every event — it
+    // is what keeps the unknown-velocity inflate armed while the fields slide —
+    // but discovery is armed once per episode. A keyboard animation delivers a
+    // metrics change on every frame, and re-arming four forced walks on each one
+    // ran discovery on every frame of the animation. Discovery keeps its cadence
+    // through the rest of the episode, and every capture discovers on its own.
+    if (!_updatePipelineGate()) {
+      _clearSlidingWindows();
+      if (newEpisode) _armForcedDiscovery();
+    }
   }
 
   void _setupMethodChannelHandler() {
@@ -215,11 +312,17 @@ class OcclusionRegistry with WidgetsBindingObserver {
     final views = WidgetsBinding.instance.renderViews;
     if (views.isEmpty) return false;
 
-    if (_forceDiscoveryFrames > 0) _forceDiscoveryFrames--;
+    debugDiscoveryWalkCount++;
+    if (_forceDiscoveryFrames > 0) {
+      _forceDiscoveryFrames--;
+    }
     _lastDiscoveryMs = nowMs;
     _discoveredBuffer.clear();
     _detector.collect(views.first, _discoveredBuffer);
     _textFieldStore.reconcile(_activeScreenKey, _discoveredBuffer);
+    // The buffer is reused across scans so no map is allocated per walk, but
+    // between walks it would otherwise pin the last scan's render boxes.
+    _discoveredBuffer.clear();
     return true;
   }
 
@@ -252,13 +355,20 @@ class OcclusionRegistry with WidgetsBindingObserver {
   /// settle (keyboard show/hide, rotation) to avoid jitter — it keeps serving
   /// its last-known bounds from cache during the freeze.
   void _refreshWrapperEntries() {
-    if (_metricsChanging) return;
-    for (final entry in _entries.values.toList()) {
-      final box = entry.box;
-      if (entry.attached && box != null && box.attached && box.hasSize) {
-        box.updateBoundsFromTransform();
-        _refreshEntryFromBox(entry, box);
+    if (_entries.isEmpty || _metricsChanging) return;
+    beginGeometryPass();
+    try {
+      // Nothing in the loop adds or removes entries, so the map is iterated in
+      // place rather than snapshotted every frame.
+      for (final entry in _entries.values) {
+        final box = entry.box;
+        if (entry.attached && box != null && box.attached && box.hasSize) {
+          box.updateBoundsFromTransform();
+          _refreshEntryFromBox(entry, box);
+        }
       }
+    } finally {
+      endGeometryPass();
     }
   }
 
@@ -266,28 +376,51 @@ class OcclusionRegistry with WidgetsBindingObserver {
     if (_entries.isEmpty && !_effectiveTextFields && _textFieldStore.isEmpty) {
       return;
     }
+    _onFrameWork();
+  }
 
+  void _onFrameWork() {
     _refreshWrapperEntries();
+
+    if (!_effectiveTextFields) {
+      // Off: only grace ghosts can be outstanding; let them expire.
+      if (!_textFieldStore.isEmpty) {
+        _textFieldStore.updateBounds(refreshBounds: false);
+      }
+      return;
+    }
+
+    _updatePipelineGate();
+    if (!_pipelineActive) {
+      // Coherent regime: the capture path discovers and resolves on its own and
+      // reads none of the history, so only detach bookkeeping runs — it releases
+      // a recycled row's adapter within a frame rather than holding it until the
+      // next capture.
+      debugGatedFrameCount++;
+      _textFieldStore.updateBounds(refreshBounds: false);
+      return;
+    }
 
     // Text-field pipeline. Discovery must NOT pause during a metrics change: a
     // screen that auto-focuses a field brings up the keyboard at the very
     // instant it appears, so a freeze would leave that brand-new field unmasked
     // for the whole settling window. The mask simply tracks the field as the
     // keyboard animates, which is the safe behavior for a privacy overlay.
+    debugPipelineFrameCount++;
     final nowMs = _clock();
-    var discovered = false;
 
-    if (_effectiveTextFields &&
-        (_forceDiscoveryFrames > 0 ||
-            nowMs - _lastDiscoveryMs >= _discoveryIntervalMs)) {
-      discovered = _discover(nowMs);
+    if (_forceDiscoveryFrames > 0 ||
+        nowMs - _lastDiscoveryMs >= _discoveryIntervalMs) {
+      _discover(nowMs);
     }
 
     // Detach bookkeeping runs every frame; only the expensive chain resolution is
-    // throttled. Discovery frames always refresh so a new field is never left
-    // without bounds.
-    final refreshBounds =
-        discovered || nowMs - _lastBoundsMs >= _boundsIntervalMs;
+    // throttled. A discovery frame does not force a refresh of every field:
+    // `reconcile` resolves the adapters it creates on the spot, so a new field
+    // still has bounds in its first frame while the fields already known keep to
+    // the cadence. Coupling the two made a forced-discovery burst (a route push,
+    // a keyboard slide) run both tiers at full frame rate together.
+    final refreshBounds = nowMs - _lastBoundsMs >= _boundsIntervalMs;
     if (refreshBounds) {
       _lastBoundsMs = nowMs;
     }
@@ -301,11 +434,15 @@ class OcclusionRegistry with WidgetsBindingObserver {
       case 'requestAllOcclusionRects': //Currently iOS only
         _applyNativeOcclusionSettings(call.arguments);
         _markNativeRecordingRequested();
-        return _handleCachedRectsRequest();
+        final rects = _handleCachedRectsRequest();
+        return rects;
       case 'requestSceneFrame': //Currently iOS only
+        // Spans the awaited raster too, so this probe is wall-clock; the
+        // UI-thread share is `sceneRequestSync`.
         _applyNativeOcclusionSettings(call.arguments);
         _markNativeRecordingRequested();
-        return _handleSceneFrameRequest(call.arguments);
+        final response = await _handleSceneFrameRequest(call.arguments);
+        return response;
       case 'updateOcclusionConfiguration':
         // Pushed by native (over the existing bridge channel — no public API)
         // when the session verification resolves or the occlusion config
@@ -355,7 +492,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
         !logicalSize.isEmpty &&
         rootLayer != null &&
         rootLayer.attached &&
-        !_containsPlatformViewLayer(rootLayer) &&
+        !_hasPlatformViewLayer(rootLayer) &&
         dpr > 0;
 
     // LOAD-BEARING ORDER: the rects are resolved here, synchronously, and the
@@ -375,6 +512,8 @@ class OcclusionRegistry with WidgetsBindingObserver {
         'referenceHeight': logicalSize.height,
       },
     };
+    // Everything above ran synchronously on the UI thread; the raster below is
+    // awaited and lands on the raster thread.
 
     if (!canProvidePixels) return response;
 
@@ -407,6 +546,11 @@ class OcclusionRegistry with WidgetsBindingObserver {
       }
     } catch (_) {}
     return response;
+  }
+
+  bool _hasPlatformViewLayer(Layer root) {
+    final found = _containsPlatformViewLayer(root);
+    return found;
   }
 
   bool _containsPlatformViewLayer(Layer layer) {
@@ -451,6 +595,28 @@ class OcclusionRegistry with WidgetsBindingObserver {
   /// hop. The wrapper/config entries below are unaffected: they carry their own
   /// window and are served the same way on either path.
   List<Map<String, dynamic>> _handleCachedRectsRequest({bool coherent = false}) {
+    // One geometry pass across the wrapper entries and the text-field store:
+    // nothing between here and the return can change layout, so every resolve
+    // in this capture shares the memoised ancestor chain.
+    beginGeometryPass();
+    final List<Map<String, dynamic>> rects;
+    try {
+      rects = _serveRects(coherent: coherent);
+    } finally {
+      endGeometryPass();
+    }
+    return rects;
+  }
+
+  List<Map<String, dynamic>> _serveRects({required bool coherent}) {
+    // The regime this capture is in, applied before anything is resolved: a
+    // rects-only request or a scene frame without Flutter pixels is served to a
+    // native screenshot a hop later, so the frame pipeline must be running — and
+    // when this is the capture that starts it, the clear inside the transition
+    // inflates this very serve.
+    _lastCaptureNonCoherent = !coherent;
+    _updatePipelineGate();
+
     _discoverForCapture();
 
     final requestTimestamp = _clock();
@@ -458,13 +624,23 @@ class OcclusionRegistry with WidgetsBindingObserver {
     _expireStaleEntries(requestTimestamp);
 
     final rects = <Map<String, dynamic>>[];
-    final snapshot = _entries.values.toList();
+    _overlayWrapperBounds.clear();
 
-    for (final entry in snapshot) {
+    /// Serves one wrapper rect and remembers it for the text-field dedupe when
+    /// it is an opaque overlay.
+    void serveWrapper(_OcclusionEntry entry, Rect bounds) {
+      rects.add(_rectDataFromEntry(entry, bounds));
+      if ((entry.type ?? OcclusionType.overlay) == OcclusionType.overlay) {
+        _overlayWrapperBounds.add(bounds);
+      }
+    }
+
+    // Stale entries were expired above and nothing below mutates the map.
+    for (final entry in _entries.values) {
       if (_metricsChanging) {
         final bounds = entry.lastBounds;
         if (bounds != null && bounds.width > 0 && bounds.height > 0) {
-          rects.add(_rectDataFromEntry(entry, bounds));
+          serveWrapper(entry, bounds);
         }
         continue;
       }
@@ -474,7 +650,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
           final canUseCache = entry.lastBounds != null &&
               (requestTimestamp - entry.lastUpdatedMs) <= _detachedTtlMs;
           if (canUseCache) {
-            rects.add(_rectDataFromEntry(entry, entry.lastBounds!));
+            serveWrapper(entry, entry.lastBounds!);
           }
           continue;
         }
@@ -487,13 +663,13 @@ class OcclusionRegistry with WidgetsBindingObserver {
         }
 
         _refreshEntryFromBox(entry, box, overrideBounds: bounds);
-        rects.add(_rectDataFromEntry(entry, bounds));
+        serveWrapper(entry, bounds);
       } else {
         final bounds = entry.lastBounds;
         if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
           continue;
         }
-        rects.add(_rectDataFromEntry(entry, bounds));
+        serveWrapper(entry, bounds);
       }
     }
 
@@ -501,11 +677,17 @@ class OcclusionRegistry with WidgetsBindingObserver {
     // serialized on the spot — O(#fields), no tree walk or layout work, so the
     // request path stays cheap even while the main isolate is busy building a
     // screen (which is when the native request would otherwise time out and
-    // emit an unmasked frame).
-    rects.addAll(_textFieldStore.serializeRects(_codec, coherent: coherent));
+    // emit an unmasked frame). A field sitting inside an overlay wrapper is
+    // already covered by the wrapper's rect and is not sent twice.
+    rects.addAll(_textFieldStore.serializeRects(_codec,
+        coherent: coherent, coveredBy: _overlayWrapperBounds));
 
     return rects;
   }
+
+  /// Overlay wrapper rects served in the current response, reused across
+  /// captures so the dedupe allocates nothing.
+  final List<Rect> _overlayWrapperBounds = <Rect>[];
 
   void register(OcclusionReportingRenderBox box) {
     final entry = _entries[box.stableId] ?? _OcclusionEntry(id: box.stableId);
@@ -537,6 +719,7 @@ class OcclusionRegistry with WidgetsBindingObserver {
   }
 
   void _clearSlidingWindows() {
+    debugWindowClearCount++;
     for (final entry in _entries.values) {
       entry.box?.clearHistoricalBounds();
     }
@@ -598,6 +781,14 @@ class OcclusionRegistry with WidgetsBindingObserver {
   @visibleForTesting
   TextFieldRectStore get debugTextFieldStore => _textFieldStore;
 
+  /// The detector, so a test can pin what it remembers between scans.
+  @visibleForTesting
+  TextFieldDetector get debugDetector => _detector;
+
+  /// Entries left in the reused discovery buffer between scans.
+  @visibleForTesting
+  int get debugDiscoveredBufferLength => _discoveredBuffer.length;
+
   /// Resets the auto text-field state between tests. The registry is a
   /// singleton, so without this, policy/store state leaks across test cases.
   @visibleForTesting
@@ -613,9 +804,18 @@ class OcclusionRegistry with WidgetsBindingObserver {
     _forceDiscoveryFrames = 0;
     _lastDiscoveryMs = 0;
     _textFieldStore = TextFieldRectStore();
+    _detector.reset();
     _discoveredBuffer.clear();
     _lastBoundsMs = 0;
     _clock = _wallClock;
+    _pipelineActive = false;
+    _lastCaptureNonCoherent = false;
+    _metricsSettleDeadlineMs = 0;
+    debugPipelineFrameCount = 0;
+    debugGatedFrameCount = 0;
+    debugForcedArmCount = 0;
+    debugDiscoveryWalkCount = 0;
+    debugWindowClearCount = 0;
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import '../internal/monotonic_clock.dart';
 import 'occlusion_geometry.dart';
 import 'occlusion_models.dart';
 
@@ -41,7 +42,7 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
   /// entries age out under load exactly when a lagging mask matters most.
   final int Function() _clock;
 
-  static int _wallClock() => DateTime.now().millisecondsSinceEpoch;
+  static int _wallClock() => monotonicNowMs();
 
   final RenderBox renderBox;
   final bool addPadding;
@@ -108,7 +109,10 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
   @override
   void updateBoundsFromTransform() {
     if (!attached || !hasSize) return;
+    _resolveBounds();
+  }
 
+  void _resolveBounds() {
     final geometry = resolveOcclusionGeometry(renderBox);
 
     if (!geometry.isVisible) {
@@ -143,11 +147,22 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
       // both that path and the native-screenshot path.
       final nowMs = _clock();
       _timestampedBounds.add((nowMs, bounds));
-      _timestampedBounds.removeWhere((e) => (nowMs - e.$1) > _boundsWindowMs);
+      _trimWindow(nowMs);
     } else {
       _lastBounds = null;
       _timestampedBounds.clear();
     }
+  }
+
+  /// Drops samples older than the window. Samples are appended in clock order,
+  /// so the expired ones are a prefix — no predicate closure per call.
+  void _trimWindow(int nowMs) {
+    var expired = 0;
+    while (expired < _timestampedBounds.length &&
+        nowMs - _timestampedBounds[expired].$1 > _boundsWindowMs) {
+      expired++;
+    }
+    if (expired > 0) _timestampedBounds.removeRange(0, expired);
   }
 
   @override
@@ -162,6 +177,11 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
 
   @override
   Rect? getUnionOfHistoricalBounds({bool coherent = false}) {
+    final union = _unionOfHistoricalBounds(coherent: coherent);
+    return union;
+  }
+
+  Rect? _unionOfHistoricalBounds({required bool coherent}) {
     // Coherent capture: the pixels were rasterised by Flutter from the same
     // committed frame these bounds were just resolved from, so the exact rect IS
     // the answer and widening it would mask more of the frame than the field
@@ -170,7 +190,7 @@ class TextFieldOccludeRenderBox implements OcclusionReportingRenderBox {
     if (coherent) return _lastBounds;
 
     final nowMs = _clock();
-    _timestampedBounds.removeWhere((e) => (nowMs - e.$1) > _boundsWindowMs);
+    _trimWindow(nowMs);
 
     Rect? union;
     for (final (_, bounds) in _timestampedBounds) {

@@ -17,7 +17,6 @@ class FocusTreeDetector implements TextFieldDetector {
   FocusTreeDetector();
 
   static const int _maxDescend = 12;
-  static const int _maxCacheEntries = 512;
 
   /// Memoised focus node to editable. Most of the saving comes from here: the
   /// focus walk is cheap, the render descent below each node is not, and that
@@ -28,12 +27,42 @@ class FocusTreeDetector implements TextFieldDetector {
   /// a long list is many leaf nodes with no field beneath them. Caching a
   /// negative is safe because a field appearing later brings its own `Focus`
   /// node, which makes the cached node a non-leaf and stops it being consulted.
-  final Map<FocusNode, RenderEditable?> _editableCache = {};
+  ///
+  /// The memo is bounded by the live focus tree, not by a size cap. Every leaf
+  /// the walk visits is stamped with the walk's generation; an entry left with an
+  /// older stamp belongs to a node the tree no longer holds, and is swept after
+  /// the walk. A `FocusNode` keeps its `BuildContext` after disposal, so a memo
+  /// that outlived its node would pin the node's element, widget, state and
+  /// render subtree — a long list once retained hundreds of recycled rows this
+  /// way, until a wholesale clear dropped them all at once.
+  final Map<FocusNode, _FocusMemo> _memo = <FocusNode, _FocusMemo>{};
+
+  /// Incremented per walk; the stamp a visited entry receives.
+  int _generation = 0;
+
+  /// Entries stamped during the current walk. When it equals the memo size,
+  /// nothing is stale and the sweep is skipped — the common case.
+  int _stampedThisWalk = 0;
 
   @override
   void collect(RenderObject root, Map<int, DiscoveredField> out) {
+    _generation++;
+    _stampedThisWalk = 0;
     _visit(FocusManager.instance.rootScope, out);
+    _sweep();
   }
+
+  @override
+  void reset() {
+    _memo.clear();
+  }
+
+  /// Memo entries, for tests that pin the bound.
+  @visibleForTesting
+  int get debugMemoSize => _memo.length;
+
+  @visibleForTesting
+  bool debugRemembers(FocusNode node) => _memo.containsKey(node);
 
   void _visit(FocusNode node, Map<int, DiscoveredField> out) {
     // Leaves only, and never a scope. A `FocusScopeNode` has the whole screen as
@@ -56,21 +85,41 @@ class FocusTreeDetector implements TextFieldDetector {
   }
 
   RenderEditable? _editableFor(FocusNode node) {
-    if (_editableCache.containsKey(node)) {
-      final cached = _editableCache[node];
+    final memo = _memo[node];
+    if (memo != null) {
+      final cached = memo.editable;
       // A remounted field gets a new render object; serving the old one would
       // mask a stale rectangle.
-      if (cached == null || cached.attached) return cached;
-      _editableCache.remove(node);
+      if (cached == null || cached.attached) {
+        memo.generation = _generation;
+        _stampedThisWalk++;
+        return cached;
+      }
     }
 
+    RenderEditable? found;
     final renderObject = node.context?.findRenderObject();
-    if (renderObject is! RenderBox) return null;
+    if (renderObject is RenderBox) {
+      found = _findEditableUnder(renderObject, _maxDescend);
+    }
 
-    final found = _findEditableUnder(renderObject, _maxDescend);
-    if (_editableCache.length >= _maxCacheEntries) _editableCache.clear();
-    _editableCache[node] = found;
+    if (memo != null) {
+      memo
+        ..editable = found
+        ..generation = _generation;
+    } else {
+      _memo[node] = _FocusMemo(found, _generation);
+    }
+    _stampedThisWalk++;
     return found;
+  }
+
+  /// Drops every entry the walk did not stamp — nodes no longer in the tree, or
+  /// no longer leaves. Skipped when every entry was stamped, so a settled screen
+  /// pays one integer comparison.
+  void _sweep() {
+    if (_stampedThisWalk >= _memo.length) return;
+    _memo.removeWhere((_, memo) => memo.generation != _generation);
   }
 
   RenderEditable? _findEditableUnder(RenderObject node, int budget) {
@@ -79,8 +128,22 @@ class FocusTreeDetector implements TextFieldDetector {
 
     RenderEditable? found;
     node.visitChildren((child) {
-      found ??= _findEditableUnder(child, budget - 1);
+      // `visitChildren` cannot stop early; skipping the remaining siblings'
+      // subtrees once a hit exists is the next best thing.
+      if (found != null) return;
+      found = _findEditableUnder(child, budget - 1);
     });
     return found;
   }
+}
+
+class _FocusMemo {
+  _FocusMemo(this.editable, this.generation);
+
+  /// The editable under the node, or null when there is none — a cached
+  /// negative.
+  RenderEditable? editable;
+
+  /// The last walk that saw this node as a live leaf.
+  int generation;
 }

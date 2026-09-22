@@ -130,14 +130,34 @@ void main() {
             'for a frame callback to run discovery');
   });
 
-  testWidgets('enabling requests a frame', (tester) async {
+  testWidgets(
+      'enabling does not wake a settled screen while every capture is coherent',
+      (tester) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
     registry.occludeAllTextFields = true;
 
+    expect(tester.binding.hasScheduledFrame, isFalse,
+        reason: 'the capture path discovers on its own, so a frame here would '
+            'only cost a frame; the previous test shows the next capture is '
+            'masked regardless');
+  });
+
+  testWidgets(
+      'enabling wakes a frame once a native-screenshot capture has been seen',
+      (tester) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    // A rects-only capture is served to a native screenshot, so the frame
+    // pipeline has to run from here on — and arming a forced discovery is
+    // pointless if no frame is coming.
+    await capture(tester);
+
     expect(tester.binding.hasScheduledFrame, isTrue,
-        reason: 'arming a forced discovery is pointless if no frame is coming');
+        reason: 'the pipeline is active after a native-screenshot capture, so '
+            'arming discovery must request the frame it runs on');
   });
 
   testWidgets('a screen change on a settled screen still discovers',
