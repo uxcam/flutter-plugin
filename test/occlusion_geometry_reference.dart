@@ -67,6 +67,19 @@ bool isRenderObjectEffectivelyInvisible(RenderObject node) {
       return true;
     }
 
+    // The Navigator's overlay theater keeps pushed-over routes mounted but
+    // skips them for paint without saying so through `paintsChild`. Same
+    // structural rule as the single-pass version: a stack-style child of a
+    // non-stack parent is a theater entry, on stage only if the theater paints
+    // it — the set it exposes to semantics.
+    if (ancestor is! RenderStack && child.parentData is StackParentData) {
+      var onstage = false;
+      ancestor.visitChildrenForSemantics((c) {
+        if (identical(c, child)) onstage = true;
+      });
+      if (!onstage) return true;
+    }
+
     child = ancestor;
     ancestor = ancestor.parent;
   }

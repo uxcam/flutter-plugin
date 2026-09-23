@@ -364,7 +364,15 @@ class OcclusionRegistry with WidgetsBindingObserver {
         final box = entry.box;
         if (entry.attached && box != null && box.attached && box.hasSize) {
           box.updateBoundsFromTransform();
-          _refreshEntryFromBox(entry, box);
+          // The box was just resolved, so a hidden verdict is authoritative and
+          // clears the cache the metrics freeze serves from. Keeping the rect
+          // the box had while visible served it — on whatever screen was up —
+          // for the whole of the next keyboard slide after the box's route had
+          // been pushed over.
+          _refreshEntryFromBox(entry, box,
+              overrideBounds:
+                  box.currentBounds ?? box.getUnionOfHistoricalBounds(),
+              keepStaleBounds: false);
         }
       }
     } finally {
@@ -726,15 +734,20 @@ class OcclusionRegistry with WidgetsBindingObserver {
     _textFieldStore.clearSlidingWindows();
   }
 
+  /// [keepStaleBounds] keeps the entry's cached rect when the box offers none.
+  /// Right for a box that has registered but not laid out yet — the cached rect
+  /// covers a capture racing the re-attach — and wrong for a box that has just
+  /// been resolved and found hidden.
   void _refreshEntryFromBox(
     _OcclusionEntry entry,
     OcclusionReportingRenderBox box, {
     Rect? overrideBounds,
+    bool keepStaleBounds = true,
   }) {
     final now = _clock();
     final newBounds = overrideBounds ?? box.currentBounds;
     entry
-      ..lastBounds = newBounds ?? entry.lastBounds
+      ..lastBounds = newBounds ?? (keepStaleBounds ? entry.lastBounds : null)
       ..lastUpdatedMs = now
       ..devicePixelRatio = box.devicePixelRatio
       ..viewId = box.viewId

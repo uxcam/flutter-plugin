@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_uxcam/src/widgets/occlusion_geometry.dart';
@@ -183,6 +184,34 @@ void main() {
     expect(resolveOcclusionGeometry(box).transform.storage,
         box.getTransformTo(null).storage);
     expectEquivalent(box, forTree: 'hidden IndexedStack branch');
+  });
+
+  testWidgets(
+      'reports invisible for a route beneath an opaque one, and visible again '
+      'once it is popped', (t) async {
+    final key = GlobalKey();
+    final nav = GlobalKey<NavigatorState>();
+    await t.pumpWidget(MaterialApp(
+      navigatorKey: nav,
+      home: Scaffold(
+          body: Center(child: SizedBox(key: key, width: 80, height: 20))),
+    ));
+    final box = boxOfKey(key);
+    expect(resolveOcclusionGeometry(box).isVisible, isTrue);
+
+    // A Cupertino slide neither fades nor offstages the outgoing page, so once
+    // the push has settled only the overlay's skip says it is off screen.
+    nav.currentState!.push(CupertinoPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('over'))));
+    await t.pumpAndSettle();
+    expect(box.attached, isTrue, reason: 'the route beneath stays mounted');
+    expect(resolveOcclusionGeometry(box).isVisible, isFalse);
+    expectEquivalent(box, forTree: 'route beneath an opaque route');
+
+    nav.currentState!.pop();
+    await t.pumpAndSettle();
+    expect(resolveOcclusionGeometry(box).isVisible, isTrue);
+    expectEquivalent(box, forTree: 'route popped back on stage');
   });
 
   testWidgets('buffer reuse does not leak state between calls', (t) async {

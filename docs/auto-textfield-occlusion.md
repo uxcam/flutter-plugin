@@ -101,7 +101,7 @@ registry's text-field wiring removes it without touching widget occlusion.
 
 | File | Role |
 |------|------|
-| `lib/src/widgets/occlusion_geometry.dart` | **New.** `resolveOcclusionGeometry()` — visibility, global transform and accumulated clip in a *single* ancestor pass, plus the per-type visibility checkers (`RenderIndexedStack`, `RenderViewport`). Consumed by both render boxes. |
+| `lib/src/widgets/occlusion_geometry.dart` | **New.** `resolveOcclusionGeometry()` — visibility, global transform and accumulated clip in a *single* ancestor pass, plus the per-type visibility checkers (`RenderIndexedStack`, `RenderViewport`) and the overlay-theater onstage rule that hides a route pushed over (§5). Consumed by both render boxes. |
 | `lib/src/widgets/textfield_detector.dart` | **New.** `TextFieldDetector` interface, the `DiscoveredField` value type, the decorator climb (`findDecoratorAncestor`), and `RenderEditableDetector` — the complete-by-construction render-tree walk kept as the parity reference. |
 | `lib/src/widgets/focus_tree_detector.dart` | **New.** The production detector: walks the focus tree and memoises focus node → `RenderEditable`. |
 | `lib/src/widgets/textfield_occlusion_policy.dart` | **New.** Pure, Flutter-free policy resolving the three additive sources and the per-screen rule into one effective decision. |
@@ -185,7 +185,8 @@ For each `RenderEditable` found (`findDecoratorAncestor`):
 2. Resolves visibility, global transform and accumulated ancestor clip in **one**
    `resolveOcclusionGeometry()` pass, and clears bounds if the field is
    effectively invisible (hidden `IndexedStack` branch, off-screen sliver, parent
-   not painting it). A `RenderEditable` sits ~63 ancestors deep and this runs per
+   not painting it, or on a route pushed over — see §5). A `RenderEditable` sits
+   ~63 ancestors deep and this runs per
    field per frame, so the single pass replaces three separate traversals — one
    of which called `getTransformTo` per clipping ancestor, making it
    O(depth × clips) on its own.
@@ -566,6 +567,24 @@ the memo, the store and the discovery buffer.
 - **Adapters don't own their target.** `TextFieldOccludeRenderBox` wraps a
   render object it didn't create, so it must tolerate that object detaching at
   any time — hence the attached/size guards and the detach-on-scan diffing.
+- **A route pushed over is hidden by the overlay's onstage set, not by
+  `paintsChild`.** `Navigator` keeps every `maintainState` route mounted beneath
+  the top opaque one; the `Overlay` theater skips those entries for layout and
+  paint but does not override `paintsChild`, so the render-tree rule alone called
+  the whole previous screen visible — at whatever transform its exit transition
+  left it (a third of the width to the left under a Cupertino slide, hence rects
+  with negative coordinates; exactly in place under a fade-upwards) — and served
+  its fields on every deeper screen until the user came back. The theater is
+  private and its name does not survive obfuscation, so it is recognised
+  structurally (the one non-`RenderStack` parent whose children carry
+  `StackParentData`) and its onstage set is read through
+  `visitChildrenForSemantics`, which it restricts to the entries it paints. The
+  same verdict runs ahead of `OccludeRenderBox`'s layer-detach grace — that grace
+  exists for snapshotted transitions, where the box is still on screen — and
+  clears the entry cache the metrics freeze serves from, so a wrapper's rect
+  cannot resurface on the deeper screen when the keyboard moves. Routes beneath a
+  *translucent* route (dialogs, sheets) stay on stage and stay masked. Pinned by
+  `occlusion_offstage_route_test.dart`.
 - **No release-time logging.** Debug prints that emitted occlusion coordinates
   were removed; rect data is never written to logs.
 

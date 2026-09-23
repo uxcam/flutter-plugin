@@ -58,6 +58,32 @@ bool _checkViewportVisibility(RenderObject ancestor, RenderObject child) {
   return geometry.paintExtent > 0;
 }
 
+/// Whether [parent] — the Navigator's overlay theater — has [kid] on stage.
+///
+/// `Overlay` keeps every `maintainState` route mounted beneath the top opaque
+/// one, so a pushed-over screen stays attached and sized while the theater
+/// skips it for layout, paint and hit-testing. The theater does not report
+/// that through `paintsChild`, so by that rule alone the whole previous screen
+/// was still visible — at whatever transform its exit transition left it: a
+/// third of the width off to the left under a Cupertino slide, exactly in place
+/// under a fade-upwards — and every field on it was served on every deeper
+/// screen until the user came back.
+///
+/// The theater is a private class whose name does not survive obfuscation, so
+/// it is recognised structurally: it is the one non-`RenderStack` parent that
+/// gives its children `StackParentData`. Its onstage set is read through
+/// `visitChildrenForSemantics`, which the theater restricts to the entries it
+/// paints — the same set it lays out and hit-tests. The other parent passing
+/// the structural test, an `OverlayPortal`'s deferred box, visits its one child
+/// and so is unaffected.
+bool _isOnstageChild(RenderObject parent, RenderObject kid) {
+  var onstage = false;
+  parent.visitChildrenForSemantics((child) {
+    if (identical(child, kid)) onstage = true;
+  });
+  return onstage;
+}
+
 /// Everything an occlusion box needs about its position, resolved in a single
 /// ancestor-chain traversal.
 class OcclusionGeometry {
@@ -68,8 +94,8 @@ class OcclusionGeometry {
   });
 
   /// False when the node is not actually painted (parent skips it, hidden
-  /// `IndexedStack` branch, off-screen sliver). Layer-based opacity checks stay
-  /// with the callers that own a layer.
+  /// `IndexedStack` branch, off-screen sliver, route beneath the top opaque
+  /// one). Layer-based opacity checks stay with the callers that own a layer.
   final bool isVisible;
 
   /// Maps the node's local coordinates to global (root) coordinates. Equivalent
@@ -203,6 +229,10 @@ _ChainState _edgeState(RenderObject parent, RenderObject kid, _ChainState of) {
       // type, so a subclass of either gets no checker — as before the guard.
       final checker = _visibilityCheckers[parent.runtimeType];
       if (checker != null && !checker(parent, kid)) visible = false;
+    } else if (kid.parentData is StackParentData) {
+      // A stack-style child of something that is not a stack: the Navigator's
+      // overlay theater. See [_isOnstageChild].
+      if (!_isOnstageChild(parent, kid)) visible = false;
     }
   }
 

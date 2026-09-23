@@ -255,6 +255,26 @@ class OccludeRenderBox extends RenderProxyBox
     if (_context == null || !(_context as Element).mounted) return;
 
     final nowMs = monotonicNowMs();
+
+    // One traversal serves both the visibility gate and the bounds below. This
+    // used to resolve the ancestor chain twice per frame — once via
+    // `_isEffectivelyInvisible()` and again inside
+    // `_calculateCurrentSnappedBounds(skipVisibilityCheck: true)`.
+    //
+    // The render-tree verdict comes before the layer check: it is exact, and it
+    // tells the two reasons a layer goes missing apart. A snapshotted transition
+    // detaches the layer of a box that is still on screen, which is what the
+    // grace below is for. A route pushed over detaches it too, but there the
+    // theater skips the box — and its rect has to go the frame the route goes
+    // offstage, not linger for the grace on the screen now on top.
+    final geometry = resolveOcclusionGeometry(this);
+    if (!geometry.isVisible) {
+      _timestampedBounds.clear();
+      _lastReportedBounds = null;
+      _layerDetachedSinceMs = null;
+      return;
+    }
+
     if (_isLayerDetached(nowMs)) {
       final detachedForMs = nowMs - (_layerDetachedSinceMs ?? nowMs);
       if (detachedForMs > _layerDetachGraceMs) {
@@ -263,9 +283,8 @@ class OccludeRenderBox extends RenderProxyBox
       } else if (_lastReportedBounds != null) {
         _addToSlidingWindow(_lastReportedBounds!, nowMs);
       } else {
-        final transform = getTransformTo(null);
         final rawBounds =
-            MatrixUtils.transformRect(transform, Offset.zero & size);
+            MatrixUtils.transformRect(geometry.transform, Offset.zero & size);
         _lastReportedBounds = rawBounds;
         _addToSlidingWindow(rawBounds, nowMs);
       }
@@ -274,12 +293,7 @@ class OccludeRenderBox extends RenderProxyBox
 
     _pruneSlidingWindow(nowMs);
 
-    // One traversal serves both the visibility gate and the bounds below. This
-    // used to resolve the ancestor chain twice per frame — once via
-    // `_isEffectivelyInvisible()` and again inside
-    // `_calculateCurrentSnappedBounds(skipVisibilityCheck: true)`.
-    final geometry = resolveOcclusionGeometry(this);
-    if (!geometry.isVisible || _isHiddenByLayerOpacity()) {
+    if (_isHiddenByLayerOpacity()) {
       _timestampedBounds.clear();
       _lastReportedBounds = null;
       return;
