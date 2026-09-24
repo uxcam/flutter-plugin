@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_uxcam/src/flutter_uxcam.dart';
@@ -7,6 +5,7 @@ import 'package:flutter_uxcam/src/models/track_data.dart';
 import 'package:flutter_uxcam/src/widgets/occlude_wrapper.dart';
 
 import 'uxcam_element_registry.dart';
+import 'uxcam_gesture_interceptor.dart';
 import 'uxcam_route_tracker.dart';
 import 'uxcam_widget_classifier.dart';
 
@@ -21,6 +20,11 @@ class UXCamWidgetExtractor {
   late UXCamElementRegistry _registry;
   late UXCamRouteTracker _routeTracker;
   bool _isInitialized = false;
+
+  static const int _maxVisitsPerTap = 4000;
+  // Keep a small part of the cap for the selected widget's bounds and label.
+  static const int _payloadVisitReserve = 64;
+  int _visitBudget = _maxVisitsPerTap;
 
   void initialize({
     required UXCamElementRegistry registry,
@@ -38,12 +42,12 @@ class UXCamWidgetExtractor {
     // Don't null out _instance - eager singleton prevents resurrection
   }
 
-  void extractAndSend(Offset position, Set<int> hitTargetHashes) {
+  void extractAndSend(Offset position, UXCamHitPath hitPath) {
     if (!_isInitialized) return;
 
-    _registry.ensureFreshForTap(hitTargetHashes);
+    _visitBudget = _maxVisitsPerTap;
 
-    final extractionResult = _findBestElement(position, hitTargetHashes);
+    final extractionResult = _findBestElement(position, hitPath);
     if (extractionResult == null) return;
 
     final trackData = _buildTrackData(position, extractionResult);
@@ -52,23 +56,17 @@ class UXCamWidgetExtractor {
     }
   }
 
-  _ExtractionResult? _findBestElement(
-      Offset position, Set<int> hitTargetHashes) {
-    final matches = _registry.getMatchingElements(hitTargetHashes);
+  _ExtractionResult? _findBestElement(Offset position, UXCamHitPath hitPath) {
+    final matches = _registry.resolveHitElements(hitPath);
 
     // Find first valid candidate (hit order = specificity order)
     Element? targetElement;
     int? targetHash;
     int? targetType;
 
-    for (final entry in matches) {
-      final element = entry.value;
+    for (final match in matches) {
+      final element = match.element;
       if (!element.mounted) continue;
-
-      final cachedInfo = _registry.getCachedInfo(entry.key);
-      final type =
-          cachedInfo?.uxType ?? UXCamWidgetClassifier.classifyElement(element);
-      if (type == UX_UNKNOWN) continue;
 
       final bounds = _getElementBounds(element);
       if (!bounds.contains(position) &&
@@ -77,8 +75,8 @@ class UXCamWidgetExtractor {
       }
 
       targetElement = element;
-      targetHash = entry.key;
-      targetType = type;
+      targetHash = match.hash;
+      targetType = match.uxType;
       break; // First valid = most specific
     }
 
@@ -103,6 +101,7 @@ class UXCamWidgetExtractor {
           element: interactiveOwner,
           hash: targetHash!,
           type: UXCamWidgetClassifier.classifyElement(interactiveOwner),
+          labelElement: semanticElement,
         );
       }
     }
@@ -178,7 +177,8 @@ class UXCamWidgetExtractor {
     element.visitAncestorElements((ancestor) {
       final type = UXCamWidgetClassifier.classifyElement(ancestor);
       if (_isInteractiveType(type)) {
-        final bounds = _getBestElementBounds(ancestor, position);
+        final bounds = _getBestElementBounds(ancestor, position,
+            visitReserve: _payloadVisitReserve);
         if (bounds != Rect.zero &&
             (bounds.contains(position) ||
                 _containsWithTolerance(bounds, position, 10.0))) {
@@ -196,8 +196,15 @@ class UXCamWidgetExtractor {
   bool _isSoleContent(Element parent, Element target) {
     int contentCount = 0;
     bool foundTarget = false;
+    bool exhausted = false;
 
     void visit(Element el) {
+      if (contentCount > 1) return;
+      if (_visitBudget <= _payloadVisitReserve) {
+        exhausted = true;
+        return;
+      }
+      _visitBudget--;
       final type = UXCamWidgetClassifier.classifyElement(el);
 
       if (identical(el, target)) foundTarget = true;
@@ -212,31 +219,11 @@ class UXCamWidgetExtractor {
     }
 
     parent.visitChildElements(visit);
-    return foundTarget && contentCount == 1;
+    return !exhausted && foundTarget && contentCount == 1;
   }
 
   bool _containsWithTolerance(Rect bounds, Offset position, double radius) {
-    // Check the position itself first
-    if (bounds.contains(position)) {
-      return true;
-    }
-
-    // Then check points around the position within the tolerance radius
-    const int numPoints = 8;
-    final offsets = List.generate(numPoints, (i) {
-      final angle = (2 * pi * i) / numPoints;
-      return Offset(
-        position.dx + radius * cos(angle),
-        position.dy + radius * sin(angle),
-      );
-    });
-
-    for (final offset in offsets) {
-      if (bounds.contains(offset)) {
-        return true;
-      }
-    }
-    return false;
+    return bounds.inflate(radius).contains(position);
   }
 
   Rect _getElementBounds(Element element) {
@@ -249,7 +236,8 @@ class UXCamWidgetExtractor {
     return Rect.zero;
   }
 
-  Rect _getBestElementBounds(Element element, Offset position) {
+  Rect _getBestElementBounds(Element element, Offset position,
+      {int visitReserve = 0}) {
     Rect best = Rect.zero;
     double bestArea = -1;
     Rect largestAny = Rect.zero;
@@ -278,13 +266,18 @@ class UXCamWidgetExtractor {
     }
 
     void visit(Element el) {
+      if (_visitBudget <= visitReserve) return;
+      _visitBudget--;
       consider(el);
       el.visitChildElements(visit);
     }
 
     // Prefer the largest RenderBox inside this widget that contains the tap.
     // This maps child hits (Text, DecoratedBox, etc.) to the whole control.
-    visit(element);
+    // Always inspect the selected element, even when optional searches used
+    // the remaining budget.
+    consider(element);
+    element.visitChildElements(visit);
 
     return best == Rect.zero ? largestAny : best;
   }
@@ -294,6 +287,11 @@ class UXCamWidgetExtractor {
     final type = result.type;
 
     final route = _routeTracker.getRouteForElement(element);
+    var value = _extractValue(element, type, position);
+    if (type == UX_BUTTON && _visitBudget <= 0 && result.labelElement != null) {
+      final tappedLabel = _extractTextValue(result.labelElement!.widget);
+      if (tappedLabel.isNotEmpty) value = tappedLabel;
+    }
     final bounds = _getBestElementBounds(element, position);
     if (bounds == Rect.zero) return null;
 
@@ -303,7 +301,6 @@ class UXCamWidgetExtractor {
     final isOccluded =
         element.findAncestorWidgetOfExactType<OccludeWrapper>() != null;
 
-    final value = _extractValue(element, type, position);
     final uiId = _generateUiId(route, widgetType, value);
 
     return TrackData(
@@ -360,12 +357,11 @@ class UXCamWidgetExtractor {
   }
 
   String _extractImageValue(Element element, Widget widget) {
-
-  // Prefer an explicit semantics value/label if present
-  final semanticsValue = _findSemanticsValue(element);
-  if (semanticsValue != null && semanticsValue.isNotEmpty) {
-    return semanticsValue;
-  }
+    // Prefer an explicit semantics value/label if present
+    final semanticsValue = _findSemanticsValue(element);
+    if (semanticsValue != null && semanticsValue.isNotEmpty) {
+      return semanticsValue;
+    }
 
     if (widget is Image) {
       return _extractImagePath(widget.image.toString()) ?? '';
@@ -456,6 +452,7 @@ class UXCamWidgetExtractor {
 
     void visitChildren(Element child) {
       if (label.isNotEmpty) return;
+      if (_visitBudget-- <= 0) return;
 
       // Only extract from children at tap position
       final bounds = _getElementBounds(child);
@@ -509,10 +506,12 @@ class _ExtractionResult {
   final Element element;
   final int hash;
   final int type;
+  final Element? labelElement;
 
   _ExtractionResult({
     required this.element,
     required this.hash,
     required this.type,
+    this.labelElement,
   });
 }
