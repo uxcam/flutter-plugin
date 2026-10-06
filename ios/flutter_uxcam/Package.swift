@@ -15,7 +15,7 @@ let package = Package(
         .package(name: "FlutterFramework", path: "../FlutterFramework"),
         .package(
             url: "https://github.com/uxcam/uxcam-ios",
-            .upToNextMinor(from: "3.11.0")
+            .upToNextMinor(from: "3.11.1")
         )
     ],
     targets: [
