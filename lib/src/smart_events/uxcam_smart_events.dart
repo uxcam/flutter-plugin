@@ -163,9 +163,9 @@ class UXCamSmartEvents with WidgetsBindingObserver {
     UXCamWidgetClassifier.clearCustomTypes();
   }
 
-  void _onTap(Offset position, Set<int> hitTargetHashes) {
+  void _onTap(Offset position, UXCamHitPath hitPath) {
     if (!_gestureTrackingEnabled) return;
-    _widgetExtractor?.extractAndSend(position, hitTargetHashes);
+    _widgetExtractor?.extractAndSend(position, hitPath);
   }
 
   void _onRouteChanged() {

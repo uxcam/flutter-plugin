@@ -15,9 +15,19 @@ enum GestureType {
   swipeDown,
 }
 
-typedef TapCallback = void Function(Offset position, Set<int> hitTargetHashes);
+class UXCamHitPath {
+  final Set<int> hitHashes;
+  final Set<int> traversable;
+
+  const UXCamHitPath({required this.hitHashes, required this.traversable});
+
+  bool get isEmpty => hitHashes.isEmpty;
+  bool get isNotEmpty => hitHashes.isNotEmpty;
+}
+
+typedef TapCallback = void Function(Offset position, UXCamHitPath hitPath);
 typedef GestureCallback = void Function(
-    GestureType type, Offset position, Set<int> hitTargetHashes);
+    GestureType type, Offset position, UXCamHitPath hitPath);
 
 /// Global pointer event interceptor via GestureBinding.pointerRouter.
 /// Supports tap, long press, double tap, and swipe gestures.
@@ -46,7 +56,7 @@ class UXCamGestureInterceptor {
   Offset? _pointerDownPosition;
   int? _activePointerId;
   Timer? _longPressTimer;
-  Set<int>? _activeHitTargets;
+  UXCamHitPath? _activeHitTargets;
   bool _tapFiredForCurrentPointer = false;
 
   TapCallback? onTap;
@@ -173,7 +183,7 @@ class UXCamGestureInterceptor {
 
   /// Fire tap immediately on pointer down to capture widget state correctly.
   /// This is the original behavior that ensures uiValue extraction works.
-  void _fireTapImmediately(Offset position, Set<int> hitTargets) {
+  void _fireTapImmediately(Offset position, UXCamHitPath hitTargets) {
     if (_tapFiredForCurrentPointer) return;
     _tapFiredForCurrentPointer = true;
     _lastTapTime = DateTime.now();
@@ -286,8 +296,9 @@ class UXCamGestureInterceptor {
     return false;
   }
 
-  Set<int> _buildTargetSet(HitTestResult result) {
+  UXCamHitPath _buildTargetSet(HitTestResult result) {
     final targetSet = <int>{};
+    final traversable = <int>{};
 
     for (final entry in result.path) {
       RenderObject? renderBox;
@@ -300,10 +311,15 @@ class UXCamGestureInterceptor {
 
       if (renderBox != null && renderBox is RenderBox) {
         targetSet.add(identityHashCode(renderBox));
+        RenderObject? ancestor = renderBox;
+        while (ancestor != null) {
+          if (!traversable.add(identityHashCode(ancestor))) break;
+          ancestor = ancestor.parent;
+        }
       }
     }
 
-    return targetSet;
+    return UXCamHitPath(hitHashes: targetSet, traversable: traversable);
   }
 
   RenderObject? _findNearestRenderBox(HitTestTarget target) {

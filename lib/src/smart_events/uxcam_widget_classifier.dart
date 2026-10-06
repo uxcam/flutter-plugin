@@ -179,28 +179,50 @@ class UXCamWidgetClassifier {
     Material: 'Material',
   };
 
-  static void registerButtonType(Type type) => _customButtonTypes.add(type);
+  static void registerButtonType(Type type) {
+    _customButtonTypes.add(type);
+    _classificationCache.clear();
+  }
 
-  static void registerFieldType(Type type) => _customFieldTypes.add(type);
+  static void registerFieldType(Type type) {
+    _customFieldTypes.add(type);
+    _classificationCache.clear();
+  }
 
-  static void registerInteractiveType(Type type) =>
-      _customInteractiveTypes.add(type);
+  static void registerInteractiveType(Type type) {
+    _customInteractiveTypes.add(type);
+    _classificationCache.clear();
+  }
 
-  static void unregisterButtonType(Type type) =>
-      _customButtonTypes.remove(type);
+  static void unregisterButtonType(Type type) {
+    _customButtonTypes.remove(type);
+    _classificationCache.clear();
+  }
 
-  static void unregisterFieldType(Type type) => _customFieldTypes.remove(type);
+  static void unregisterFieldType(Type type) {
+    _customFieldTypes.remove(type);
+    _classificationCache.clear();
+  }
 
-  static void unregisterInteractiveType(Type type) =>
-      _customInteractiveTypes.remove(type);
+  static void unregisterInteractiveType(Type type) {
+    _customInteractiveTypes.remove(type);
+    _classificationCache.clear();
+  }
 
   static void clearCustomTypes() {
+    _classificationCache.clear();
     _customButtonTypes.clear();
     _customFieldTypes.clear();
     _customInteractiveTypes.clear();
   }
 
+  static final Map<Type, int> _classificationCache = <Type, int>{};
+
   static int classify(Type runtimeType) {
+    return _classificationCache[runtimeType] ??= _classifyType(runtimeType);
+  }
+
+  static int _classifyType(Type runtimeType) {
     if (_customButtonTypes.contains(runtimeType)) return UX_BUTTON;
     if (_customFieldTypes.contains(runtimeType)) return UX_FIELD;
     if (_customInteractiveTypes.contains(runtimeType)) return UX_COMPOUND;
@@ -216,6 +238,8 @@ class UXCamWidgetClassifier {
     if (_textTypes.contains(runtimeType)) return UX_TEXT;
     if (_imageTypes.contains(runtimeType)) return UX_IMAGE;
     if (_viewGroupTypes.contains(runtimeType)) return UX_VIEWGROUP;
+
+    if (runtimeType.toString().startsWith('Radio<')) return UX_COMPOUND;
 
     return UX_UNKNOWN;
   }
@@ -241,14 +265,11 @@ class UXCamWidgetClassifier {
         if (decoration.image != null) {
           return UX_IMAGE;
         }
-        if (decoration.shape == BoxShape.circle || decoration.color != null) {
+        if (decoration.color != null) {
           return UX_DECOR;
         }
       }
     }
-
-    final typeName = runtimeType.toString();
-    if (typeName.startsWith('Radio<')) return UX_COMPOUND;
 
     return UX_UNKNOWN;
   }
