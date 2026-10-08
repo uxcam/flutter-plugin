@@ -50,8 +50,10 @@ class FlutterUxcam {
     if (status == true) {
       final enableSmartEvents = config.enableSmartEvents ?? true;
       _smartEvents.initialize(enableGestureTracking: enableSmartEvents);
-      if (!kIsWeb && Platform.isIOS) {
-        MotionReporter.instance.markRecordingRequested();
+      if (!kIsWeb) {
+        // Motion skipping stays iOS-only; Android uses render activity to skip
+        // captures of an idle screen.
+        if (Platform.isIOS) MotionReporter.instance.markRecordingRequested();
         RenderActivityReporter.instance.start();
       }
     }
@@ -92,8 +94,8 @@ class FlutterUxcam {
   /// This method is used for starting new session
   static Future<void> startNewSession() async {
     await _channel.invokeMethod('startNewSession');
-    if (!kIsWeb && Platform.isIOS) {
-      MotionReporter.instance.markRecordingRequested();
+    if (!kIsWeb) {
+      if (Platform.isIOS) MotionReporter.instance.markRecordingRequested();
       RenderActivityReporter.instance.start();
     }
   }
@@ -107,8 +109,8 @@ class FlutterUxcam {
   /// and uploading the data to server
   static Future<void> stopSessionAndUploadData() async {
     await _channel.invokeMethod('stopSessionAndUploadData');
-    if (!kIsWeb && Platform.isIOS) {
-      MotionReporter.instance.stop();
+    if (!kIsWeb) {
+      if (Platform.isIOS) MotionReporter.instance.stop();
       RenderActivityReporter.instance.stop();
     }
   }
@@ -239,8 +241,8 @@ class FlutterUxcam {
   /// This method is used for opting in to enable recording at runtime
   static Future<void> optInOverall() async {
     await _channel.invokeMethod('optInOverall');
-    if (!kIsWeb && Platform.isIOS) {
-      MotionReporter.instance.markRecordingRequested();
+    if (!kIsWeb) {
+      if (Platform.isIOS) MotionReporter.instance.markRecordingRequested();
       RenderActivityReporter.instance.start();
     }
   }
@@ -248,8 +250,8 @@ class FlutterUxcam {
   /// This method is used for opting in to disable recording at runtime
   static Future<void> optOutOverall() async {
     await _channel.invokeMethod('optOutOverall');
-    if (!kIsWeb && Platform.isIOS) {
-      MotionReporter.instance.stop();
+    if (!kIsWeb) {
+      if (Platform.isIOS) MotionReporter.instance.stop();
       RenderActivityReporter.instance.stop();
     }
   }
@@ -319,8 +321,8 @@ class FlutterUxcam {
   /// This method is used for cancelling current running session.
   static Future<void> cancelCurrentSession() async {
     await _channel.invokeMethod('cancelCurrentSession');
-    if (!kIsWeb && Platform.isIOS) {
-      MotionReporter.instance.stop();
+    if (!kIsWeb) {
+      if (Platform.isIOS) MotionReporter.instance.stop();
       RenderActivityReporter.instance.stop();
     }
   }
@@ -404,8 +406,8 @@ class FlutterUxcam {
   @Deprecated("Please use stopSessionAndUploadData() instead")
   static Future<void> stopApplicationAndUploadData() async {
     await _channel.invokeMethod('stopApplicationAndUploadData');
-    if (!kIsWeb && Platform.isIOS) {
-      MotionReporter.instance.stop();
+    if (!kIsWeb) {
+      if (Platform.isIOS) MotionReporter.instance.stop();
       RenderActivityReporter.instance.stop();
     }
   }

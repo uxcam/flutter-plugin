@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'uxcam_internal_channel.dart';
@@ -20,6 +22,16 @@ class RenderActivityReporter {
   void start() {
     if (_started) return;
     _started = true;
+    if (!kIsWeb && Platform.isAndroid) {
+      // Recording usually starts once verification answers, often on a screen
+      // that is no longer drawing. Without a frame nothing would be reported
+      // and the SDK would keep treating the screen as drawing, so report idle
+      // if no frame arrives within the threshold. (The native default is
+      // "drawing", so assuming it here sends nothing new.)
+      _active = true;
+      _lastFrameMs = DateTime.now().millisecondsSinceEpoch;
+      _quiescenceTimer ??= Timer(_quiescenceThreshold, _checkQuiescence);
+    }
     if (_callbackRegistered) return;
     try {
       SchedulerBinding.instance.addPersistentFrameCallback(_onFrame);
