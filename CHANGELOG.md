@@ -2,6 +2,7 @@
 
 | Version      | Changes                                |
 |---------------|--|
+| 2.10.3        | Updated Android SDK to 3.11.3
 | 2.10.2        | Updated iOS SDK to 3.11.1 and Android SDK to 3.11.1
 | 2.10.1        | Updated iOS SDK to 3.11.0 and Android SDK to 3.10.10
 | 2.10.0        | Updated iOS SDK to 3.10.3 and Android SDK to 3.10.9
