@@ -71,11 +71,13 @@ class OcclusionRegistry with WidgetsBindingObserver {
     switch (call.method) {
       case 'requestOcclusionRects':
         _markNativeRecordingRequested();
-        return _handleCachedRectsRequest();
+        final args = call.arguments;
+        final sinceMs = args is Map ? (args['sinceMs'] as num?)?.toInt() : null;
+        return _handleCachedRectsRequest(sinceMs: sinceMs);
       case 'requestAllOcclusionRects': //Currently iOS only
         _markNativeRecordingRequested();
         return _handleCachedRectsRequest();
-      case 'requestSceneFrame': //Currently iOS only
+      case 'requestSceneFrame':
         _markNativeRecordingRequested();
         return _handleSceneFrameRequest(call.arguments);
       default:
@@ -86,11 +88,21 @@ class OcclusionRegistry with WidgetsBindingObserver {
     }
   }
 
+  int? _latestSceneRequestId;
+
   Future<Map<String, dynamic>> _handleSceneFrameRequest(
       dynamic arguments) async {
     final args = arguments is Map ? arguments : const <String, Object?>{};
-    final targetWidth = (args['targetWidth'] as num?)?.toDouble();
     final includePixels = args['includePixels'] != false;
+    // Android numbers its requests; requests queued behind a stall render only the newest.
+    final requestId = (args['requestId'] as num?)?.toInt();
+    if (requestId != null) {
+      _latestSceneRequestId = requestId;
+      await Future<void>.delayed(Duration.zero);
+    }
+    bool isStale() => requestId != null && _latestSceneRequestId != requestId;
+    const stale = <String, dynamic>{'stale': true};
+    if (isStale()) return stale;
 
     RenderView? renderView;
     for (final view in RendererBinding.instance.renderViews) {
@@ -100,9 +112,24 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
     final logicalSize =
         renderView?.hasConfiguration == true ? renderView!.size : Size.zero;
+    // Android gives a width per layout shape: around a rotation this run's
+    // layout can differ from the view native sees, so the shape of the layout
+    // rendered here picks the width. iOS sends one targetWidth.
+    final portraitWidth = (args['portraitTargetWidth'] as num?)?.toDouble();
+    final landscapeWidth = (args['landscapeTargetWidth'] as num?)?.toDouble();
+    final targetWidth = portraitWidth != null && landscapeWidth != null
+        ? (logicalSize.width > logicalSize.height ? landscapeWidth : portraitWidth)
+        : (args['targetWidth'] as num?)?.toDouble();
     final response = <String, dynamic>{
-      'rects': _handleCachedRectsRequest(),
-      'coordinateSpace': 'sourceLogicalPoints',
+      // Android pairs these rects with the pixels below from the same layer
+      // tree, so the current bounds are exact; iOS keeps the union.
+      'rects': _handleCachedRectsRequest(
+        currentFrameOnly: !kIsWeb && Platform.isAndroid,
+      ),
+      // _rectDataFromEntry emits logical points on iOS and physical pixels
+      // (relative to the Flutter view) on Android.
+      'coordinateSpace':
+          !kIsWeb && Platform.isIOS ? 'sourceLogicalPoints' : 'physicalPixels',
       if (!logicalSize.isEmpty) ...{
         'referenceWidth': logicalSize.width,
         'referenceHeight': logicalSize.height,
@@ -131,8 +158,10 @@ class OcclusionRegistry with WidgetsBindingObserver {
         pixelRatio: scale / dpr,
       );
       try {
+        if (isStale()) return stale;
         final byteData =
             await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        if (isStale()) return stale;
         if (byteData == null) return response;
         response.addAll(<String, dynamic>{
           'bytes': byteData.buffer.asUint8List(
@@ -143,6 +172,10 @@ class OcclusionRegistry with WidgetsBindingObserver {
           'pixelHeight': image.height,
           'logicalWidth': logicalSize.width,
           'logicalHeight': logicalSize.height,
+          // This run's layout size in physical pixels; it can differ from the
+          // native view's size around a rotation.
+          'viewPixelWidth': (logicalSize.width * dpr).round(),
+          'viewPixelHeight': (logicalSize.height * dpr).round(),
         });
       } finally {
         image.dispose();
@@ -169,7 +202,10 @@ class OcclusionRegistry with WidgetsBindingObserver {
     }
   }
 
-  List<Map<String, dynamic>> _handleCachedRectsRequest() {
+  List<Map<String, dynamic>> _handleCachedRectsRequest({
+    bool currentFrameOnly = false,
+    int? sinceMs,
+  }) {
     final requestTimestamp = DateTime.now().millisecondsSinceEpoch;
 
     _expireStaleEntries(requestTimestamp);
@@ -192,7 +228,9 @@ class OcclusionRegistry with WidgetsBindingObserver {
 
         box.updateBoundsFromTransform();
 
-        final bounds = box.getUnionOfHistoricalBounds();
+        final bounds = currentFrameOnly
+            ? box.currentBounds ?? box.getUnionOfHistoricalBounds()
+            : box.getUnionOfHistoricalBounds(sinceMs: sinceMs);
         if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
           continue;
         }
