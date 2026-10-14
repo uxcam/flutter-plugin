@@ -19,6 +19,9 @@ import com.uxcam.UXCam;
 import com.uxcam.screenshot.screenshotTaker.CrossPlatformDelegate;
 import com.uxcam.screenshot.screenshotTaker.OcclusionRectRequestListener;
 import com.uxcam.screenshot.screenshotTaker.OcclusionReadyCallback;
+import com.uxcam.screenshot.screenshotTaker.SceneFrameCallback;
+import com.uxcam.screenshot.screenshotTaker.SceneFrameRequestListener;
+import com.uxcam.screenshot.screenshotTaker.TimedOcclusionRectRequestListener;
 import com.uxcam.internal.FlutterFacade;
 import com.uxcam.screenshot.model.UXCamBlur;
 import com.uxcam.screenshot.model.UXCamOverlay;
@@ -41,7 +44,7 @@ import androidx.annotation.NonNull;
  * FlutterUxcamPlugin
  */
 public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    private static final String TYPE_VERSION = "2.10.2";
+    private static final String TYPE_VERSION = "2.10.3";
     public static final String TAG = "FlutterUXCam";
     public static final String USER_APP_KEY = "userAppKey";
     public static final String ENABLE_INTEGRATION_LOGGING = "enableIntegrationLogging";
@@ -73,6 +76,10 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
     private MethodChannel occlusionRequestChannel;
     private BinaryMessenger binaryMessenger;
     private boolean occlusionListenerAttached = false;
+    // What this engine registered on the SDK's shared delegate, so detaching removes only its own.
+    private OcclusionRectRequestListener registeredRectListener;
+    private TimedOcclusionRectRequestListener registeredTimedListener;
+    private SceneFrameRequestListener registeredSceneListener;
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
@@ -84,35 +91,13 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
         delegate = UXCam.getDelegate();
     }
 
-    @SuppressWarnings("unchecked")
+    /** The old listener's contract: a missing or malformed reply is "no rects", never an error. */
     private List<Rect> parseRectsFromFlutter(Object result) {
         if (result == null) {
             return Collections.emptyList();
         }
-
         try {
-            List<Map<String, Object>> rectMaps = (List<Map<String, Object>>) result;
-            List<Rect> rects = new ArrayList<>(rectMaps.size());
-
-            for (Map<String, Object> rectMap : rectMaps) {
-                double left = ((Number) rectMap.get("left")).doubleValue();
-                double top = ((Number) rectMap.get("top")).doubleValue();
-                double right = ((Number) rectMap.get("right")).doubleValue();
-                double bottom = ((Number) rectMap.get("bottom")).doubleValue();
-
-                Rect rect = new Rect(
-                        (int) Math.floor(left),
-                        (int) Math.floor(top),
-                        (int) Math.ceil(right),
-                        (int) Math.ceil(bottom)
-                );
-
-                if (rect.width() > 0 && rect.height() > 0) {
-                    rects.add(rect);
-                }
-            }
-
-            return rects;
+            return parseRectsStrict(result);
         } catch (Exception e) {
             Log.e(TAG, "[Occlusion] Failed to parse rects: " + e.getMessage());
             return Collections.emptyList();
@@ -121,6 +106,23 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+        // A destroyed engine never answers a platform message, so leaving these registered would
+        // have the SDK wait on it. Another engine may have registered since; keep its listeners.
+        if (delegate != null) {
+            if (registeredRectListener != null && delegate.getListener() == registeredRectListener) {
+                delegate.setListener(null);
+            }
+            if (registeredTimedListener != null && delegate.getTimedListener() == registeredTimedListener) {
+                delegate.setTimedListener(null);
+            }
+            if (registeredSceneListener != null && delegate.getSceneFrameListener() == registeredSceneListener) {
+                delegate.setSceneFrameListener(null);
+            }
+        }
+        registeredRectListener = null;
+        registeredTimedListener = null;
+        registeredSceneListener = null;
+        occlusionListenerAttached = false;
     }
 
     @Override
@@ -153,6 +155,23 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
             UXCam.startApplicationWithKeyForCordova(activity, key);
             addListener(result);
             UXCam.pluginType("flutter", TYPE_VERSION);
+        } else if ("uxcamInternalEvent".equals(call.method)) {
+            Map<String, Object> data = call.argument("data");
+            if ("renderActivity".equals(call.argument("name")) && data != null
+                    && data.get("active") instanceof Boolean && delegate != null) {
+                delegate.setRenderActive((Boolean) data.get("active"));
+            } else if ("resizeLaidOut".equals(call.argument("name")) && data != null
+                    && data.get("seq") instanceof Number && delegate != null) {
+                // Dart laid out a frame at a new view size; until its raster finishes, native
+                // copies of the surface can show the old layout.
+                delegate.setResizeLaidOut(((Number) data.get("seq")).longValue());
+            } else if ("resizePresented".equals(call.argument("name")) && data != null
+                    && data.get("seq") instanceof Number && data.get("width") instanceof Number
+                    && data.get("height") instanceof Number && delegate != null) {
+                delegate.setResizePresented(((Number) data.get("seq")).longValue(),
+                        ((Number) data.get("width")).intValue(), ((Number) data.get("height")).intValue());
+            }
+            result.success(null);
         } else if ("startNewSession".equals(call.method)) {
             UXCam.startNewSession();
             result.success(null);
@@ -381,7 +400,123 @@ public class FlutterUxcamPlugin implements MethodCallHandler, FlutterPlugin, Act
                 });
             }
         });
+        // Rects since the capture started; a failed call is reported, not sent as "no rects".
+        delegate.setTimedListener((sinceEpochMs, callback) -> mainHandler.post(() -> {
+            Map<String, Object> args = new HashMap<>();
+            args.put("sinceMs", sinceEpochMs);
+            occlusionRequestChannel.invokeMethod("requestOcclusionRects", args, new Result() {
+                @Override
+                public void success(Object result) {
+                    List<Rect> rects;
+                    try {
+                        rects = parseRectsStrict(result);
+                    } catch (Exception e) {
+                        callback.onRectsUnavailable("malformed_" + e.getClass().getSimpleName());
+                        return;
+                    }
+                    callback.onRectsReady(rects);
+                }
+
+                @Override
+                public void error(String errorCode, String errorMessage, Object errorDetails) {
+                    callback.onRectsUnavailable("error_" + errorCode);
+                }
+
+                @Override
+                public void notImplemented() {
+                    // No Dart handler: nothing of Flutter's to occlude, same as before.
+                    callback.onRectsReady(Collections.emptyList());
+                }
+            });
+        }));
+        delegate.setSceneFrameListener((requestId, portraitWidthPx, landscapeWidthPx, callback) -> mainHandler.post(() -> {
+            Map<String, Object> args = new HashMap<>();
+            args.put("requestId", requestId);
+            args.put("portraitTargetWidth", portraitWidthPx);
+            args.put("landscapeTargetWidth", landscapeWidthPx);
+            args.put("includePixels", true);
+            occlusionRequestChannel.invokeMethod("requestSceneFrame", args, new Result() {
+                @Override
+                public void success(Object result) {
+                    deliverSceneFrame(result, callback);
+                }
+
+                @Override
+                public void error(String errorCode, String errorMessage, Object errorDetails) {
+                    if ("UNSUPPORTED".equals(errorCode)) {
+                        callback.onUnsupported();
+                    } else {
+                        callback.onFailed("error_" + errorCode);
+                    }
+                }
+
+                @Override
+                public void notImplemented() {
+                    callback.onUnsupported();
+                }
+            });
+        }));
+        registeredRectListener = delegate.getListener();
+        registeredTimedListener = delegate.getTimedListener();
+        registeredSceneListener = delegate.getSceneFrameListener();
         occlusionListenerAttached = true;
+    }
+
+    /** Throws on anything that is not a list of rect maps; never turns garbage into "no rects". */
+    private static List<Rect> parseRectsStrict(Object rectList) {
+        List<Rect> rects = new ArrayList<>();
+        for (Object item : (List<?>) rectList) {
+            Map<?, ?> rectMap = (Map<?, ?>) item;
+            Rect rect = new Rect(
+                    (int) Math.floor(((Number) rectMap.get("left")).doubleValue()),
+                    (int) Math.floor(((Number) rectMap.get("top")).doubleValue()),
+                    (int) Math.ceil(((Number) rectMap.get("right")).doubleValue()),
+                    (int) Math.ceil(((Number) rectMap.get("bottom")).doubleValue())
+            );
+            if (rect.width() > 0 && rect.height() > 0) {
+                rects.add(rect);
+            }
+        }
+        return rects;
+    }
+
+    /**
+     * Unlike {@link #parseRectsFromFlutter}, a malformed reply is a failure, never "no rects": the
+     * SDK drops that frame rather than recording it unmasked.
+     */
+    private void deliverSceneFrame(Object result, SceneFrameCallback callback) {
+        try {
+            if (!(result instanceof Map)) {
+                callback.onFailed("not_a_map");
+                return;
+            }
+            if (Boolean.TRUE.equals(((Map<?, ?>) result).get("stale"))) {
+                callback.onFailed("stale");
+                return;
+            }
+            Map<?, ?> reply = (Map<?, ?>) result;
+            Object rectList = reply.get("rects");
+            if (!(rectList instanceof List)) {
+                callback.onFailed("no_rects");
+                return;
+            }
+            List<Rect> rects = parseRectsStrict(rectList);
+            Object bytes = reply.get("bytes");
+            if (!(bytes instanceof byte[])) {
+                // Dart could not render pixels (a platform view is on screen).
+                callback.onSceneFrame(null, 0, 0, 0, 0, rects);
+                return;
+            }
+            int pixelWidth = ((Number) reply.get("pixelWidth")).intValue();
+            int pixelHeight = ((Number) reply.get("pixelHeight")).intValue();
+            int viewWidth = reply.get("viewPixelWidth") instanceof Number
+                    ? ((Number) reply.get("viewPixelWidth")).intValue() : 0;
+            int viewHeight = reply.get("viewPixelHeight") instanceof Number
+                    ? ((Number) reply.get("viewPixelHeight")).intValue() : 0;
+            callback.onSceneFrame((byte[]) bytes, pixelWidth, pixelHeight, viewWidth, viewHeight, rects);
+        } catch (Exception e) {
+            callback.onFailed("malformed_" + e.getClass().getSimpleName());
+        }
     }
 
     private void startWithConfig(Map<String, Object> configMap, Result callback) {

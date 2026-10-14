@@ -79,7 +79,13 @@ class OccludeRenderBox extends RenderProxyBox
   OcclusionType _type;
   bool _isRegistered = false;
 
-  static const int _boundsWindowMs = 100;
+  /// Default span of [getUnionOfHistoricalBounds]: pads rects that are read a
+  /// little after the pixels they mask.
+  static const int _defaultUnionWindowMs = 100;
+
+  /// How much history is kept, so a native capture that names when it started
+  /// (Android's `sinceMs`) can still be covered after a slow copy.
+  static const int _historyWindowMs = 1000;
   // Snapshot-based transitions can temporarily detach layers while a snapshot
   // is animated. Keep the last bounds briefly to avoid flicker.
   static const int _layerDetachGraceMs = 500;
@@ -309,11 +315,14 @@ class OccludeRenderBox extends RenderProxyBox
   bool get hasValidBounds => attached && hasSize;
 
   @override
-  Rect? getUnionOfHistoricalBounds() {
-    _pruneSlidingWindow(DateTime.now().millisecondsSinceEpoch);
+  Rect? getUnionOfHistoricalBounds({int? sinceMs}) {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    _pruneSlidingWindow(nowMs);
+    final cutoff = sinceMs ?? nowMs - _defaultUnionWindowMs;
 
     Rect? union;
     for (final entry in _timestampedBounds) {
+      if (entry.timestampMs < cutoff) continue;
       if (entry.bounds.width > 0 && entry.bounds.height > 0) {
         if (union == null) {
           union = entry.bounds;
@@ -327,7 +336,7 @@ class OccludeRenderBox extends RenderProxyBox
   }
 
   void _pruneSlidingWindow(int nowMs) {
-    final cutoff = nowMs - _boundsWindowMs;
+    final cutoff = nowMs - _historyWindowMs;
     _timestampedBounds.removeWhere((entry) => entry.timestampMs < cutoff);
   }
 

@@ -16,7 +16,9 @@ abstract class OcclusionReportingRenderBox {
 
   bool get hasValidBounds;
 
-  Rect? getUnionOfHistoricalBounds();
+  /// Union of this widget's bounds since [sinceMs] (wall clock); the last
+  /// 100 ms when null.
+  Rect? getUnionOfHistoricalBounds({int? sinceMs});
   void recalculateBounds();
   void updateBoundsFromTransform();
 }
