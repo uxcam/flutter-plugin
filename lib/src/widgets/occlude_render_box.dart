@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import 'occlusion_models.dart';
 import 'occlusion_registry.dart';
+import 'stretch_detector.dart';
 
 typedef VisibilityChecker = bool Function(
     RenderObject ancestor, RenderObject child);
@@ -232,12 +233,8 @@ class OccludeRenderBox extends RenderProxyBox
     if (!skipVisibilityCheck && _isEffectivelyInvisible()) return null;
 
     final transform = getTransformTo(null);
-    Rect bounds = MatrixUtils.transformRect(transform, Offset.zero & size);
-
-    final effectiveClip = _calculateEffectiveClip();
-    if (effectiveClip != null) {
-      bounds = bounds.intersect(effectiveClip);
-    }
+    final bounds = _clipAndStretch(
+        MatrixUtils.transformRect(transform, Offset.zero & size));
 
     if (bounds.width <= 0 || bounds.height <= 0) return null;
 
@@ -245,26 +242,55 @@ class OccludeRenderBox extends RenderProxyBox
     return _snapToDevicePixels(bounds, devicePixelRatio);
   }
 
-  Rect? _calculateEffectiveClip() {
-    Rect? accumulatedClip;
+  /// [bounds] clipped by each ancestor and grown by each shader stretch, in
+  /// paint order: a clip below a stretch is stretched with the content.
+  Rect _clipAndStretch(Rect bounds) {
+    final stretches = _shaderStretches();
     RenderObject? child = this;
     RenderObject? ancestor = parent;
 
     while (ancestor != null) {
+      for (final stretch in stretches) {
+        if (identical(stretch.filter, ancestor)) bounds = stretch.cover(bounds);
+      }
       if (ancestor is RenderBox) {
         final clip = ancestor.describeApproximatePaintClip(child!);
         if (clip != null) {
           final transform = ancestor.getTransformTo(null);
-          final globalClip = MatrixUtils.transformRect(transform, clip);
-          accumulatedClip =
-              accumulatedClip?.intersect(globalClip) ?? globalClip;
+          bounds = bounds.intersect(MatrixUtils.transformRect(transform, clip));
+          if (bounds.width <= 0 || bounds.height <= 0) return bounds;
         }
       }
       child = ancestor;
       ancestor = ancestor.parent;
     }
 
-    return accumulatedClip;
+    return bounds;
+  }
+
+  Rect _rawBounds() {
+    Rect bounds =
+        MatrixUtils.transformRect(getTransformTo(null), Offset.zero & size);
+    for (final stretch in _shaderStretches()) {
+      bounds = stretch.cover(bounds);
+    }
+    return bounds;
+  }
+
+  /// Only an enabled `ImageFiltered` composites an [ImageFilterLayer], so the
+  /// element walk is skipped on every frame without one.
+  List<ShaderStretch> _shaderStretches() {
+    final context = _context;
+    if (context is! Element || !context.mounted) return const [];
+    RenderObject? ancestor = parent;
+    while (ancestor != null) {
+      // ignore: invalid_use_of_protected_member
+      if (ancestor.isRepaintBoundary && ancestor.layer is ImageFilterLayer) {
+        return findShaderStretches(context);
+      }
+      ancestor = ancestor.parent;
+    }
+    return const [];
   }
 
   double _getDevicePixelRatio() {
@@ -365,9 +391,7 @@ class OccludeRenderBox extends RenderProxyBox
       } else if (_lastReportedBounds != null) {
         _addToSlidingWindow(_lastReportedBounds!, nowMs);
       } else {
-        final transform = getTransformTo(null);
-        final rawBounds =
-            MatrixUtils.transformRect(transform, Offset.zero & size);
+        final rawBounds = _rawBounds();
         _lastReportedBounds = rawBounds;
         _addToSlidingWindow(rawBounds, nowMs);
       }
@@ -395,9 +419,7 @@ class OccludeRenderBox extends RenderProxyBox
       if (previousBounds != null) {
         _addToSlidingWindow(previousBounds, nowMs);
       } else {
-        final transform = getTransformTo(null);
-        final rawBounds =
-            MatrixUtils.transformRect(transform, Offset.zero & size);
+        final rawBounds = _rawBounds();
         _addToSlidingWindow(rawBounds, nowMs);
       }
     }
